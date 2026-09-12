@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, BackHandler, Alert } from 'react-native';
 import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng } from '../types/soloRun';
-import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm } from '../services/locationService';
+import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm, calculateRollingPaceString, getAccuracyTier } from '../services/locationService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { useApp } from './AppContext';
 
@@ -163,11 +163,18 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     acceptedPointCountRef.current = 0;
     trackingReadyRef.current = false;
 
-    // Check permissions
+    // Check permissions & location services
     const granted = await locationService.requestPermissions();
     if (!granted) {
       setRunState('ERROR');
       setErrorMessage('Location permission was denied. Enable GPS in device settings.');
+      return;
+    }
+
+    const servicesEnabled = await locationService.checkServicesEnabled();
+    if (!servicesEnabled) {
+      setRunState('ERROR');
+      setErrorMessage('Location services (GPS) are disabled on this device. Please turn on GPS.');
       return;
     }
 
@@ -255,11 +262,11 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!isPausedRef.current && (runState === 'ACTIVE' || runState === 'COUNTDOWN')) {
       const validation = validateGPSPoint(point, lastAcceptedPointRef.current);
       if (!validation.isValid) {
-        if (__DEV__ && validation.reason) {
-          console.log(`[GPS_FILTER_REJECT] Reason: ${validation.reason} (Accuracy: ${point.accuracy}m, Lat: ${point.latitude.toFixed(5)}, Lng: ${point.longitude.toFixed(5)})`);
-        }
+        console.log(`[GPS_REJECTED] Reason: ${validation.reason || 'UNKNOWN'} | Acc: ${point.accuracy}m | Speed: ${point.speed} | Lat: ${point.latitude.toFixed(5)}, Lng: ${point.longitude.toFixed(5)}`);
         return;
       }
+
+      console.log(`[GPS_ACCEPTED] Accepted tracking point #${acceptedPointCountRef.current + 1} | Lat: ${point.latitude.toFixed(6)}, Lng: ${point.longitude.toFixed(6)}`);
 
       // Unlock trackingReady flag
       if (!trackingReadyRef.current) {
@@ -272,7 +279,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const integrity = Math.min(100, Math.max(0, Math.round((acceptedPointCountRef.current / totalPointCountRef.current) * 100)));
 
       const newCoord: LatLng = { latitude: point.latitude, longitude: point.longitude };
-      setRoutePoints((prev) => [...prev, point]);
+      const updatedPoints = [...routePoints, point];
+      setRoutePoints(updatedPoints);
       setActualRoute((prev) => [...prev, newCoord]);
 
       if (lastAcceptedPointRef.current) {
@@ -283,18 +291,21 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
           point.longitude
         );
 
-        if (segKm > 0.001) { // 1m movement threshold to avoid stationary jitter
+        if (segKm >= 0.003) { // 3m minimum movement threshold to prevent stationary GPS jitter
+          const recentSlice = updatedPoints.slice(-10);
+          const rollingPace = calculateRollingPaceString(recentSlice);
+
           setMetrics((prev) => {
             const newDist = Math.round((prev.distanceKm + segKm) * 1000) / 1000;
-            const currentPace = calculatePaceString(newDist, prev.durationSeconds);
+            const overallPace = calculatePaceString(newDist, prev.durationSeconds);
             const speedKmH = point.speed !== null && point.speed > 0 ? Math.round(point.speed * 3.6 * 10) / 10 : null;
             const maxSpeed = Math.max(prev.maxSpeedKmH || 0, speedKmH || 0);
 
             return {
               ...prev,
               distanceKm: newDist,
-              currentPace,
-              avgPace: currentPace,
+              currentPace: rollingPace !== '--:--' ? rollingPace : overallPace,
+              avgPace: overallPace,
               currentSpeedKmH: speedKmH,
               maxSpeedKmH: maxSpeed > 0 ? maxSpeed : null,
               trackingIntegrityScore: integrity,
@@ -363,17 +374,17 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (runState !== 'PAUSED') return;
     setRunState('ACTIVE');
     isPausedRef.current = false;
-    if (lastAcceptedPointRef.current) {
-      lastAcceptedPointRef.current = {
-        ...lastAcceptedPointRef.current,
-        timestamp: Date.now(),
-      };
-    }
+    // Reset reference point on resume so paused physical movement is NOT counted
+    lastAcceptedPointRef.current = null;
   };
 
-  // 8. Finish Run
+  const isCompletingRef = useRef<boolean>(false);
+  const isSavedRef = useRef<boolean>(false);
+
+  // 8. Finish Run (Idempotent: executes exactly once per session)
   const finishRun = async () => {
-    if (runState !== 'ACTIVE' && runState !== 'PAUSED') return;
+    if (isCompletingRef.current || (runState !== 'ACTIVE' && runState !== 'PAUSED')) return;
+    isCompletingRef.current = true;
     setRunState('COMPLETING');
     isPausedRef.current = true;
     stopTimer();
@@ -403,9 +414,10 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setLastRunSummary(summary);
   };
 
-  // 9. Save Run
+  // 9. Save Run (Idempotent: saves local first, syncs Firebase separately)
   const saveRun = async () => {
-    if (!lastRunSummary || runState === 'SAVING' || runState === 'SAVED') return;
+    if (isSavedRef.current || !lastRunSummary || runState === 'SAVING' || runState === 'SAVED') return;
+    isSavedRef.current = true;
     setRunState('SAVING');
 
     try {
@@ -454,6 +466,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     accumulatedDurationRef.current = 0;
     lastAcceptedPointRef.current = null;
     isPausedRef.current = false;
+    isCompletingRef.current = false;
+    isSavedRef.current = false;
     totalPointCountRef.current = 0;
     acceptedPointCountRef.current = 0;
     trackingReadyRef.current = false;

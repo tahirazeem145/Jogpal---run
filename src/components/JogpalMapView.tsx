@@ -12,13 +12,43 @@ interface JogpalMapViewProps {
   interactive?: boolean;
 }
 
-export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
+export type JogpalCoordinate = [number, number]; // [longitude, latitude]
+
+export function validateCoordinate(latitude: number, longitude: number): boolean {
+  return (
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -90 &&
+    latitude <= 90 &&
+    longitude >= -180 &&
+    longitude <= 180
+  );
+}
+
+export function toGeoJSONCoordinate(latitude: number, longitude: number): JogpalCoordinate {
+  const isValid = validateCoordinate(latitude, longitude);
+  if (!isValid) {
+    console.warn(`[MAP_COORDINATE_INVALID] lat=${latitude}, lng=${longitude}`);
+  }
+  const geoJsonLng = longitude;
+  const geoJsonLat = latitude;
+  console.log(`[MAP_COORDINATE] latitude=${latitude} longitude=${longitude} geoJsonLng=${geoJsonLng} geoJsonLat=${geoJsonLat}`);
+  return [geoJsonLng, geoJsonLat];
+}
+
+type CameraMode = 'FOLLOWING' | 'USER_CONTROLLED';
+
+const JogpalMapViewComponent: React.FC<JogpalMapViewProps> = ({
   currentLocation,
   actualRoute,
   plannedRoute = [],
   style,
   interactive = true,
 }) => {
+  const [cameraMode, setCameraMode] = React.useState<CameraMode>('FOLLOWING');
+  const initialCenterSetRef = useRef<boolean>(false);
+  const lastCameraUpdateRef = useRef<number>(0);
+
   // If Web environment, render web-safe interactive Leaflet / CartoDB Dark Matter map container
   if (Platform.OS === 'web') {
     const lat = currentLocation?.latitude || 37.78825;
@@ -93,54 +123,82 @@ export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
   try {
     MapLibre = require('@maplibre/maplibre-react-native');
   } catch (err) {
+    console.error('[MAP_ERROR] Failed to load @maplibre/maplibre-react-native module:', err);
     try {
       const Maps = require('react-native-maps');
       MapView = Maps.default;
       Polyline = Maps.Polyline;
       Marker = Maps.Marker;
       PROVIDER_DEFAULT = Maps.PROVIDER_DEFAULT;
-    } catch (e) {}
+    } catch (e) {
+      console.error('[MAP_ERROR] Failed to load react-native-maps fallback:', e);
+    }
   }
 
   const mapRef = useRef<any>(null);
 
-  const initialRegion = useMemo(() => ({
-    latitude: currentLocation?.latitude || 37.78825,
-    longitude: currentLocation?.longitude || -122.4324,
-    latitudeDelta: 0.005,
-    longitudeDelta: 0.005,
-  }), [currentLocation?.latitude, currentLocation?.longitude]);
-
   useEffect(() => {
-    if (currentLocation && mapRef.current) {
-      if (mapRef.current.animateToRegion) {
-        mapRef.current.animateToRegion(
-          {
-            latitude: currentLocation.latitude,
-            longitude: currentLocation.longitude,
-            latitudeDelta: 0.004,
-            longitudeDelta: 0.004,
-          },
-          800
-        );
-      }
+    console.log('[MAP_MOUNT] JogpalMapView mounted');
+    return () => {
+      console.log('[MAP_UNMOUNT] JogpalMapView unmounted');
+    };
+  }, []);
+
+  const isProgrammaticCameraMoveRef = useRef<boolean>(false);
+
+  // Center camera ONCE when first valid location becomes available
+  useEffect(() => {
+    if (currentLocation && !initialCenterSetRef.current) {
+      initialCenterSetRef.current = true;
+      console.log(`[MAP_INITIAL_CENTER] Centered map once at lat=${currentLocation.latitude}, lng=${currentLocation.longitude}`);
     }
   }, [currentLocation?.latitude, currentLocation?.longitude]);
 
+  // Throttled camera follow target calculation (~800ms throttle)
+  const cameraCenterCoordinate = useMemo(() => {
+    if (!currentLocation || cameraMode === 'USER_CONTROLLED') return undefined;
+    const now = Date.now();
+    if (now - lastCameraUpdateRef.current < 800 && initialCenterSetRef.current) {
+      return undefined;
+    }
+    lastCameraUpdateRef.current = now;
+    isProgrammaticCameraMoveRef.current = true;
+    console.log(`[CAMERA_PROGRAMMATIC] true | [CAMERA_UPDATE] lat=${currentLocation.latitude} lng=${currentLocation.longitude} zoom=15.5`);
+    return [currentLocation.longitude, currentLocation.latitude];
+  }, [currentLocation?.latitude, currentLocation?.longitude, cameraMode]);
+
+  const handleRegionWillChange = (feature: any) => {
+    if (isProgrammaticCameraMoveRef.current) {
+      console.log('[CAMERA_PROGRAMMATIC] false (Programmatic move completed)');
+      isProgrammaticCameraMoveRef.current = false;
+      return;
+    }
+
+    const isUserGesture = feature?.properties?.isUserGesture !== false;
+    if (isUserGesture && cameraMode !== 'USER_CONTROLLED') {
+      console.log('[CAMERA_USER_GESTURE] true | [CAMERA_MODE] USER_CONTROLLED');
+      setCameraMode('USER_CONTROLLED');
+    }
+  };
+
   // Construct stable MapLibre GeoJSON sources
-  const actualRouteGeoJSON = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: [
-      {
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: actualRoute.map((pt) => [pt.longitude, pt.latitude]),
+  const actualRouteGeoJSON = useMemo(() => {
+    const coords = actualRoute.map((pt) => toGeoJSONCoordinate(pt.latitude, pt.longitude));
+    console.log(`[ACTUAL_ROUTE_GEOJSON] pointCount=${coords.length} first=${coords.length > 0 ? JSON.stringify(coords[0]) : 'NONE'} last=${coords.length > 0 ? JSON.stringify(coords[coords.length - 1]) : 'NONE'}`);
+    return {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: coords,
+          },
+          properties: {},
         },
-        properties: {},
-      },
-    ],
-  }), [actualRoute]);
+      ],
+    };
+  }, [actualRoute]);
 
   const plannedRouteGeoJSON = useMemo(() => ({
     type: 'FeatureCollection',
@@ -149,20 +207,20 @@ export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
         type: 'Feature',
         geometry: {
           type: 'LineString',
-          coordinates: plannedRoute.map((pt) => [pt.longitude, pt.latitude]),
+          coordinates: plannedRoute.map((pt) => toGeoJSONCoordinate(pt.latitude, pt.longitude)),
         },
         properties: {},
       },
     ],
   }), [plannedRoute]);
 
-  const centerCoordinate = useMemo(() => {
-    if (!currentLocation) return undefined;
-    return [currentLocation.longitude, currentLocation.latitude];
-  }, [currentLocation?.latitude, currentLocation?.longitude]);
+  if (currentLocation) {
+    console.log(`[RUNNER_MARKER] lat=${currentLocation.latitude} lng=${currentLocation.longitude}`);
+  }
 
   if (MapLibre && MapLibre.MapView) {
     const MapLibreGL = MapLibre.default || MapLibre;
+    console.log('[MAP_STYLE_LOADING] Rendering Native MapLibreGL.MapView');
     return (
       <View style={[styles.container, style]}>
         <MapLibreGL.MapView
@@ -174,12 +232,14 @@ export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
           zoomEnabled={interactive}
           rotateEnabled={interactive}
           pitchEnabled={false}
+          onRegionWillChange={handleRegionWillChange}
+          onDidFinishLoadingMap={() => console.log('[MAP_STYLE_LOADED] Native MapLibre style loaded successfully')}
         >
-          {currentLocation && (
+          {cameraCenterCoordinate && (
             <MapLibreGL.Camera
-              centerCoordinate={[currentLocation.longitude, currentLocation.latitude]}
+              centerCoordinate={cameraCenterCoordinate}
               zoomLevel={15.5}
-              animationDuration={800}
+              animationDuration={0}
             />
           )}
 
@@ -229,6 +289,13 @@ export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
   }
 
   if (MapView) {
+    const initialRegion = {
+      latitude: currentLocation?.latitude || 37.78825,
+      longitude: currentLocation?.longitude || -122.4324,
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    };
+    console.log('[MAP_STYLE_LOADING] Rendering Fallback react-native-maps');
     return (
       <View style={[styles.container, style]}>
         <MapView
@@ -247,6 +314,7 @@ export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
           zoomEnabled={interactive}
           rotateEnabled={interactive}
           pitchEnabled={false}
+          onMapReady={() => console.log('[MAP_STYLE_LOADED] Fallback MapView style loaded')}
         >
           {plannedRoute.length > 1 && (
             <Polyline
@@ -287,12 +355,15 @@ export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
     );
   }
 
+  console.log('[MAP_ERROR] Neither MapLibre nor react-native-maps could be rendered');
   return (
     <View style={[styles.container, styles.webContainer, style]}>
       <Text style={styles.webText}>JOGPAL MAPLIBRE (INITIALIZING ENGINE)</Text>
     </View>
   );
 };
+
+export const JogpalMapView = React.memo(JogpalMapViewComponent);
 
 const styles = StyleSheet.create({
   container: {
