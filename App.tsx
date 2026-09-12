@@ -5,6 +5,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AppProvider } from './src/context/AppContext';
+import { SoloRunProvider } from './src/context/SoloRunContext';
 import { ThemeProvider, useTheme } from './src/theme/colors';
 
 const AppContent: React.FC = () => {
@@ -37,7 +38,9 @@ export default function App() {
     <SafeAreaProvider>
       <ThemeProvider>
         <AppProvider>
-          <AppContent />
+          <SoloRunProvider>
+            <AppContent />
+          </SoloRunProvider>
         </AppProvider>
       </ThemeProvider>
     </SafeAreaProvider>
