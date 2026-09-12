@@ -7,11 +7,12 @@ import { YourCrewSection } from '../components/YourCrewSection';
 import { YourFriendsSection } from '../components/YourFriendsSection';
 import { UpcomingSessionCard } from '../components/UpcomingSessionCard';
 import { PersonalBestsSection } from '../components/PersonalBestsSection';
+import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
 import { useSoloRun } from '../context/SoloRunContext';
 import { SoloRunModal } from '../components/SoloRunModal';
 import { NotificationsModal } from '../components/NotificationsModal';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { CrewMember } from '../types/data';
 
 export const HomeScreen: React.FC = () => {

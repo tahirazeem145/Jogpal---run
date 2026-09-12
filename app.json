@@ -36,6 +36,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "@maplibre/maplibre-react-native",
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
       [

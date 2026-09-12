@@ -45,6 +45,31 @@ export interface SoloRunMetrics {
   trackingReadyLatencyMs: number | null;
 }
 
+export interface TrackingPoint {
+  latitude: number;
+  longitude: number;
+  accuracy: number;
+  speed: number | null;
+  bearing: number | null;
+  timestamp: number;
+}
+
+export interface TrackingSession {
+  status:
+    | 'IDLE'
+    | 'STARTING'
+    | 'ACTIVE'
+    | 'PAUSED'
+    | 'COMPLETING'
+    | 'SAVED'
+    | 'ERROR';
+  points: TrackingPoint[];
+  distanceMeters: number;
+  startedAt: number | null;
+  pausedAt: number | null;
+  totalPausedMs: number;
+}
+
 export interface PendingRun {
   localId: string;
   userId: string;

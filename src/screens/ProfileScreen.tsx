@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NeonCard } from '../components/NeonCard';
 import { useApp } from '../context/AppContext';
 import { runService } from '../services/runService';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 export const ProfileScreen: React.FC = () => {
   const insets = useSafeAreaInsets();

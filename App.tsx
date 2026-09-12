@@ -6,7 +6,7 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AppProvider } from './src/context/AppContext';
 import { SoloRunProvider } from './src/context/SoloRunContext';
-import { ThemeProvider, useTheme } from './src/theme/colors';
+import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
 const AppContent: React.FC = () => {
   const { colors, isOrange } = useTheme();

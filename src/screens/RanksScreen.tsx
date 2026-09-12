@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { NeonCard } from '../components/NeonCard';
 import { useApp } from '../context/AppContext';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 

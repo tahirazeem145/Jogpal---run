@@ -4,10 +4,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
+import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { RunSession } from '../types/data';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 export const HistoryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
