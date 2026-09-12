@@ -2,7 +2,7 @@ import React, { useRef, useEffect } from 'react';
 import { StyleSheet, View, Text, Platform } from 'react-native';
 import { GPSPoint, LatLng } from '../types/soloRun';
 import { jogpalDarkMapStyle } from '../theme/mapStyle';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface JogpalMapViewProps {
   currentLocation?: GPSPoint | null;
@@ -19,6 +19,7 @@ export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
   style,
   interactive = true,
 }) => {
+  const { colors } = useTheme();
   // If Web environment, render web-safe stylized dark map container
   if (Platform.OS === 'web') {
     return (
@@ -103,7 +104,7 @@ export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
         {actualRoute.length > 1 && (
           <Polyline
             coordinates={actualRoute}
-            strokeColor={colors.limePrimary}
+            strokeColor={colors.primary}
             strokeWidth={5}
             lineCap="round"
             lineJoin="round"
@@ -120,8 +121,8 @@ export const JogpalMapView: React.FC<JogpalMapViewProps> = ({
             anchor={{ x: 0.5, y: 0.5 }}
             flat={true}
           >
-            <View style={styles.runnerMarkerOuter}>
-              <View style={styles.runnerMarkerInner} />
+            <View style={[styles.runnerMarkerOuter, { borderColor: colors.primary, backgroundColor: colors.glow }]}>
+              <View style={[styles.runnerMarkerInner, { backgroundColor: colors.primary }]} />
             </View>
           </Marker>
         )}
@@ -161,7 +162,7 @@ const styles = StyleSheet.create({
   webText: {
     fontSize: 10,
     fontWeight: '900',
-    color: colors.limePrimary,
+    color: '#CCFF00',
     letterSpacing: 1.2,
     zIndex: 2,
   },
@@ -169,9 +170,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(168, 255, 0, 0.3)',
     borderWidth: 2,
-    borderColor: colors.limePrimary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -179,6 +178,5 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.limePrimary,
   },
 });
