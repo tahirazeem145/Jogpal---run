@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
   Alert,
   Image,
   Modal,
@@ -15,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
@@ -40,8 +39,6 @@ export const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { userProfile, updateProfile } = useApp();
 
-  const locationSharing = userProfile?.locationSharing ?? true;
-
   // Edit Profile Modal State
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editName, setEditName] = useState('');
@@ -50,10 +47,6 @@ export const SettingsScreen: React.FC = () => {
 
   const handleBack = () => {
     navigation.goBack();
-  };
-
-  const handleToggleLocation = async (value: boolean) => {
-    await updateProfile({ locationSharing: value });
   };
 
   const handleOpenEditModal = () => {
@@ -302,60 +295,6 @@ export const SettingsScreen: React.FC = () => {
               </View>
               <Feather name="chevron-right" size={20} color="#991B1B" />
             </TouchableOpacity>
-          </NeonCard>
-        </View>
-
-        {/* RUNNING Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>RUNNING</Text>
-          <NeonCard style={styles.card} contentStyle={styles.cardContent}>
-            <View style={styles.itemRow}>
-              <View style={styles.iconBox}>
-                <MaterialCommunityIcons name="run" size={22} color="#000000" />
-              </View>
-              <View style={styles.itemTextContainer}>
-                <Text style={styles.itemTitle}>Running Preferences</Text>
-                <Text style={styles.itemSubtitle}>Goals, experience, and pace</Text>
-              </View>
-              <View style={styles.valueRow}>
-                <Text style={styles.valueText}>{userProfile?.runningPreferences || 'M10.2: Future'}</Text>
-              </View>
-            </View>
-
-            <View style={[styles.itemRow, styles.lastItemRow]}>
-              <View style={styles.iconBox}>
-                <Ionicons name="location" size={20} color="#000000" />
-              </View>
-              <View style={styles.itemTextContainer}>
-                <Text style={styles.itemTitle}>Sharing Status</Text>
-                <Text style={styles.itemSubtitle}>Current live tracking state</Text>
-              </View>
-              <View style={styles.valueRow}>
-                <Text style={styles.valueText}>{userProfile?.sharingStatus || 'Active'}</Text>
-              </View>
-            </View>
-          </NeonCard>
-        </View>
-
-        {/* PRIVACY & SAFETY Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>PRIVACY & SAFETY</Text>
-          <NeonCard style={styles.card} contentStyle={styles.cardContent}>
-            <View style={[styles.itemRow, styles.lastItemRow]}>
-              <View style={styles.iconBox}>
-                <Ionicons name="lock-closed" size={18} color="#000000" />
-              </View>
-              <View style={styles.itemTextContainer}>
-                <Text style={styles.itemTitle}>Location Sharing</Text>
-                <Text style={styles.itemSubtitle}>Allow partners to see your live position</Text>
-              </View>
-              <Switch
-                value={locationSharing}
-                onValueChange={handleToggleLocation}
-                trackColor={{ false: '#262626', true: '#1A1A1A' }}
-                thumbColor={locationSharing ? colors.limePrimary : '#FFFFFF'}
-              />
-            </View>
           </NeonCard>
         </View>
       </ScrollView>
@@ -683,16 +622,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#2A2A2A',
     marginTop: 2,
-  },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  valueText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#000000',
   },
   // Modal Styles
   modalOverlay: {
