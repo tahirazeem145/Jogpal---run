@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "405112460867",
+    "project_id": "jogpal-5",
+    "storage_bucket": "jogpal-5.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:405112460867:android:dcc26f038f17b91403e6f6",
+        "android_client_info": {
+          "package_name": "com.jogpal.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCuiwXmBy9KfzOw03sxHTosmS5wMOdks6c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
