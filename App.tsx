@@ -6,33 +6,43 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { AppProvider } from './src/context/AppContext';
 import { SoloRunProvider } from './src/context/SoloRunContext';
-import { colors } from './src/theme/colors';
+import { ThemeProvider, useTheme } from './src/theme/colors';
 
-const CustomDarkTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: colors.background,
-    card: colors.tabBarBg,
-    text: colors.textPrimary,
-    border: colors.tabBarBorder,
-    primary: colors.limePrimary,
-  },
+const AppContent: React.FC = () => {
+  const { colors, isOrange } = useTheme();
+
+  const customTheme = {
+    ...DarkTheme,
+    colors: {
+      ...DarkTheme.colors,
+      background: colors.background,
+      card: colors.tabBarBg,
+      text: colors.textPrimary,
+      border: colors.tabBarBorder,
+      primary: colors.primary,
+    },
+  };
+
+  return (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar style="light" />
+      <NavigationContainer theme={customTheme}>
+        <RootNavigator />
+      </NavigationContainer>
+    </View>
+  );
 };
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AppProvider>
-        <SoloRunProvider>
-          <View style={styles.container}>
-            <StatusBar style="light" />
-            <NavigationContainer theme={CustomDarkTheme}>
-              <RootNavigator />
-            </NavigationContainer>
-          </View>
-        </SoloRunProvider>
-      </AppProvider>
+      <ThemeProvider>
+        <AppProvider>
+          <SoloRunProvider>
+            <AppContent />
+          </SoloRunProvider>
+        </AppProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
@@ -40,6 +50,5 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
 });

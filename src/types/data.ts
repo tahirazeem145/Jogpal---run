@@ -56,8 +56,9 @@ export interface PersonalBest {
   id: string;
   category: string;
   record: string;
-  pace: string;
-  date: string;
+  pace?: string;
+  date?: string;
+  unlocked?: boolean;
 }
 
 export interface Achievement {

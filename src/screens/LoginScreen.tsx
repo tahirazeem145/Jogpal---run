@@ -18,7 +18,7 @@ import { GoogleIcon } from '../components/GoogleIcon';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import { UserProfile } from '../types/data';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface LoginScreenProps {
   onLoginSuccess?: () => void;
@@ -26,6 +26,7 @@ interface LoginScreenProps {
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [isSignUp, setIsSignUp] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -118,11 +119,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       }
       if (onLoginSuccess) onLoginSuccess();
     } catch (err: any) {
-      if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('cancelled')) {
-        // User cancelled popup / dialog
-      } else {
-        setErrorMessage(err.message || 'Google sign-in failed. Please try again.');
-      }
+      setErrorMessage(err.message || 'Google Sign-In was cancelled or failed.');
     } finally {
       setLoading(false);
     }
@@ -144,7 +141,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
@@ -156,37 +153,37 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       >
         {/* Brand Header */}
         <View style={styles.brandContainer}>
-          <View style={styles.logoBadge}>
+          <View style={[styles.logoBadge, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
             <MaterialCommunityIcons name="run-fast" size={36} color="#000000" />
           </View>
-          <Text style={styles.brandTitle}>JOGPAL</Text>
-          <Text style={styles.brandTagline}>TRACK. RUN. CONQUER.</Text>
+          <Text style={[styles.brandTitle, { color: colors.textPrimary }]}>JOGPAL</Text>
+          <Text style={[styles.brandTagline, { color: colors.primary }]}>TRACK. RUN. CONQUER.</Text>
         </View>
 
         {/* Tab Selector: Sign In / Create Account */}
-        <View style={styles.tabSelector}>
+        <View style={[styles.tabSelector, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <TouchableOpacity
-            style={[styles.tabButton, !isSignUp && styles.tabButtonActive]}
+            style={[styles.tabButton, !isSignUp && [styles.tabButtonActive, { backgroundColor: colors.cardSubtle }]]}
             onPress={() => {
               setIsSignUp(false);
               setErrorMessage('');
             }}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, !isSignUp && styles.tabTextActive]}>
+            <Text style={[styles.tabText, { color: colors.textSecondary }, !isSignUp && { color: colors.primary }]}>
               SIGN IN
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.tabButton, isSignUp && styles.tabButtonActive]}
+            style={[styles.tabButton, isSignUp && [styles.tabButtonActive, { backgroundColor: colors.cardSubtle }]]}
             onPress={() => {
               setIsSignUp(true);
               setErrorMessage('');
             }}
             activeOpacity={0.8}
           >
-            <Text style={[styles.tabText, isSignUp && styles.tabTextActive]}>
+            <Text style={[styles.tabText, { color: colors.textSecondary }, isSignUp && { color: colors.primary }]}>
               CREATE ACCOUNT
             </Text>
           </TouchableOpacity>
@@ -205,11 +202,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           {/* Full Name field (Sign up only) */}
           {isSignUp && (
             <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>FULL NAME</Text>
-              <View style={styles.inputWrapper}>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>FULL NAME</Text>
+              <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <Feather name="user" size={18} color={colors.textSecondary} />
                 <TextInput
-                  style={styles.textInput}
+                  style={[styles.textInput, { color: colors.textPrimary }]}
                   placeholder="e.g. Alex Rivera"
                   placeholderTextColor={colors.textMuted}
                   value={name}
@@ -222,11 +219,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
           {/* Email field */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>EMAIL ADDRESS</Text>
-            <View style={styles.inputWrapper}>
+            <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>EMAIL ADDRESS</Text>
+            <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <Feather name="mail" size={18} color={colors.textSecondary} />
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { color: colors.textPrimary }]}
                 placeholder="runner@jogpal.app"
                 placeholderTextColor={colors.textMuted}
                 value={email}
@@ -240,7 +237,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           {/* Password field */}
           <View style={styles.inputGroup}>
             <View style={styles.passwordHeader}>
-              <Text style={styles.inputLabel}>PASSWORD</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>PASSWORD</Text>
               {!isSignUp && (
                 <TouchableOpacity
                   onPress={() =>
@@ -250,14 +247,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
                     )
                   }
                 >
-                  <Text style={styles.forgotPasswordText}>FORGOT?</Text>
+                  <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>FORGOT?</Text>
                 </TouchableOpacity>
               )}
             </View>
-            <View style={styles.inputWrapper}>
+            <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <Feather name="lock" size={18} color={colors.textSecondary} />
               <TextInput
-                style={styles.textInput}
+                style={[styles.textInput, { color: colors.textPrimary }]}
                 placeholder="••••••••"
                 placeholderTextColor={colors.textMuted}
                 value={password}
@@ -280,7 +277,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
           {/* Primary Action Button with Honeycomb Badges */}
           {loading ? (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={colors.limePrimary} />
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
           ) : (
             <NeonButton
@@ -292,14 +289,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
           {/* Divider */}
           <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>OR</Text>
-            <View style={styles.dividerLine} />
+            <View style={[styles.dividerLine, { backgroundColor: colors.cardBorder }]} />
+            <Text style={[styles.dividerText, { color: colors.textMuted }]}>OR</Text>
+            <View style={[styles.dividerLine, { backgroundColor: colors.cardBorder }]} />
           </View>
 
           {/* Google Sign In Button */}
           <TouchableOpacity
-            style={styles.googleButton}
+            style={[styles.googleButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
             onPress={handleGoogleSignIn}
             activeOpacity={0.85}
             disabled={loading}
@@ -310,20 +307,20 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
           {/* Guest Sign In Button */}
           <TouchableOpacity
-            style={styles.guestButton}
+            style={[styles.guestButton, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}
             onPress={handleGuestSignIn}
             activeOpacity={0.8}
             disabled={loading}
           >
-            <Ionicons name="flash-outline" size={18} color={colors.limePrimary} />
-            <Text style={styles.guestButtonText}>CONTINUE AS GUEST</Text>
+            <Ionicons name="flash-outline" size={18} color={colors.primary} />
+            <Text style={[styles.guestButtonText, { color: colors.primary }]}>CONTINUE AS GUEST</Text>
           </TouchableOpacity>
         </View>
 
         {/* Security Footer */}
         <View style={styles.footer}>
           <Ionicons name="shield-checkmark-outline" size={16} color={colors.textMuted} />
-          <Text style={styles.footerText}>
+          <Text style={[styles.footerText, { color: colors.textMuted }]}>
             Secured with Firebase Authentication & Cloud Firestore
           </Text>
         </View>
@@ -335,7 +332,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -350,11 +346,9 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: colors.limePrimary,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
-    shadowColor: colors.limePrimary,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.35,
     shadowRadius: 14,
@@ -363,24 +357,20 @@ const styles = StyleSheet.create({
   brandTitle: {
     fontSize: 28,
     fontWeight: '900',
-    color: colors.textPrimary,
     letterSpacing: 2,
   },
   brandTagline: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.limePrimary,
     letterSpacing: 2.5,
     marginTop: 4,
   },
   tabSelector: {
     flexDirection: 'row',
-    backgroundColor: '#151517',
     borderRadius: 16,
     padding: 4,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#242428',
   },
   tabButton: {
     flex: 1,
@@ -389,16 +379,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   tabButtonActive: {
-    backgroundColor: '#222226',
   },
   tabText: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.textSecondary,
     letterSpacing: 0.8,
-  },
-  tabTextActive: {
-    color: colors.limePrimary,
   },
   errorContainer: {
     flexDirection: 'row',
@@ -427,7 +412,6 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 11,
     fontWeight: '900',
-    color: colors.textSecondary,
     letterSpacing: 0.8,
     marginLeft: 4,
   },
@@ -439,24 +423,20 @@ const styles = StyleSheet.create({
   forgotPasswordText: {
     fontSize: 10,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#151517',
     borderRadius: 18,
     paddingHorizontal: 16,
     height: 52,
     borderWidth: 1,
-    borderColor: '#242428',
     gap: 12,
   },
   textInput: {
     flex: 1,
     fontSize: 15,
-    color: colors.textPrimary,
     fontWeight: '600',
   },
   eyeButton: {
@@ -479,12 +459,10 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#202024',
   },
   dividerText: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.textMuted,
     letterSpacing: 1,
   },
   googleButton: {
@@ -493,9 +471,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#1A1A1D',
     borderWidth: 1,
-    borderColor: '#303036',
     gap: 12,
   },
   googleButtonText: {
@@ -510,13 +486,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#162308',
     borderWidth: 1.5,
-    borderColor: '#547B0E',
     gap: 8,
   },
   guestButtonText: {
-    color: colors.limePrimary,
     fontSize: 13,
     fontWeight: '900',
     letterSpacing: 1,
@@ -531,7 +504,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 11,
-    color: colors.textMuted,
     fontWeight: '600',
   },
 });

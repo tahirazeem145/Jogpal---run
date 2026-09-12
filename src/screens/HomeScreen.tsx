@@ -7,14 +7,14 @@ import { YourCrewSection } from '../components/YourCrewSection';
 import { UpcomingSessionCard } from '../components/UpcomingSessionCard';
 import { PersonalBestsSection } from '../components/PersonalBestsSection';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
-import { useApp } from '../context/AppContext';
 import { useSoloRun } from '../context/SoloRunContext';
 import { SoloRunModal } from '../components/SoloRunModal';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { user, userProfile, weeklyKm, crew, upcomingSession, personalBests, logNewRun, addCrewMember, scheduleSession } = useApp();
+  const { colors } = useTheme();
 
   const [soloRunModalVisible, setSoloRunModalVisible] = React.useState(false);
   const { startPreparation } = useSoloRun();
@@ -53,8 +53,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.rootContainer, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+    <View style={[styles.rootContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       
       <ScrollView
         style={styles.scrollView}
@@ -108,7 +108,6 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,

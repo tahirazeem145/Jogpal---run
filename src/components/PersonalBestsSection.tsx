@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { PersonalBest } from '../types/data';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface PersonalBestsSectionProps {
   records?: PersonalBest[];
@@ -13,11 +13,13 @@ export const PersonalBestsSection: React.FC<PersonalBestsSectionProps> = ({
   records = [],
   onRecordPress,
 }) => {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
       {/* Section Header */}
       <View style={styles.headerRow}>
-        <Text style={styles.titleText}>PERSONAL BESTS</Text>
+        <Text style={[styles.titleText, { color: colors.textPrimary }]}>PERSONAL BESTS</Text>
       </View>
 
       {/* Horizontal Cards / Empty State */}
@@ -30,25 +32,25 @@ export const PersonalBestsSection: React.FC<PersonalBestsSectionProps> = ({
           {records.map((item) => (
             <TouchableOpacity
               key={item.id}
-              style={styles.card}
+              style={[styles.card, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
               onPress={() => onRecordPress && onRecordPress(item)}
               activeOpacity={0.8}
             >
               <View style={styles.cardHeader}>
-                <Text style={styles.categoryText}>{item.category}</Text>
-                <Ionicons name="trophy-outline" size={16} color={colors.limePrimary} />
+                <Text style={[styles.categoryText, { color: colors.textSecondary }]}>{item.category}</Text>
+                <Ionicons name="trophy-outline" size={16} color={colors.primary} />
               </View>
-              <Text style={styles.recordText}>{item.record}</Text>
-              <View style={styles.cardFooter}>
-                <Text style={styles.paceText}>{item.pace}</Text>
-                <Text style={styles.dateText}>{item.date}</Text>
+              <Text style={[styles.recordText, { color: colors.textPrimary }]}>{item.record}</Text>
+              <View style={[styles.cardFooter, { borderTopColor: colors.cardBorder }]}>
+                <Text style={[styles.paceText, { color: colors.primary }]}>{item.pace}</Text>
+                <Text style={[styles.dateText, { color: colors.textMuted }]}>{item.date}</Text>
               </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
       ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
+        <View style={[styles.emptyContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
             Complete your first run to establish personal records.
           </Text>
         </View>
@@ -69,7 +71,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
     letterSpacing: 0.8,
-    color: colors.textPrimary,
     textTransform: 'uppercase',
   },
   scrollContent: {
@@ -78,11 +79,9 @@ const styles = StyleSheet.create({
   },
   card: {
     width: 170,
-    backgroundColor: '#151517',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#242428',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -93,41 +92,33 @@ const styles = StyleSheet.create({
   categoryText: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.textSecondary,
     letterSpacing: 0.5,
   },
   recordText: {
     fontSize: 22,
     fontWeight: '900',
-    color: colors.textPrimary,
     marginBottom: 10,
   },
   cardFooter: {
     borderTopWidth: 1,
-    borderTopColor: '#202022',
     paddingTop: 8,
     gap: 2,
   },
   paceText: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.limePrimary,
   },
   dateText: {
     fontSize: 10,
-    color: colors.textMuted,
   },
   emptyContainer: {
     marginHorizontal: 16,
     padding: 18,
-    backgroundColor: '#151517',
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#242428',
   },
   emptyText: {
     fontSize: 13,
-    color: colors.textSecondary,
     lineHeight: 18,
   },
 });

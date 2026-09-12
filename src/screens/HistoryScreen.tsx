@@ -5,14 +5,14 @@ import { Feather } from '@expo/vector-icons';
 import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
-import { useApp } from '../context/AppContext';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { RunSession } from '../types/data';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 export const HistoryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { user, userProfile, runs, logNewRun } = useApp();
+  const { colors } = useTheme();
   const activeUserId = user?.uid || userProfile?.id || 'guest_runner';
   const [displayRuns, setDisplayRuns] = React.useState<RunSession[]>(runs);
 
@@ -74,13 +74,13 @@ export const HistoryScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header Bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
           <Feather name="arrow-left" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>HISTORY</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>HISTORY</Text>
         <View style={styles.headerRightSpacer} />
       </View>
 
@@ -121,7 +121,7 @@ export const HistoryScreen: React.FC = () => {
 
             return (
               <View key={run.id || index} style={styles.section}>
-                <Text style={styles.sectionHeader}>
+                <Text style={[styles.sectionHeader, { color: colors.primary }]}>
                   {index === 0 ? 'LATEST RUN' : dateStr.toUpperCase()}
                 </Text>
                 <NeonCard style={styles.sessionCard} contentStyle={styles.sessionContent}>
@@ -129,7 +129,7 @@ export const HistoryScreen: React.FC = () => {
                     <Text style={styles.dateLabel}>{dateStr}</Text>
                     {run.type && (
                       <View style={styles.soloBadge}>
-                        <Text style={styles.soloBadgeText}>{run.type}</Text>
+                        <Text style={[styles.soloBadgeText, { color: colors.primary }]}>{run.type}</Text>
                       </View>
                     )}
                   </View>
@@ -155,13 +155,16 @@ export const HistoryScreen: React.FC = () => {
             );
           })
         ) : (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>NO LOGGED RUNS YET</Text>
-            <Text style={styles.emptyText}>
+          <View style={[styles.emptyContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>NO LOGGED RUNS YET</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
               Start a solo run or record your first session to see your running history.
             </Text>
-            <TouchableOpacity style={styles.quickRecordButton} onPress={handleRecordFirstRun}>
-              <Text style={styles.quickRecordText}>+ Log 3.2 KM Run</Text>
+            <TouchableOpacity
+              style={[styles.quickRecordButton, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}
+              onPress={handleRecordFirstRun}
+            >
+              <Text style={[styles.quickRecordText, { color: colors.primary }]}>+ Log 3.2 KM Run</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -183,7 +186,6 @@ export const HistoryScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -201,7 +203,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '900',
-    color: colors.textPrimary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
@@ -263,7 +264,6 @@ const styles = StyleSheet.create({
   sectionHeader: {
     fontSize: 12,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 1,
     marginBottom: 10,
     textTransform: 'uppercase',
@@ -298,7 +298,6 @@ const styles = StyleSheet.create({
   soloBadgeText: {
     fontSize: 10,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.8,
   },
   sessionTitle: {
@@ -309,38 +308,31 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyContainer: {
-    backgroundColor: '#151517',
     borderRadius: 22,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#242428',
     marginBottom: 20,
   },
   emptyTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: colors.textPrimary,
     letterSpacing: 0.8,
     marginBottom: 6,
   },
   emptyText: {
     fontSize: 13,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 16,
   },
   quickRecordButton: {
-    backgroundColor: '#1A260D',
     borderWidth: 1,
-    borderColor: colors.limePrimary,
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
   quickRecordText: {
-    color: colors.limePrimary,
     fontSize: 12,
     fontWeight: '900',
   },

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { HoneycombPattern } from './HoneycombPattern';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface NeonCardProps {
   children: React.ReactNode;
@@ -16,10 +16,12 @@ export const NeonCard: React.FC<NeonCardProps> = ({
   style,
   contentStyle,
   edgeWidth = 65,
-  patternOpacity = 0.35,
+  patternOpacity = 0.12,
 }) => {
+  const { colors } = useTheme();
+
   return (
-    <View style={[styles.card, style]}>
+    <View style={[styles.card, { backgroundColor: colors.primary }, style]}>
       {/* Honeycomb left & right edge badges with gradient fade */}
       <HoneycombPattern edgeWidth={edgeWidth} opacity={patternOpacity} />
       {/* Inner Content */}
@@ -30,7 +32,6 @@ export const NeonCard: React.FC<NeonCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.limePrimary,
     borderRadius: 24,
     overflow: 'hidden',
     position: 'relative',

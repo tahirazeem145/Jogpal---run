@@ -4,13 +4,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { NeonCard } from '../components/NeonCard';
 import { useApp } from '../context/AppContext';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
 export const RanksScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { userProfile, runs } = useApp();
+  const { colors } = useTheme();
 
   const streakDays = userProfile?.streakDays || 0;
   const currentMonthName = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
@@ -24,13 +25,13 @@ export const RanksScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header Bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
           <Feather name="arrow-left" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>LEADERBOARD</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>LEADERBOARD</Text>
         <View style={styles.headerRightSpacer} />
       </View>
 
@@ -57,7 +58,7 @@ export const RanksScreen: React.FC = () => {
               onPress={handleAnalyze}
               activeOpacity={0.8}
             >
-              <Text style={styles.smallAnalyzeText}>ANALYZE</Text>
+              <Text style={[styles.smallAnalyzeText, { color: colors.primary }]}>ANALYZE</Text>
             </TouchableOpacity>
           </View>
 
@@ -80,13 +81,13 @@ export const RanksScreen: React.FC = () => {
             onPress={handleAnalyze}
             activeOpacity={0.85}
           >
-            <Text style={styles.largeAnalyzeText}>ANALYZE</Text>
+            <Text style={[styles.largeAnalyzeText, { color: colors.primary }]}>ANALYZE</Text>
           </TouchableOpacity>
         </NeonCard>
 
         {/* YOUR RANKING Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>YOUR RANKING</Text>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>YOUR RANKING</Text>
           <NeonCard style={styles.rankingCard} contentStyle={styles.rankingContent}>
             <Text style={styles.rankingText}>
               {runs.length > 0
@@ -98,9 +99,9 @@ export const RanksScreen: React.FC = () => {
 
         {/* GLOBAL Section */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>GLOBAL - {currentMonthName.toUpperCase()}</Text>
-          <View style={styles.emptyStateContainer}>
-            <Text style={styles.emptyStateText}>
+          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>GLOBAL - {currentMonthName.toUpperCase()}</Text>
+          <View style={[styles.emptyStateContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <Text style={[styles.emptyStateText, { color: colors.textSecondary }]}>
               No rankings found for this month yet.
             </Text>
           </View>
@@ -113,7 +114,6 @@ export const RanksScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -131,7 +131,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '900',
-    color: colors.textPrimary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
@@ -182,7 +181,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   smallAnalyzeText: {
-    color: colors.limePrimary,
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 0.8,
@@ -225,7 +223,6 @@ const styles = StyleSheet.create({
     borderColor: '#1E1E1E',
   },
   largeAnalyzeText: {
-    color: colors.limePrimary,
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1.2,
@@ -237,7 +234,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 14,
     fontWeight: '900',
-    color: colors.textPrimary,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: 12,
@@ -259,11 +255,12 @@ const styles = StyleSheet.create({
     paddingVertical: 36,
     alignItems: 'center',
     justifyContent: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
   },
   emptyStateText: {
     fontSize: 15,
     fontWeight: '600',
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
