@@ -15,7 +15,7 @@ import { JogpalMapView } from './JogpalMapView';
 import { HoneycombPattern } from './HoneycombPattern';
 import { NeonButton } from './NeonButton';
 import { NeonCard } from './NeonCard';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface SoloRunModalProps {
   visible: boolean;
@@ -24,6 +24,7 @@ interface SoloRunModalProps {
 
 export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) => {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const {
     runState,
     metrics,
@@ -32,6 +33,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     plannedRoute,
     countdownValue,
     lastRunSummary,
+    activeRunTitle,
     errorMessage,
     startCountdown,
     pauseRun,
@@ -47,7 +49,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
   const handleClose = () => {
     if (runState === 'ACTIVE' || runState === 'PAUSED' || runState === 'COUNTDOWN') {
       Alert.alert(
-        'Exit Solo Run',
+        'Exit Run',
         'Are you sure you want to exit? Your active run will be discarded.',
         [
           { text: 'Keep Running', style: 'cancel' },
@@ -93,13 +95,15 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
       transparent={false}
       onRequestClose={handleClose}
     >
-      <View style={[styles.rootContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+      <View style={[styles.rootContainer, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: colors.background }]}>
         {/* Header Bar */}
-        <View style={styles.headerBar}>
+        <View style={[styles.headerBar, { borderBottomColor: colors.cardBorder }]}>
           <TouchableOpacity onPress={handleClose} style={styles.closeButton} activeOpacity={0.7}>
             <Feather name="x" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>SOLO RUN</Text>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+            {activeRunTitle || 'SOLO RUN'}
+          </Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -110,7 +114,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               <Ionicons name="alert-circle" size={48} color="#FF4D4D" />
             </View>
             <Text style={styles.errorTitle}>LOCATION ERROR</Text>
-            <Text style={styles.errorSubtext}>
+            <Text style={[styles.errorSubtext, { color: colors.textSecondary }]}>
               {errorMessage || 'Unable to access high-accuracy GPS location on this device.'}
             </Text>
             <NeonButton title="CLOSE" onPress={handleClose} style={styles.actionBtn} />
@@ -120,16 +124,16 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         {/* --- STATE 2: PREPARING & GPS SEARCHING --- */}
         {(runState === 'PREPARING' || runState === 'GPS_SEARCHING') && (
           <View style={styles.centeredContainer}>
-            <View style={styles.glowContainer}>
-              <ActivityIndicator size="large" color={colors.limePrimary} />
+            <View style={[styles.glowContainer, { borderColor: colors.primary, backgroundColor: colors.crewAddBg }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
             </View>
-            <Text style={styles.stateTitle}>SATELLITE LOCK</Text>
-            <Text style={styles.stateSubtext}>SEARCHING FOR HIGH-ACCURACY GPS SIGNAL...</Text>
-            <Text style={styles.statusLabel}>
+            <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>SATELLITE LOCK</Text>
+            <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>SEARCHING FOR HIGH-ACCURACY GPS SIGNAL...</Text>
+            <Text style={[styles.statusLabel, { color: colors.primary }]}>
               GPS STATUS: {metrics.gpsStatus.toUpperCase()}
             </Text>
             <TouchableOpacity style={styles.cancelLink} onPress={handleClose}>
-              <Text style={styles.cancelLinkText}>CANCEL PREPARATION</Text>
+              <Text style={[styles.cancelLinkText, { color: colors.textMuted }]}>CANCEL PREPARATION</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -138,10 +142,10 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         {runState === 'GPS_READY' && (
           <View style={styles.centeredContainer}>
             <View style={styles.readyBadge}>
-              <Ionicons name="checkmark-circle" size={54} color={colors.limePrimary} />
+              <Ionicons name="checkmark-circle" size={54} color={colors.primary} />
             </View>
-            <Text style={styles.stateTitle}>GPS SIGNAL READY</Text>
-            <Text style={styles.stateSubtext}>
+            <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>GPS SIGNAL READY</Text>
+            <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>
               ACCURACY: {metrics.gpsAccuracy !== null ? `${Math.round(metrics.gpsAccuracy)}M` : 'HIGH'}
             </Text>
 
@@ -154,7 +158,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               interactive={false}
             />
 
-            <TouchableOpacity style={styles.startRunButton} onPress={startCountdown} activeOpacity={0.85}>
+            <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={startCountdown} activeOpacity={0.85}>
               <Text style={styles.startRunText}>START RUN</Text>
             </TouchableOpacity>
           </View>
@@ -163,8 +167,8 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         {/* --- STATE 4: COUNTDOWN --- */}
         {runState === 'COUNTDOWN' && (
           <View style={styles.centeredContainer}>
-            <Text style={styles.countdownTitle}>GET READY</Text>
-            <Text style={styles.countdownNumber}>{countdownValue}</Text>
+            <Text style={[styles.countdownTitle, { color: colors.textSecondary }]}>GET READY</Text>
+            <Text style={[styles.countdownNumber, { color: colors.primary }]}>{countdownValue}</Text>
           </View>
         )}
 
@@ -176,8 +180,8 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
 
             {/* Top Stat: Distance */}
             <View style={styles.distanceBlock}>
-              <Text style={styles.distanceNumber}>{metrics.distanceKm.toFixed(2)}</Text>
-              <Text style={styles.distanceUnit}>KILOMETERS</Text>
+              <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>{metrics.distanceKm.toFixed(2)}</Text>
+              <Text style={[styles.distanceUnit, { color: colors.primary }]}>KILOMETERS</Text>
             </View>
 
             {/* Custom JOGPAL Live Dark Map */}
@@ -221,7 +225,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </NeonCard>
 
             {/* Control Button: Pause */}
-            <TouchableOpacity style={styles.pauseButton} onPress={pauseRun} activeOpacity={0.85}>
+            <TouchableOpacity style={[styles.pauseButton, { backgroundColor: colors.primary }]} onPress={pauseRun} activeOpacity={0.85}>
               <Ionicons name="pause" size={24} color="#000000" />
               <Text style={styles.pauseButtonText}>PAUSE RUN</Text>
             </TouchableOpacity>
@@ -236,8 +240,8 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </View>
 
             <View style={styles.distanceBlock}>
-              <Text style={styles.distanceNumber}>{metrics.distanceKm.toFixed(2)}</Text>
-              <Text style={styles.distanceUnit}>KILOMETERS</Text>
+              <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>{metrics.distanceKm.toFixed(2)}</Text>
+              <Text style={[styles.distanceUnit, { color: colors.primary }]}>KILOMETERS</Text>
             </View>
 
             {/* Custom JOGPAL Live Dark Map */}
@@ -264,7 +268,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </NeonCard>
 
             <View style={styles.pausedControlsRow}>
-              <TouchableOpacity style={styles.resumeBtn} onPress={resumeRun} activeOpacity={0.85}>
+              <TouchableOpacity style={[styles.resumeBtn, { backgroundColor: colors.primary }]} onPress={resumeRun} activeOpacity={0.85}>
                 <Ionicons name="play" size={20} color="#000000" />
                 <Text style={styles.resumeBtnText}>RESUME</Text>
               </TouchableOpacity>
@@ -280,8 +284,8 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         {/* --- STATE 7: COMPLETING & SUMMARY --- */}
         {(runState === 'COMPLETING' || runState === 'SAVING' || runState === 'SAVED' || runState === 'SYNC_PENDING') && lastRunSummary && (
           <View style={styles.activeContainer}>
-            <Text style={styles.stateTitle}>RUN SUMMARY</Text>
-            <Text style={styles.stateSubtext}>GREAT WORK! SESSION COMPLETED</Text>
+            <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>RUN SUMMARY</Text>
+            <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>GREAT WORK! SESSION COMPLETED</Text>
 
             {/* Completed Route Map View */}
             <JogpalMapView
@@ -295,7 +299,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               <View style={styles.summaryTopRow}>
                 <Text style={styles.summaryTitle}>SOLO RUN</Text>
                 <View style={styles.statusBadge}>
-                  <Text style={styles.statusBadgeText}>
+                  <Text style={[styles.statusBadgeText, { color: colors.primary }]}>
                     {runState === 'SAVED' ? 'SYNCED TO FIREBASE' : runState === 'SYNC_PENDING' ? 'SAVED LOCALLY' : 'COMPLETE'}
                   </Text>
                 </View>
@@ -320,20 +324,20 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </NeonCard>
 
             {runState === 'COMPLETING' && (
-              <TouchableOpacity style={styles.startRunButton} onPress={handleSaveAndDone} activeOpacity={0.85}>
+              <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleSaveAndDone} activeOpacity={0.85}>
                 <Text style={styles.startRunText}>SAVE RUN</Text>
               </TouchableOpacity>
             )}
 
             {runState === 'SAVING' && (
               <View style={styles.centeredRow}>
-                <ActivityIndicator color={colors.limePrimary} size="small" />
-                <Text style={styles.savingText}>SAVING TO FIREBASE...</Text>
+                <ActivityIndicator color={colors.primary} size="small" />
+                <Text style={[styles.savingText, { color: colors.primary }]}>SAVING TO FIREBASE...</Text>
               </View>
             )}
 
             {(runState === 'SAVED' || runState === 'SYNC_PENDING') && (
-              <TouchableOpacity style={styles.startRunButton} onPress={handleFinishDone} activeOpacity={0.85}>
+              <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleFinishDone} activeOpacity={0.85}>
                 <Text style={styles.startRunText}>DONE</Text>
               </TouchableOpacity>
             )}
@@ -347,7 +351,6 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   headerBar: {
     flexDirection: 'row',
@@ -356,7 +359,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#161616',
   },
   closeButton: {
     width: 40,
@@ -367,7 +369,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 16,
     fontWeight: '900',
-    color: colors.textPrimary,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
@@ -381,12 +382,10 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#162208',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: colors.limePrimary,
   },
   readyBadge: {
     marginBottom: 14,
@@ -409,7 +408,6 @@ const styles = StyleSheet.create({
   stateTitle: {
     fontSize: 22,
     fontWeight: '900',
-    color: colors.textPrimary,
     letterSpacing: 1,
     marginBottom: 6,
     textTransform: 'uppercase',
@@ -418,7 +416,6 @@ const styles = StyleSheet.create({
   stateSubtext: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.textSecondary,
     letterSpacing: 0.8,
     marginBottom: 16,
     textAlign: 'center',
@@ -426,14 +423,12 @@ const styles = StyleSheet.create({
   statusLabel: {
     fontSize: 11,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 1,
     marginBottom: 30,
   },
   startRunButton: {
     width: '100%',
     height: 56,
-    backgroundColor: colors.limePrimary,
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
@@ -452,20 +447,17 @@ const styles = StyleSheet.create({
   cancelLinkText: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.textMuted,
     letterSpacing: 0.8,
   },
   countdownTitle: {
     fontSize: 18,
     fontWeight: '900',
-    color: colors.textSecondary,
     letterSpacing: 1.5,
     marginBottom: 10,
   },
   countdownNumber: {
     fontSize: 120,
     fontWeight: '900',
-    color: colors.limePrimary,
     lineHeight: 130,
   },
   activeContainer: {
@@ -481,14 +473,12 @@ const styles = StyleSheet.create({
   distanceNumber: {
     fontSize: 64,
     fontWeight: '900',
-    color: colors.textPrimary,
     letterSpacing: -2,
     lineHeight: 68,
   },
   distanceUnit: {
     fontSize: 12,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 2,
     marginTop: 2,
   },
@@ -533,7 +523,6 @@ const styles = StyleSheet.create({
   pauseButton: {
     width: '100%',
     height: 52,
-    backgroundColor: colors.limePrimary,
     borderRadius: 26,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -569,7 +558,6 @@ const styles = StyleSheet.create({
   resumeBtn: {
     flex: 1,
     height: 50,
-    backgroundColor: colors.limePrimary,
     borderRadius: 25,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -626,7 +614,6 @@ const styles = StyleSheet.create({
   statusBadgeText: {
     fontSize: 9,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.8,
   },
   centeredRow: {
@@ -639,7 +626,6 @@ const styles = StyleSheet.create({
   savingText: {
     fontSize: 13,
     fontWeight: '800',
-    color: colors.limePrimary,
     letterSpacing: 0.8,
   },
   errorIconContainer: {
@@ -654,7 +640,6 @@ const styles = StyleSheet.create({
   },
   errorSubtext: {
     fontSize: 13,
-    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 24,

@@ -7,11 +7,15 @@ import { useTheme } from '../theme/colors';
 interface WeeklyMomentumCardProps {
   distance?: number | string;
   onStartRunPress?: () => void;
+  onDuoRunPress?: () => void;
+  onGroupRunPress?: () => void;
 }
 
 export const WeeklyMomentumCard: React.FC<WeeklyMomentumCardProps> = ({
   distance = '0.1',
   onStartRunPress,
+  onDuoRunPress,
+  onGroupRunPress,
 }) => {
   const { colors } = useTheme();
 
@@ -50,14 +54,39 @@ export const WeeklyMomentumCard: React.FC<WeeklyMomentumCardProps> = ({
           </View>
         </View>
 
-        {/* Start Solo Run Button */}
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={onStartRunPress}
-          activeOpacity={0.85}
-        >
-          <Text style={[styles.actionButtonText, { color: colors.primary }]}>START SOLO RUN</Text>
-        </TouchableOpacity>
+        {/* Action Buttons Section */}
+        <View style={styles.actionButtonsWrapper}>
+          {/* Start Solo Run Primary Button */}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={onStartRunPress}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="flash" size={15} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.primary }]}>START SOLO RUN</Text>
+          </TouchableOpacity>
+
+          {/* Sub Row: Duo Run & Group Run */}
+          <View style={styles.subActionRow}>
+            <TouchableOpacity
+              style={styles.subActionButton}
+              onPress={onDuoRunPress}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="people" size={14} color={colors.primary} />
+              <Text style={[styles.subActionButtonText, { color: colors.primary }]}>DUO RUN</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.subActionButton}
+              onPress={onGroupRunPress}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="globe-outline" size={14} color={colors.primary} />
+              <Text style={[styles.subActionButtonText, { color: colors.primary }]}>GROUP RUN</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -148,20 +177,49 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: -1,
   },
+  actionButtonsWrapper: {
+    width: '100%',
+    gap: 8,
+  },
   actionButton: {
     width: '100%',
-    height: 54,
+    height: 50,
     backgroundColor: '#050505',
-    borderRadius: 27,
+    borderRadius: 25,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 8,
     borderWidth: 1,
     borderColor: '#1E1E1E',
   },
   actionButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '900',
     letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  subActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+  },
+  subActionButton: {
+    flex: 1,
+    height: 44,
+    backgroundColor: 'rgba(5, 5, 5, 0.88)',
+    borderRadius: 22,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(30, 30, 30, 0.8)',
+  },
+  subActionButtonText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
   },
 });

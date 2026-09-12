@@ -39,6 +39,7 @@ const styles = StyleSheet.create({
   content: {
     padding: 16,
     position: 'relative',
-    zIndex: 2,
+    zIndex: 5,
+    elevation: 4,
   },
 });

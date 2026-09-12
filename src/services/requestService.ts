@@ -8,10 +8,11 @@ import {
   query,
   where,
   getDoc,
+  getDocs,
 } from '@firebase/firestore';
 import { db } from '../config/firebase';
 import { CrewRequest, UserProfile, CrewMember } from '../types/data';
-import { crewService } from './crewService';
+import { friendService } from './friendService';
 
 function sanitizeForFirestore<T extends Record<string, any>>(data: T): T {
   const clean: any = {};
@@ -25,7 +26,50 @@ function sanitizeForFirestore<T extends Record<string, any>>(data: T): T {
 }
 
 export const requestService = {
-  // Send a crew invite request to a target user
+  // Check if a friend connection or pending request already exists
+  async checkRequestStatus(
+    fromUserId: string,
+    toUserId: string
+  ): Promise<{ canSend: boolean; reason?: string }> {
+    if (!toUserId || toUserId === fromUserId) {
+      return { canSend: false, reason: 'You cannot send a request to yourself.' };
+    }
+
+    try {
+      // 1. Check if already in user's friends
+      const friendDoc = await getDoc(doc(db, 'users', fromUserId, 'friends', toUserId));
+      if (friendDoc.exists()) {
+        return { canSend: false, reason: 'This runner is already in your friends list!' };
+      }
+
+      // 2. Check if outgoing request already sent and pending
+      const sentDoc = await getDoc(doc(db, 'users', fromUserId, 'sent_requests', toUserId));
+      if (sentDoc.exists()) {
+        return { canSend: false, reason: 'You have already sent a request to this runner. Waiting for their response.' };
+      }
+
+      // 3. Check if target user has already sent an incoming request to current user
+      const incomingQuery = query(
+        collection(db, 'users', fromUserId, 'requests'),
+        where('fromUserId', '==', toUserId),
+        where('status', '==', 'PENDING')
+      );
+      const incomingSnap = await getDocs(incomingQuery);
+      if (!incomingSnap.empty) {
+        return {
+          canSend: false,
+          reason: 'This runner has already sent you a request! Check your notifications to accept.',
+        };
+      }
+
+      return { canSend: true };
+    } catch (err: any) {
+      console.warn('Error checking request status:', err);
+      return { canSend: true };
+    }
+  },
+
+  // Send a friend request to a target user
   async sendCrewRequest(
     fromProfile: UserProfile,
     toUserId: string,
@@ -35,9 +79,16 @@ export const requestService = {
       return { success: false, message: 'Invalid recipient ID' };
     }
 
+    // Run duplicate check
+    const check = await this.checkRequestStatus(fromProfile.id, toUserId);
+    if (!check.canSend) {
+      return { success: false, message: check.reason || 'Cannot send request at this time.' };
+    }
+
     try {
       const requestId = `req_${fromProfile.id}_${Date.now()}`;
-      const requestDoc = doc(db, 'users', toUserId, 'requests', requestId);
+      const recipientRequestDoc = doc(db, 'users', toUserId, 'requests', requestId);
+      const senderSentDoc = doc(db, 'users', fromProfile.id, 'sent_requests', toUserId);
 
       const requestData: CrewRequest = {
         id: requestId,
@@ -52,10 +103,23 @@ export const requestService = {
         type,
       };
 
-      await setDoc(requestDoc, sanitizeForFirestore(requestData));
-      return { success: true, message: 'Request sent successfully!' };
+      // Write incoming request to recipient
+      await setDoc(recipientRequestDoc, sanitizeForFirestore(requestData));
+
+      // Write outgoing pending record to sender
+      await setDoc(
+        senderSentDoc,
+        sanitizeForFirestore({
+          requestId,
+          toUserId,
+          createdAt: new Date().toISOString(),
+          status: 'PENDING',
+        })
+      );
+
+      return { success: true, message: 'Friend request sent successfully!' };
     } catch (err: any) {
-      console.warn('Error sending crew request:', err);
+      console.warn('Error sending friend request:', err);
       return { success: false, message: err?.message || 'Failed to send request' };
     }
   },
@@ -100,14 +164,39 @@ export const requestService = {
     );
   },
 
-  // Accept a crew request -> Mutually links both runners into each other's crew
+  // Real-time listener for pending outgoing/sent requests
+  subscribeToSentRequests(
+    userId: string,
+    onUpdate: (sentToUserIds: string[]) => void,
+    onError?: (error: Error) => void
+  ) {
+    if (!userId || userId === 'guest_runner') {
+      onUpdate([]);
+      return () => {};
+    }
+
+    const sentRef = collection(db, 'users', userId, 'sent_requests');
+
+    return onSnapshot(
+      sentRef,
+      (snapshot) => {
+        const sentUserIds = snapshot.docs.map((docSnap) => docSnap.id);
+        onUpdate(sentUserIds);
+      },
+      (error) => {
+        if (onError) onError(error);
+      }
+    );
+  },
+
+  // Accept a friend request -> Mutually links both runners into each other's FRIENDS list
   async acceptCrewRequest(
     request: CrewRequest,
     currentProfile: UserProfile
   ): Promise<void> {
     try {
-      // 1. Add Sender to Current User's Crew
-      const senderMember: CrewMember = {
+      // 1. Add Sender to Current User's Friends Section
+      const senderFriend: CrewMember = {
         id: request.fromUserId,
         userId: request.fromUserId,
         name: request.fromUserName,
@@ -118,10 +207,10 @@ export const requestService = {
         status: 'ACTIVE',
         isOnline: true,
       };
-      await crewService.addCrewMember(currentProfile.id, senderMember);
+      await friendService.addFriend(currentProfile.id, senderFriend);
 
-      // 2. Add Current User to Sender's Crew (Mutual Connection)
-      const currentMember: CrewMember = {
+      // 2. Add Current User to Sender's Friends Section (Mutual Connection)
+      const currentFriend: CrewMember = {
         id: currentProfile.id,
         userId: currentProfile.id,
         name: currentProfile.displayName || currentProfile.email?.split('@')[0] || 'Runner',
@@ -134,24 +223,43 @@ export const requestService = {
         status: 'ACTIVE',
         isOnline: true,
       };
-      await crewService.addCrewMember(request.fromUserId, currentMember);
+      await friendService.addFriend(request.fromUserId, currentFriend);
 
-      // 3. Remove the request doc from pending requests
+      // 3. Remove the request doc from recipient's pending requests
       const requestDoc = doc(db, 'users', currentProfile.id, 'requests', request.id);
       await deleteDoc(requestDoc);
+
+      // 4. Remove sent_requests entry from sender
+      try {
+        const senderSentDoc = doc(db, 'users', request.fromUserId, 'sent_requests', currentProfile.id);
+        await deleteDoc(senderSentDoc);
+      } catch (e) {}
+
+      // 5. Clean up any reverse sent_requests entry from recipient
+      try {
+        const recipientSentDoc = doc(db, 'users', currentProfile.id, 'sent_requests', request.fromUserId);
+        await deleteDoc(recipientSentDoc);
+      } catch (e) {}
     } catch (err) {
-      console.warn('Error accepting crew request:', err);
+      console.warn('Error accepting friend request:', err);
       throw err;
     }
   },
 
-  // Reject / Dismiss a crew request
-  async rejectCrewRequest(userId: string, requestId: string): Promise<void> {
+  // Reject / Dismiss a friend request
+  async rejectCrewRequest(userId: string, requestId: string, fromUserId?: string): Promise<void> {
     try {
       const requestDoc = doc(db, 'users', userId, 'requests', requestId);
       await deleteDoc(requestDoc);
+
+      if (fromUserId) {
+        try {
+          const senderSentDoc = doc(db, 'users', fromUserId, 'sent_requests', userId);
+          await deleteDoc(senderSentDoc);
+        } catch (e) {}
+      }
     } catch (err) {
-      console.warn('Error rejecting crew request:', err);
+      console.warn('Error rejecting friend request:', err);
       throw err;
     }
   },

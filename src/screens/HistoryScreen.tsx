@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather } from '@expo/vector-icons';
 import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
-import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { RunSession } from '../types/data';
@@ -64,10 +63,6 @@ export const HistoryScreen: React.FC = () => {
 
   const handleViewDetails = () => {
     Alert.alert('Running History', `${totalRuns} total logged runs, totaling ${totalKm.toFixed(1)} KM.`);
-  };
-
-  const handleSparkle = () => {
-    Alert.alert('History AI', 'Analyzing your historical pace and distance trends from Firebase.');
   };
 
   const handleRecordFirstRun = async () => {
@@ -177,9 +172,6 @@ export const HistoryScreen: React.FC = () => {
           style={styles.viewDetailsButton}
         />
       </ScrollView>
-
-      {/* Floating Sparkle Action Button */}
-      <FloatingSparkleButton onPress={handleSparkle} />
     </View>
   );
 };

@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -191,9 +192,17 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           },
                         ]}
                       >
-                        <Text style={[styles.avatarInitial, { color: colors.primary }]}>
-                          {initial}
-                        </Text>
+                        {req.fromUserAvatar ? (
+                          <Image
+                            source={{ uri: req.fromUserAvatar }}
+                            style={styles.avatarImage}
+                            resizeMode="cover"
+                          />
+                        ) : (
+                          <Text style={[styles.avatarInitial, { color: colors.primary }]}>
+                            {initial}
+                          </Text>
+                        )}
                       </View>
 
                       <View style={styles.userInfoCol}>
@@ -392,6 +401,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 23,
   },
   avatarInitial: {
     fontSize: 18,

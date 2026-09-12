@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection } from '@firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, onSnapshot, collection, deleteDoc } from '@firebase/firestore';
 import { db } from '../config/firebase';
 import { UserProfile } from '../types/data';
 
@@ -79,5 +79,11 @@ export const userService = {
         if (onError) onError(error);
       }
     );
+  },
+
+  // Delete user profile and data
+  async deleteUserProfile(userId: string) {
+    const userDocRef = doc(db, 'users', userId);
+    await deleteDoc(userDocRef);
   },
 };

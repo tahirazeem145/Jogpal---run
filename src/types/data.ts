@@ -48,6 +48,7 @@ export interface CrewMember {
   streakDays?: number;
   rank?: string;
   avatarUrl?: string;
+  photoURL?: string;
   status?: string;
   isOnline?: boolean;
 }

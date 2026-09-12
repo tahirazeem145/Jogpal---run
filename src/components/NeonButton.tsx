@@ -9,6 +9,7 @@ interface NeonButtonProps {
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
   edgeWidth?: number;
+  disabled?: boolean;
 }
 
 export const NeonButton: React.FC<NeonButtonProps> = ({
@@ -17,14 +18,21 @@ export const NeonButton: React.FC<NeonButtonProps> = ({
   style,
   textStyle,
   edgeWidth = 45,
+  disabled = false,
 }) => {
   const { colors } = useTheme();
 
   return (
     <TouchableOpacity
-      style={[styles.button, { backgroundColor: colors.primary }, style]}
-      onPress={onPress}
-      activeOpacity={0.85}
+      style={[
+        styles.button,
+        { backgroundColor: colors.primary },
+        disabled && styles.disabled,
+        style,
+      ]}
+      onPress={disabled ? undefined : onPress}
+      activeOpacity={disabled ? 1 : 0.85}
+      disabled={disabled}
     >
       <HoneycombPattern edgeWidth={edgeWidth} opacity={0.12} />
       <Text style={[styles.text, textStyle]}>{title}</Text>
@@ -41,6 +49,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
     paddingHorizontal: 24,
+  },
+  disabled: {
+    opacity: 0.6,
   },
   text: {
     fontSize: 14,

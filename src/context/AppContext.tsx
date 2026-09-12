@@ -5,6 +5,7 @@ import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import { runService } from '../services/runService';
 import { crewService } from '../services/crewService';
+import { friendService } from '../services/friendService';
 import { sessionService } from '../services/sessionService';
 import { requestService } from '../services/requestService';
 import { UserProfile, RunSession, UpcomingSession, CrewMember, PersonalBest, CrewRequest } from '../types/data';
@@ -17,6 +18,8 @@ interface AppContextType {
   weeklyKm: number;
   upcomingSession: UpcomingSession | null;
   crew: CrewMember[];
+  friends: CrewMember[];
+  sentRequestIds: string[];
   personalBests: PersonalBest[];
   incomingRequests: CrewRequest[];
   unreadRequestCount: number;
@@ -27,7 +30,7 @@ interface AppContextType {
   scheduleSession: (title: string, scheduledAt: string, distanceKm: string) => Promise<void>;
   sendCrewRequest: (toUserId: string, type?: 'CREW_INVITE' | 'RUN_INVITE') => Promise<{ success: boolean; message: string }>;
   acceptCrewRequest: (request: CrewRequest) => Promise<void>;
-  rejectCrewRequest: (requestId: string) => Promise<void>;
+  rejectCrewRequest: (requestId: string, fromUserId?: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -35,11 +38,13 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [otherRunners, setOtherRunners] = useState<UserProfile[]>([]);
+  const [allRegisteredRunners, setAllRegisteredRunners] = useState<UserProfile[]>([]);
   const [runs, setRuns] = useState<RunSession[]>([]);
   const [weeklyKm, setWeeklyKm] = useState<number>(0);
   const [upcomingSession, setUpcomingSession] = useState<UpcomingSession | null>(null);
   const [crew, setCrew] = useState<CrewMember[]>([]);
+  const [friends, setFriends] = useState<CrewMember[]>([]);
+  const [sentRequestIds, setSentRequestIds] = useState<string[]>([]);
   const [personalBests, setPersonalBests] = useState<PersonalBest[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<CrewRequest[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -125,23 +130,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     );
 
-    // Subscribe to All Registered Users in Firestore (Other Runners)
+    // Subscribe to All Registered Users in Firestore
     const unsubAllUsers = userService.subscribeToAllUsers(
       activeUserId,
       (registeredUsers) => {
         const filtered = registeredUsers.filter(
           (u) => u.id !== activeUserId
         );
-        setOtherRunners(filtered);
+        setAllRegisteredRunners(filtered);
       },
       () => {}
     );
 
-    // Subscribe to User's Personal Crew List
+    // Subscribe to User's Crew List
     const unsubCrew = crewService.subscribeToCrew(
       activeUserId,
       (liveCrew) => {
         setCrew(liveCrew);
+      },
+      () => {}
+    );
+
+    // Subscribe to User's Accepted Friends List (Real-time Accepted Connections)
+    const unsubFriends = friendService.subscribeToFriends(
+      activeUserId,
+      (liveFriends) => {
+        setFriends(liveFriends);
+      },
+      () => {}
+    );
+
+    // Subscribe to Outgoing Sent Requests
+    const unsubSentRequests = requestService.subscribeToSentRequests(
+      activeUserId,
+      (sentIds) => {
+        setSentRequestIds(sentIds);
       },
       () => {}
     );
@@ -155,7 +178,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       () => {}
     );
 
-    // Subscribe to Incoming Crew Requests in Real-Time
+    // Subscribe to Incoming Requests in Real-Time
     const unsubRequests = requestService.subscribeToIncomingRequests(
       activeUserId,
       (liveRequests) => {
@@ -169,47 +192,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       unsubRuns();
       unsubAllUsers();
       unsubCrew();
+      unsubFriends();
+      unsubSentRequests();
       unsubSession();
       unsubRequests();
     };
   }, [activeUserId]);
 
-  // Combined Crew list: User's saved crew + All other registered users from Firestore
-  const combinedCrew: CrewMember[] = React.useMemo(() => {
-    const map = new Map<string, CrewMember>();
-    const EXCLUDED_IDS = [activeUserId];
-
-    // 1. Add all other real registered users from Firestore
-    otherRunners.forEach((r) => {
-      if (EXCLUDED_IDS.includes(r.id)) return;
-      const runnerName = r.displayName || r.email?.split('@')[0] || `Runner ${r.id.slice(0, 4)}`;
-      map.set(r.id, {
-        id: r.id,
-        userId: r.id,
-        name: runnerName,
-        initial: (runnerName.trim().charAt(0) || 'R').toUpperCase(),
-        email: r.email,
-        level: r.level || 1,
-        totalDistanceKm: r.totalDistanceKm || 0,
-        streakDays: r.streakDays || 0,
-        rank: r.rank || 'Runner',
-        avatarUrl: r.photoURL,
-        status: 'ACTIVE',
-        isOnline: true,
-      });
+  // Discoverable Other Runners (Runners in Firestore who are NOT self AND NOT in accepted Friends)
+  const discoverableRunners: UserProfile[] = React.useMemo(() => {
+    const friendIdSet = new Set<string>();
+    friends.forEach((f) => {
+      friendIdSet.add(f.id);
+      if (f.userId) friendIdSet.add(f.userId);
     });
 
-    // 2. Add any manually added crew members
-    crew.forEach((c) => {
-      if (EXCLUDED_IDS.includes(c.id) || (c.userId && EXCLUDED_IDS.includes(c.userId))) return;
-      if (!map.has(c.id) && !map.has(c.userId || '')) {
-        map.set(c.id, c);
-      }
-    });
-
-    // Return strictly real users from Firestore or empty array
-    return Array.from(map.values());
-  }, [otherRunners, crew]);
+    return allRegisteredRunners.filter((r) => !friendIdSet.has(r.id) && r.id !== activeUserId);
+  }, [allRegisteredRunners, friends, activeUserId]);
 
   // Actions
   const logNewRun = async (
@@ -285,7 +284,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    const memberId = targetUserId || `crew_${Date.now()}`;
+    const memberId = targetUserId || `friend_${Date.now()}`;
     const newMember: CrewMember = {
       id: memberId,
       userId: targetUserId || memberId,
@@ -299,7 +298,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'ACTIVE',
       isOnline: true,
     };
-    await crewService.addCrewMember(activeUserId, newMember);
+    await friendService.addFriend(activeUserId, newMember);
   };
 
   const scheduleSession = async (title: string, scheduledAt: string, distanceKm: string) => {
@@ -317,7 +316,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!userProfile) {
       return { success: false, message: 'User profile not ready' };
     }
-    return await requestService.sendCrewRequest(userProfile, toUserId, type);
+    const result = await requestService.sendCrewRequest(userProfile, toUserId, type);
+    if (result.success) {
+      setSentRequestIds((prev) => (prev.includes(toUserId) ? prev : [...prev, toUserId]));
+    }
+    return result;
   };
 
   const acceptCrewRequest = async (request: CrewRequest) => {
@@ -325,8 +328,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await requestService.acceptCrewRequest(request, userProfile);
   };
 
-  const rejectCrewRequest = async (requestId: string) => {
-    await requestService.rejectCrewRequest(activeUserId, requestId);
+  const rejectCrewRequest = async (requestId: string, fromUserId?: string) => {
+    await requestService.rejectCrewRequest(activeUserId, requestId, fromUserId);
   };
 
   return (
@@ -334,11 +337,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         user,
         userProfile,
-        otherRunners,
+        otherRunners: discoverableRunners,
         runs,
         weeklyKm,
         upcomingSession,
-        crew: combinedCrew,
+        crew,
+        friends,
+        sentRequestIds,
         personalBests,
         incomingRequests,
         unreadRequestCount,

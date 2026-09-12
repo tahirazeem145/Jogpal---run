@@ -20,6 +20,7 @@ import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
 import { useApp } from '../context/AppContext';
 import { authService } from '../services/authService';
+import { userService } from '../services/userService';
 import { useTheme } from '../theme/colors';
 
 import { useNavigation } from '@react-navigation/native';
@@ -159,8 +160,27 @@ export const SettingsScreen: React.FC = () => {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            await authService.signOut();
-            navigation.replace('Login');
+            try {
+              const currentUser = authService.getCurrentUser();
+              if (currentUser) {
+                try {
+                  await userService.deleteUserProfile(currentUser.uid);
+                } catch (e) {}
+                if (currentUser.email) {
+                  try {
+                    await authService.removeSavedGoogleAccount(currentUser.email);
+                  } catch (e) {}
+                }
+                try {
+                  await authService.deleteAccount();
+                } catch (e) {}
+              }
+              await authService.signOut();
+            } catch (err: any) {
+              console.warn('Delete account warning:', err);
+            } finally {
+              navigation.replace('Login');
+            }
           },
         },
       ]
@@ -316,7 +336,7 @@ export const SettingsScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <View style={styles.iconBox}>
-                <Feather name="user-check" size={18} color="#000000" />
+                <Feather name="user-check" size={18} color={colors.primary} />
               </View>
               <View style={styles.itemTextContainer}>
                 <Text style={styles.itemTitle}>Edit Name & Photo</Text>
@@ -332,7 +352,7 @@ export const SettingsScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <View style={styles.iconBox}>
-                <Ionicons name="bar-chart-outline" size={20} color="#000000" />
+                <Ionicons name="bar-chart-outline" size={20} color={colors.primary} />
               </View>
               <View style={styles.itemTextContainer}>
                 <Text style={styles.itemTitle}>Runner Analytics</Text>
@@ -348,7 +368,7 @@ export const SettingsScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <View style={styles.iconBox}>
-                <Feather name="log-out" size={18} color="#000000" />
+                <Feather name="log-out" size={18} color={colors.primary} />
               </View>
               <View style={styles.itemTextContainer}>
                 <Text style={styles.itemTitle}>Sign Out</Text>
@@ -364,7 +384,7 @@ export const SettingsScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <View style={[styles.iconBox, styles.deleteIconBox]}>
-                <Feather name="trash-2" size={18} color="#991B1B" />
+                <Feather name="trash-2" size={18} color="#FF453A" />
               </View>
               <View style={styles.itemTextContainer}>
                 <Text style={[styles.itemTitle, styles.deleteTitle]}>Delete Account</Text>
@@ -715,21 +735,30 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0, 0, 0, 0.08)',
+    position: 'relative',
+    zIndex: 10,
   },
   lastItemRow: {
     borderBottomWidth: 0,
   },
   iconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
+    position: 'relative',
+    zIndex: 10,
+    elevation: 4,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
   },
   deleteIconBox: {
-    backgroundColor: 'rgba(239, 68, 68, 0.15)',
+    backgroundColor: '#1E0606',
   },
   itemTextContainer: {
     flex: 1,
