@@ -6,6 +6,7 @@ import { useTheme } from '../theme/colors';
 interface HeaderProps {
   userName?: string;
   avatarUrl?: string;
+  unreadCount?: number;
   onNotificationPress?: () => void;
   onProfilePress?: () => void;
 }
@@ -13,6 +14,7 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   userName = 'Runner',
   avatarUrl,
+  unreadCount = 0,
   onNotificationPress,
   onProfilePress,
 }) => {
@@ -33,6 +35,13 @@ export const Header: React.FC<HeaderProps> = ({
           activeOpacity={0.7}
         >
           <Ionicons name="notifications-outline" size={20} color={colors.textPrimary} />
+          {unreadCount > 0 && (
+            <View style={[styles.badgeContainer, { backgroundColor: colors.primary }]}>
+              <Text style={styles.badgeText}>
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </Text>
+            </View>
+          )}
         </TouchableOpacity>
 
         {/* Profile Avatar with Online Badge */}
@@ -95,6 +104,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+    position: 'relative',
+  },
+  badgeContainer: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#000000',
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#000000',
   },
   avatarContainer: {
     position: 'relative',

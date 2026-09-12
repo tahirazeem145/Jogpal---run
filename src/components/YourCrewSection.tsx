@@ -21,6 +21,7 @@ interface YourCrewSectionProps {
   currentUserId?: string;
   onViewAllPress?: () => void;
   onAddCrewPress?: (name: string, email?: string, userId?: string) => Promise<void> | void;
+  onSendRequest?: (toUserId: string) => Promise<{ success: boolean; message: string }> | Promise<void>;
   onMemberPress?: (member: CrewMember) => void;
 }
 
@@ -29,6 +30,7 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
   currentUserId,
   onViewAllPress,
   onAddCrewPress,
+  onSendRequest,
   onMemberPress,
 }) => {
   const [selectedMember, setSelectedMember] = useState<CrewMember | null>(null);
@@ -58,12 +60,19 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
     setShowViewAllModal(true);
   };
 
-  const handleSendRequest = (member: CrewMember) => {
+  const handleSendRequest = async (member: CrewMember) => {
     const memberKey = member.userId || member.id;
     setRequestedRunners((prev) => ({ ...prev, [memberKey]: true }));
+    if (onSendRequest) {
+      const res: any = await onSendRequest(memberKey);
+      if (res && res.success === false) {
+        Alert.alert('Notice', res.message || 'Could not send request');
+        return;
+      }
+    }
     Alert.alert(
       'Request Sent 📨',
-      `Your crew run request has been sent to ${member.name} (${member.userId || member.id}).`
+      `Your crew run request has been sent to ${member.name}. They will receive a notification to accept or decline.`
     );
   };
 
@@ -74,13 +83,22 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
       Alert.alert('Required', 'Please enter a Runner User ID or Name.');
       return;
     }
+
+    const targetId = runnerId || undefined;
+
+    // Send live Firestore request if ID is provided
+    if (targetId && onSendRequest) {
+      await onSendRequest(targetId);
+      setRequestedRunners((prev) => ({ ...prev, [targetId]: true }));
+    }
+
     if (onAddCrewPress) {
       await onAddCrewPress(name || runnerId, undefined, runnerId || undefined);
     }
     setInputRunnerId('');
     setInputRunnerName('');
     setShowAddModal(false);
-    Alert.alert('Crew Updated', `${name || runnerId} added to your crew list!`);
+    Alert.alert('Crew Request Dispatched', `Crew invite sent to ${name || runnerId}!`);
   };
 
   const filteredCrew = visibleCrew.filter((m) => {

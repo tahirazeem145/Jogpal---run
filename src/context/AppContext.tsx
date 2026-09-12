@@ -6,7 +6,8 @@ import { userService } from '../services/userService';
 import { runService } from '../services/runService';
 import { crewService } from '../services/crewService';
 import { sessionService } from '../services/sessionService';
-import { UserProfile, RunSession, UpcomingSession, CrewMember, PersonalBest } from '../types/data';
+import { requestService } from '../services/requestService';
+import { UserProfile, RunSession, UpcomingSession, CrewMember, PersonalBest, CrewRequest } from '../types/data';
 
 interface AppContextType {
   user: User | null;
@@ -17,11 +18,16 @@ interface AppContextType {
   upcomingSession: UpcomingSession | null;
   crew: CrewMember[];
   personalBests: PersonalBest[];
+  incomingRequests: CrewRequest[];
+  unreadRequestCount: number;
   isLoading: boolean;
   logNewRun: (distanceKm: number, durationSec: number, pace: string, title?: string, type?: 'SOLO' | 'CREW') => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   addCrewMember: (name: string, email?: string, userId?: string) => Promise<void>;
   scheduleSession: (title: string, scheduledAt: string, distanceKm: string) => Promise<void>;
+  sendCrewRequest: (toUserId: string, type?: 'CREW_INVITE' | 'RUN_INVITE') => Promise<{ success: boolean; message: string }>;
+  acceptCrewRequest: (request: CrewRequest) => Promise<void>;
+  rejectCrewRequest: (requestId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -35,7 +41,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [upcomingSession, setUpcomingSession] = useState<UpcomingSession | null>(null);
   const [crew, setCrew] = useState<CrewMember[]>([]);
   const [personalBests, setPersonalBests] = useState<PersonalBest[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<CrewRequest[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const unreadRequestCount = incomingRequests.length;
 
   // Fallback default user ID if not logged in yet
   const activeUserId = user?.uid || 'guest_runner';
@@ -146,12 +155,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       () => {}
     );
 
+    // Subscribe to Incoming Crew Requests in Real-Time
+    const unsubRequests = requestService.subscribeToIncomingRequests(
+      activeUserId,
+      (liveRequests) => {
+        setIncomingRequests(liveRequests);
+      },
+      () => {}
+    );
+
     return () => {
       unsubProfile();
       unsubRuns();
       unsubAllUsers();
       unsubCrew();
       unsubSession();
+      unsubRequests();
     };
   }, [activeUserId]);
 
@@ -291,6 +310,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
+  const sendCrewRequest = async (
+    toUserId: string,
+    type: 'CREW_INVITE' | 'RUN_INVITE' = 'CREW_INVITE'
+  ) => {
+    if (!userProfile) {
+      return { success: false, message: 'User profile not ready' };
+    }
+    return await requestService.sendCrewRequest(userProfile, toUserId, type);
+  };
+
+  const acceptCrewRequest = async (request: CrewRequest) => {
+    if (!userProfile) return;
+    await requestService.acceptCrewRequest(request, userProfile);
+  };
+
+  const rejectCrewRequest = async (requestId: string) => {
+    await requestService.rejectCrewRequest(activeUserId, requestId);
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -302,11 +340,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         upcomingSession,
         crew: combinedCrew,
         personalBests,
+        incomingRequests,
+        unreadRequestCount,
         isLoading,
         logNewRun,
         updateProfile,
         addCrewMember,
         scheduleSession,
+        sendCrewRequest,
+        acceptCrewRequest,
+        rejectCrewRequest,
       }}
     >
       {children}

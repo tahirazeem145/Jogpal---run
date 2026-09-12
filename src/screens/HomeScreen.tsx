@@ -10,14 +10,31 @@ import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
 import { useSoloRun } from '../context/SoloRunContext';
 import { SoloRunModal } from '../components/SoloRunModal';
+import { NotificationsModal } from '../components/NotificationsModal';
 import { useTheme } from '../theme/colors';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { user, userProfile, weeklyKm, crew, upcomingSession, personalBests, logNewRun, addCrewMember, scheduleSession } = useApp();
+  const {
+    user,
+    userProfile,
+    weeklyKm,
+    crew,
+    upcomingSession,
+    personalBests,
+    incomingRequests,
+    unreadRequestCount,
+    logNewRun,
+    addCrewMember,
+    scheduleSession,
+    sendCrewRequest,
+    acceptCrewRequest,
+    rejectCrewRequest,
+  } = useApp();
   const { colors } = useTheme();
 
   const [soloRunModalVisible, setSoloRunModalVisible] = React.useState(false);
+  const [notificationsVisible, setNotificationsVisible] = React.useState(false);
   const { startPreparation } = useSoloRun();
 
   const handleStartSoloRun = async () => {
@@ -26,7 +43,7 @@ export const HomeScreen: React.FC = () => {
   };
 
   const handleNotificationPress = () => {
-    Alert.alert('Notifications', 'All running alerts and crew invites will appear here.');
+    setNotificationsVisible(true);
   };
 
   const handleProfilePress = () => {
@@ -62,10 +79,11 @@ export const HomeScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header with Live Notification Badge */}
         <Header
           userName={userProfile?.displayName || 'Runner'}
           avatarUrl={userProfile?.photoURL}
+          unreadCount={unreadRequestCount}
           onNotificationPress={handleNotificationPress}
           onProfilePress={handleProfilePress}
         />
@@ -81,6 +99,7 @@ export const HomeScreen: React.FC = () => {
           crew={crew}
           currentUserId={userProfile?.id || user?.uid}
           onAddCrewPress={handleAddCrew}
+          onSendRequest={sendCrewRequest}
         />
 
         {/* Upcoming Session Card */}
@@ -101,6 +120,15 @@ export const HomeScreen: React.FC = () => {
       <SoloRunModal
         visible={soloRunModalVisible}
         onClose={() => setSoloRunModalVisible(false)}
+      />
+
+      {/* Real-time Notifications & Crew Requests Modal */}
+      <NotificationsModal
+        visible={notificationsVisible}
+        onClose={() => setNotificationsVisible(false)}
+        requests={incomingRequests}
+        onAccept={acceptCrewRequest}
+        onReject={rejectCrewRequest}
       />
     </View>
   );

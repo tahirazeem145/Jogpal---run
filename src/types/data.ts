@@ -68,3 +68,17 @@ export interface Achievement {
   category: 'ALL' | 'COMMON' | 'RARE' | 'EPIC' | 'LEGENDARY';
   unlocked: boolean;
 }
+
+export interface CrewRequest {
+  id: string;
+  fromUserId: string;
+  fromUserName: string;
+  fromUserEmail?: string;
+  fromUserAvatar?: string;
+  fromUserLevel?: number;
+  toUserId: string;
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
+  createdAt: string; // ISO string
+  type: 'CREW_INVITE' | 'RUN_INVITE';
+}
+
