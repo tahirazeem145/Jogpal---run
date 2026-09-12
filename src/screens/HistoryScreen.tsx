@@ -5,17 +5,54 @@ import { Feather } from '@expo/vector-icons';
 import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
-import { useApp } from '../context/AppContext';
+import { offlineSyncService } from '../services/offlineSyncService';
+import { RunSession } from '../types/data';
 import { useTheme } from '../theme/colors';
 
 export const HistoryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { runs, logNewRun } = useApp();
+  const { user, userProfile, runs, logNewRun } = useApp();
   const { colors } = useTheme();
+  const activeUserId = user?.uid || userProfile?.id || 'guest_runner';
+  const [displayRuns, setDisplayRuns] = React.useState<RunSession[]>(runs);
 
-  const totalKm = runs.reduce((sum, r) => sum + (r.distanceKm || 0), 0);
-  const totalRuns = runs.length;
-  const totalSecs = runs.reduce((sum, r) => sum + (r.durationSeconds || 0), 0);
+  React.useEffect(() => {
+    let isMounted = true;
+    offlineSyncService.getPendingRuns().then((pending) => {
+      if (!isMounted) return;
+      const userPending = pending.filter((p) => p.userId === activeUserId);
+      const pendingConverted: RunSession[] = userPending.map((p) => ({
+        id: p.localId,
+        userId: p.userId,
+        title: p.title,
+        type: p.type,
+        distanceKm: p.distanceKm,
+        durationSeconds: p.durationSeconds,
+        pace: p.pace,
+        createdAt: p.createdAt,
+      }));
+
+      // Combine synced runs + pending unsynced runs (deduplicating by id/createdAt)
+      const map = new Map<string, RunSession>();
+      runs.forEach((r) => map.set(r.id || r.createdAt, r));
+      pendingConverted.forEach((p) => {
+        if (!map.has(p.id)) map.set(p.id, p);
+      });
+
+      const combined = Array.from(map.values()).sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      setDisplayRuns(combined);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [runs, activeUserId]);
+
+  const totalKm = displayRuns.reduce((sum, r) => sum + (r.distanceKm || 0), 0);
+  const totalRuns = displayRuns.length;
+  const totalSecs = displayRuns.reduce((sum, r) => sum + (r.durationSeconds || 0), 0);
   const totalHours = Math.floor(totalSecs / 3600);
   const totalMins = Math.floor((totalSecs % 3600) / 60);
   const formattedTime = totalHours > 0 ? `${totalHours}:${totalMins.toString().padStart(2, '0')}` : `0:${totalMins.toString().padStart(2, '0')}`;
@@ -71,8 +108,8 @@ export const HistoryScreen: React.FC = () => {
         </NeonCard>
 
         {/* Dynamic Run List / Empty State */}
-        {runs.length > 0 ? (
-          runs.map((run, index) => {
+        {displayRuns.length > 0 ? (
+          displayRuns.map((run, index) => {
             const dateStr = new Date(run.createdAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
