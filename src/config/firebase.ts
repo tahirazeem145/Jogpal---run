@@ -2,7 +2,7 @@ import { initializeApp, getApps, getApp } from '@firebase/app';
 import { getAuth, Auth } from '@firebase/auth';
 import { getFirestore, Firestore } from '@firebase/firestore';
 
-// Live Firebase Configuration for jogpal-5
+// Live Firebase Configuration loaded from Expo environment variables
 export const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyCuiwXmBy9KfzOw03sxHTosmS5wMOdks6c",
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "jogpal-5.firebaseapp.com",

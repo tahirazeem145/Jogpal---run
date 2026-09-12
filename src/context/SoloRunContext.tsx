@@ -15,7 +15,9 @@ interface SoloRunContextType {
   countdownValue: number;
   lastRunSummary: PendingRun | null;
   errorMessage: string | null;
-  startPreparation: () => Promise<void>;
+  activeRunTitle: string;
+  activeRunType: 'SOLO' | 'CREW';
+  startPreparation: (title?: string, type?: 'SOLO' | 'CREW') => Promise<void>;
   startCountdown: () => void;
   pauseRun: () => void;
   resumeRun: () => void;
@@ -58,6 +60,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [countdownValue, setCountdownValue] = useState<number>(3);
   const [lastRunSummary, setLastRunSummary] = useState<PendingRun | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeRunTitle, setActiveRunTitle] = useState<string>('SOLO RUN');
+  const [activeRunType, setActiveRunType] = useState<'SOLO' | 'CREW'>('SOLO');
 
   // Telemetry & Timing Refs
   const locationSubRef = useRef<{ remove: () => void } | null>(null);
@@ -71,6 +75,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const totalPointCountRef = useRef<number>(0);
   const acceptedPointCountRef = useRef<number>(0);
   const trackingReadyRef = useRef<boolean>(false);
+  const titleRef = useRef<string>('SOLO RUN');
+  const typeRef = useRef<'SOLO' | 'CREW'>('SOLO');
 
   // 1. App Lifecycle (Background / Foreground Timer Integrity)
   useEffect(() => {
@@ -97,7 +103,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (runState === 'ACTIVE' || runState === 'PAUSED' || runState === 'COUNTDOWN') {
         Alert.alert(
           'Active Run In Progress',
-          'Would you like to pause or exit your current solo run session?',
+          'Would you like to pause or exit your current run session?',
           [
             { text: 'Keep Running', style: 'cancel' },
             {
@@ -145,11 +151,15 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // 3. TWO-STAGE PARALLEL LOCATION ACQUISITION
-  const startPreparation = async () => {
+  const startPreparation = async (title = 'SOLO RUN', type: 'SOLO' | 'CREW' = 'SOLO') => {
     const prepStart = Date.now();
     prepStartTimeRef.current = prepStart;
+    titleRef.current = title;
+    typeRef.current = type;
+    setActiveRunTitle(title);
+    setActiveRunType(type);
 
-    console.log('[TELEMETRY] LOCATION_REQUEST_STARTED');
+    console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title}`);
     setRunState('PREPARING');
     setErrorMessage(null);
     setMetrics(initialMetrics);
@@ -397,8 +407,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const summary: PendingRun = {
       localId: `run_${Date.now()}`,
       userId: activeUserId,
-      title: 'SOLO RUN',
-      type: 'SOLO',
+      title: titleRef.current || 'SOLO RUN',
+      type: typeRef.current || 'SOLO',
       distanceKm: finalDistance,
       durationSeconds: finalDuration,
       pace: finalPace,
@@ -425,8 +435,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         lastRunSummary.distanceKm,
         lastRunSummary.durationSeconds,
         lastRunSummary.pace,
-        'SOLO RUN',
-        'SOLO'
+        lastRunSummary.title,
+        lastRunSummary.type
       );
       setRunState('SAVED');
       offlineSyncService.syncPendingRuns(activeUserId).catch(() => {});
@@ -472,6 +482,10 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     acceptedPointCountRef.current = 0;
     trackingReadyRef.current = false;
     prepStartTimeRef.current = null;
+    titleRef.current = 'SOLO RUN';
+    typeRef.current = 'SOLO';
+    setActiveRunTitle('SOLO RUN');
+    setActiveRunType('SOLO');
   };
 
   return (
@@ -486,6 +500,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         countdownValue,
         lastRunSummary,
         errorMessage,
+        activeRunTitle,
+        activeRunType,
         startPreparation,
         startCountdown,
         pauseRun,

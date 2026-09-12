@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useMemo } from 'react';
 import { StyleSheet, View, Text, Platform } from 'react-native';
 import { GPSPoint, LatLng } from '../types/soloRun';
 import { jogpalDarkMapStyle } from '../theme/mapStyle';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface JogpalMapViewProps {
   currentLocation?: GPSPoint | null;
@@ -48,6 +48,7 @@ const JogpalMapViewComponent: React.FC<JogpalMapViewProps> = ({
   const [cameraMode, setCameraMode] = React.useState<CameraMode>('FOLLOWING');
   const initialCenterSetRef = useRef<boolean>(false);
   const lastCameraUpdateRef = useRef<number>(0);
+  const { colors } = useTheme();
 
   // If Web environment, render web-safe interactive Leaflet / CartoDB Dark Matter map container
   if (Platform.OS === 'web') {
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   webText: {
     fontSize: 10,
     fontWeight: '900',
-    color: colors.limePrimary,
+    color: '#CCFF00',
     letterSpacing: 1.2,
     zIndex: 2,
   },
@@ -404,9 +405,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(168, 255, 0, 0.3)',
     borderWidth: 2,
-    borderColor: colors.limePrimary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -414,6 +413,5 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.limePrimary,
   },
 });

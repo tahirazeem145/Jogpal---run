@@ -66,10 +66,6 @@ export const HistoryScreen: React.FC = () => {
     Alert.alert('Running History', `${totalRuns} total logged runs, totaling ${totalKm.toFixed(1)} KM.`);
   };
 
-  const handleSparkle = () => {
-    Alert.alert('History AI', 'Analyzing your historical pace and distance trends from Firebase.');
-  };
-
   const handleRecordFirstRun = async () => {
     await logNewRun(3.2, 890, '4:38 /km', 'MORNING SESSION');
   };
@@ -177,9 +173,6 @@ export const HistoryScreen: React.FC = () => {
           style={styles.viewDetailsButton}
         />
       </ScrollView>
-
-      {/* Floating Sparkle Action Button */}
-      <FloatingSparkleButton onPress={handleSparkle} />
     </View>
   );
 };

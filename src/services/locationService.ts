@@ -227,7 +227,7 @@ export const locationService = {
         timeInterval: 1500,
         distanceInterval: 2,
       },
-      (loc) => {
+      (loc: Location.LocationObject) => {
         const point: GPSPoint = {
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
@@ -240,10 +240,10 @@ export const locationService = {
         console.log(`[GPS_UPDATE] Lat: ${point.latitude.toFixed(6)}, Lng: ${point.longitude.toFixed(6)}, Accuracy: ${point.accuracy}m, Speed: ${point.speed}m/s, Time: ${point.timestamp}`);
         onPoint(point);
       }
-    ).then((sub) => {
+    ).then((sub: Location.LocationSubscription) => {
       subscription = sub;
       console.log('[GPS_WATCH_STARTED] Location watcher active');
-    }).catch((err) => {
+    }).catch((err: any) => {
       console.error('[GPS_WATCH_ERROR] Location watcher failed:', err);
       if (onError) onError(err);
     });

@@ -1,17 +1,19 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface FloatingSparkleButtonProps {
   onPress?: () => void;
 }
 
 export const FloatingSparkleButton: React.FC<FloatingSparkleButtonProps> = ({ onPress }) => {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container} pointerEvents="box-none">
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
         onPress={onPress}
         activeOpacity={0.85}
       >

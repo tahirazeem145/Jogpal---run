@@ -4,37 +4,138 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
 import { WeeklyMomentumCard } from '../components/WeeklyMomentumCard';
 import { YourCrewSection } from '../components/YourCrewSection';
+import { YourFriendsSection } from '../components/YourFriendsSection';
 import { UpcomingSessionCard } from '../components/UpcomingSessionCard';
 import { PersonalBestsSection } from '../components/PersonalBestsSection';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
 import { useSoloRun } from '../context/SoloRunContext';
 import { SoloRunModal } from '../components/SoloRunModal';
+import { NotificationsModal } from '../components/NotificationsModal';
 import { useTheme } from '../context/ThemeContext';
+import { CrewMember } from '../types/data';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
-  const { user, userProfile, weeklyKm, crew, upcomingSession, personalBests, logNewRun, addCrewMember, scheduleSession } = useApp();
+  const {
+    user,
+    userProfile,
+    weeklyKm,
+    crew,
+    friends,
+    otherRunners,
+    sentRequestIds,
+    upcomingSession,
+    personalBests,
+    incomingRequests,
+    unreadRequestCount,
+    logNewRun,
+    addCrewMember,
+    scheduleSession,
+    sendCrewRequest,
+    acceptCrewRequest,
+    rejectCrewRequest,
+  } = useApp();
   const { colors } = useTheme();
 
   const [soloRunModalVisible, setSoloRunModalVisible] = React.useState(false);
+  const [notificationsVisible, setNotificationsVisible] = React.useState(false);
   const { startPreparation } = useSoloRun();
 
   const handleStartSoloRun = async () => {
     setSoloRunModalVisible(true);
-    await startPreparation();
+    await startPreparation('SOLO RUN', 'SOLO');
+  };
+
+  const handleStartDuoRunWithFriend = async (friend: CrewMember) => {
+    Alert.alert(
+      '⚡ Start Duo Run',
+      `Synchronizing live telemetry and route with ${friend.name}...\n\nStarting Duo Run now!`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: "Let's Go!",
+          onPress: async () => {
+            setSoloRunModalVisible(true);
+            await startPreparation(`DUO RUN • ${friend.name.toUpperCase()}`, 'CREW');
+          },
+        },
+      ]
+    );
+  };
+
+  const handleStartGroupRunWithFriend = async (friend?: CrewMember) => {
+    Alert.alert(
+      '👥 Group Run Lobby',
+      `Choose an option for your squad run${friend ? ` with ${friend.name}` : ''}:`,
+      [
+        {
+          text: 'Start Live Squad Run',
+          onPress: async () => {
+            setSoloRunModalVisible(true);
+            await startPreparation(friend ? `GROUP RUN • ${friend.name.toUpperCase()} & CREW` : 'GROUP SQUAD RUN', 'CREW');
+          },
+        },
+        {
+          text: 'Schedule Group Event',
+          onPress: handleSchedulePress,
+        },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const handleGeneralDuoRun = () => {
+    const activeRunners = friends.length > 0 ? friends : crew;
+    if (activeRunners.length > 0) {
+      const buddyButtons = activeRunners.slice(0, 3).map((member) => ({
+        text: `Run with ${member.name}`,
+        onPress: () => handleStartDuoRunWithFriend(member),
+      }));
+
+      Alert.alert(
+        'Duo Run Partner',
+        'Choose a partner to start a synced duo run session:',
+        [
+          ...buddyButtons,
+          {
+            text: 'Solo Duo Run',
+            onPress: async () => {
+              setSoloRunModalVisible(true);
+              await startPreparation('DUO RUN (SOLO MODE)', 'CREW');
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Duo Run',
+        'Add friends in the section below to run together in real-time, or start a partner session now!',
+        [
+          {
+            text: 'Start Partner Run',
+            onPress: async () => {
+              setSoloRunModalVisible(true);
+              await startPreparation('PARTNER RUN', 'CREW');
+            },
+          },
+          { text: 'Cancel', style: 'cancel' },
+        ]
+      );
+    }
   };
 
   const handleNotificationPress = () => {
-    Alert.alert('Notifications', 'All running alerts and crew invites will appear here.');
+    setNotificationsVisible(true);
   };
 
   const handleProfilePress = () => {
     Alert.alert('Profile', `Logged in as ${userProfile?.displayName || 'Runner'}`);
   };
 
-  const handleAddCrew = async (name: string, email?: string, userId?: string) => {
-    await addCrewMember(name, email, userId);
+  const handleAddFriend = async (userId: string, name?: string) => {
+    await addCrewMember(name || userId, undefined, userId);
   };
 
   const handleSchedulePress = () => {
@@ -49,10 +150,6 @@ export const HomeScreen: React.FC = () => {
     ]);
   };
 
-  const handleSparklePress = () => {
-    Alert.alert('AI Running Coach', 'Jogpal AI is analyzing your pacing and recovery metrics from Firebase.');
-  };
-
   return (
     <View style={[styles.rootContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
@@ -62,10 +159,11 @@ export const HomeScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Header with Live Notification Badge */}
         <Header
           userName={userProfile?.displayName || 'Runner'}
           avatarUrl={userProfile?.photoURL}
+          unreadCount={unreadRequestCount}
           onNotificationPress={handleNotificationPress}
           onProfilePress={handleProfilePress}
         />
@@ -74,13 +172,26 @@ export const HomeScreen: React.FC = () => {
         <WeeklyMomentumCard
           distance={weeklyKm > 0 ? weeklyKm.toFixed(1) : '0.0'}
           onStartRunPress={handleStartSoloRun}
+          onDuoRunPress={handleGeneralDuoRun}
+          onGroupRunPress={() => handleStartGroupRunWithFriend()}
         />
 
-        {/* Your Crew Section */}
+        {/* 1. YOUR CREW SECTION */}
         <YourCrewSection
           crew={crew}
           currentUserId={userProfile?.id || user?.uid}
-          onAddCrewPress={handleAddCrew}
+        />
+
+        {/* 2. YOUR FRIENDS SECTION (Accepted friends show here + discover & add friends below) */}
+        <YourFriendsSection
+          friends={friends}
+          discoverableRunners={otherRunners}
+          currentUserId={userProfile?.id || user?.uid}
+          sentRequestIds={sentRequestIds}
+          onStartDuoRun={handleStartDuoRunWithFriend}
+          onStartGroupRun={handleStartGroupRunWithFriend}
+          onSendRequest={sendCrewRequest}
+          onInviteById={handleAddFriend}
         />
 
         {/* Upcoming Session Card */}
@@ -94,13 +205,19 @@ export const HomeScreen: React.FC = () => {
         <PersonalBestsSection records={personalBests} />
       </ScrollView>
 
-      {/* Floating Sparkle Action Button */}
-      <FloatingSparkleButton onPress={handleSparklePress} />
-
-      {/* Solo Run Feature Modal */}
+      {/* Solo / Duo / Group Run Feature Modal */}
       <SoloRunModal
         visible={soloRunModalVisible}
         onClose={() => setSoloRunModalVisible(false)}
+      />
+
+      {/* Real-time Notifications & Crew Requests Modal */}
+      <NotificationsModal
+        visible={notificationsVisible}
+        onClose={() => setNotificationsVisible(false)}
+        requests={incomingRequests}
+        onAccept={acceptCrewRequest}
+        onReject={rejectCrewRequest}
       />
     </View>
   );

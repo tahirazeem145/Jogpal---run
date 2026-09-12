@@ -12,7 +12,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NeonCard } from '../components/NeonCard';
-import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
 import { runService } from '../services/runService';
 import { useTheme } from '../context/ThemeContext';
@@ -33,13 +32,6 @@ export const ProfileScreen: React.FC = () => {
 
   const handleBack = () => {
     navigation.goBack();
-  };
-
-  const handleSparkle = () => {
-    Alert.alert(
-      'Jogpal AI Coach',
-      `Based on your ${stats.totalRuns} recorded runs (${stats.totalDistanceKm} KM total), your current average pace is ${stats.averagePace}. Keep up the ${streakStats.currentStreak}-day streak to boost aerobic endurance!`
-    );
   };
 
   const handleRecordQuickRun = async () => {
@@ -361,9 +353,6 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </View>
       </ScrollView>
-
-      {/* Floating Sparkle Action Button */}
-      <FloatingSparkleButton onPress={handleSparkle} />
     </View>
   );
 };

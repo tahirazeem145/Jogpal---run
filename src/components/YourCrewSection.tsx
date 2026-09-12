@@ -6,44 +6,37 @@ import {
   TouchableOpacity,
   ScrollView,
   Modal,
-  TextInput,
+  Image,
   Alert,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { CrewMember } from '../types/data';
-import { colors } from '../theme/colors';
-import { NeonButton } from './NeonButton';
-
-const EXCLUDED_IDS = ['PZSFwysaREWaGkLZxIY1qm06b282'];
+import { useTheme } from '../theme/colors';
 
 interface YourCrewSectionProps {
   crew?: CrewMember[];
   currentUserId?: string;
   onViewAllPress?: () => void;
-  onAddCrewPress?: (name: string, email?: string, userId?: string) => Promise<void> | void;
   onMemberPress?: (member: CrewMember) => void;
+  onStartDuoRun?: (member: CrewMember) => void;
+  onStartGroupRun?: (member: CrewMember) => void;
 }
 
 export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
   crew = [],
   currentUserId,
   onViewAllPress,
-  onAddCrewPress,
   onMemberPress,
+  onStartDuoRun,
+  onStartGroupRun,
 }) => {
+  const { colors } = useTheme();
   const [selectedMember, setSelectedMember] = useState<CrewMember | null>(null);
   const [showViewAllModal, setShowViewAllModal] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [inputRunnerId, setInputRunnerId] = useState('');
-  const [inputRunnerName, setInputRunnerName] = useState('');
-  const [requestedRunners, setRequestedRunners] = useState<Record<string, boolean>>({});
 
-  // Filter out the requested ID
+  // Filter out self
   const visibleCrew = crew.filter(
-    (m) =>
-      !EXCLUDED_IDS.includes(m.id) &&
-      !(m.userId && EXCLUDED_IDS.includes(m.userId))
+    (m) => m.id !== currentUserId && m.userId !== currentUserId
   );
 
   const handleSelectMember = (member: CrewMember) => {
@@ -51,64 +44,51 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
     if (onMemberPress) onMemberPress(member);
   };
 
-  const handleOpenViewAll = () => {
-    if (onViewAllPress) {
-      onViewAllPress();
+  const handleDuoRunClick = (member: CrewMember) => {
+    setSelectedMember(null);
+    if (onStartDuoRun) {
+      onStartDuoRun(member);
+    } else {
+      Alert.alert(
+        '⚡ Start Duo Run',
+        `Starting a live synchronized Duo Run with ${member.name}! Ready to hit the road?`
+      );
     }
-    setShowViewAllModal(true);
   };
 
-  const handleSendRequest = (member: CrewMember) => {
-    const memberKey = member.userId || member.id;
-    setRequestedRunners((prev) => ({ ...prev, [memberKey]: true }));
-    Alert.alert(
-      'Request Sent 📨',
-      `Your crew run request has been sent to ${member.name} (${member.userId || member.id}).`
-    );
-  };
-
-  const handleAddSubmit = async () => {
-    const name = inputRunnerName.trim();
-    const runnerId = inputRunnerId.trim();
-    if (!name && !runnerId) {
-      Alert.alert('Required', 'Please enter a Runner User ID or Name.');
-      return;
+  const handleGroupRunClick = (member: CrewMember) => {
+    setSelectedMember(null);
+    if (onStartGroupRun) {
+      onStartGroupRun(member);
+    } else {
+      Alert.alert(
+        '👥 Start Group Run',
+        `Starting a live squad run session with ${member.name} and your running crew!`
+      );
     }
-    if (onAddCrewPress) {
-      await onAddCrewPress(name || runnerId, undefined, runnerId || undefined);
-    }
-    setInputRunnerId('');
-    setInputRunnerName('');
-    setShowAddModal(false);
-    Alert.alert('Crew Updated', `${name || runnerId} added to your crew list!`);
   };
-
-  const filteredCrew = visibleCrew.filter((m) => {
-    const q = searchQuery.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      m.name.toLowerCase().includes(q) ||
-      (m.userId && m.userId.toLowerCase().includes(q)) ||
-      (m.id && m.id.toLowerCase().includes(q)) ||
-      (m.email && m.email.toLowerCase().includes(q))
-    );
-  });
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.headerRow}>
         <View style={styles.titleWithCount}>
-          <Text style={styles.titleText}>YOUR CREW</Text>
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{visibleCrew.length}</Text>
+          <Text style={[styles.titleText, { color: colors.textPrimary }]}>YOUR CREW</Text>
+          <View style={[styles.countBadge, { backgroundColor: colors.accentSubtle, borderColor: colors.crewAddBorder }]}>
+            <Text style={[styles.countText, { color: colors.primary }]}>{visibleCrew.length}</Text>
           </View>
         </View>
 
-        <TouchableOpacity onPress={handleOpenViewAll} activeOpacity={0.7} style={styles.viewAllBtn}>
-          <Text style={styles.viewAllText}>VIEW ALL</Text>
-          <Feather name="chevron-right" size={14} color={colors.limePrimary} />
-        </TouchableOpacity>
+        {visibleCrew.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setShowViewAllModal(true)}
+            activeOpacity={0.7}
+            style={styles.viewAllBtn}
+          >
+            <Text style={[styles.viewAllText, { color: colors.primary }]}>VIEW ALL</Text>
+            <Feather name="chevron-right" size={14} color={colors.primary} />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Horizontal Scrollable Avatars */}
@@ -118,9 +98,16 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
         contentContainerStyle={styles.crewScrollContent}
       >
         {visibleCrew.length === 0 ? (
-          <View style={styles.emptyScrollCard}>
-            <Text style={styles.emptyScrollTitle}>NO CREW ONLINE</Text>
-            <Text style={styles.emptyScrollSubtitle}>Invite friends by User ID to run together</Text>
+          <View style={[styles.emptyScrollCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            <View style={[styles.emptyIconCircle, { backgroundColor: colors.accentSubtle }]}>
+              <Feather name="users" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.emptyTextCol}>
+              <Text style={[styles.emptyScrollTitle, { color: colors.primary }]}>NO CREW MEMBERS YET</Text>
+              <Text style={[styles.emptyScrollSubtitle, { color: colors.textSecondary }]}>
+                Add friends from the section below to unlock Duo & Group runs!
+              </Text>
+            </View>
           </View>
         ) : (
           visibleCrew.map((member) => {
@@ -134,20 +121,28 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
                 onPress={() => handleSelectMember(member)}
                 activeOpacity={0.8}
               >
-                <View style={styles.avatarCircle}>
-                  <Text style={styles.avatarInitial}>
-                    {member.initial || member.name.charAt(0).toUpperCase()}
-                  </Text>
+                <View style={[styles.avatarCircle, { backgroundColor: colors.avatarBg, borderColor: colors.avatarBorder }]}>
+                  {member.photoURL || member.avatarUrl ? (
+                    <Image
+                      source={{ uri: member.photoURL || member.avatarUrl }}
+                      style={styles.avatarImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Text style={[styles.avatarInitial, { color: colors.textPrimary }]}>
+                      {member.initial || member.name.charAt(0).toUpperCase()}
+                    </Text>
+                  )}
                   {/* Online indicator */}
-                  <View style={styles.onlineDot} />
+                  <View style={[styles.onlineDot, { backgroundColor: colors.primary }]} />
                 </View>
 
-                <Text style={styles.memberName} numberOfLines={1}>
+                <Text style={[styles.memberName, { color: colors.textPrimary }]} numberOfLines={1}>
                   {member.name}
                 </Text>
                 
-                <View style={styles.userIdPill}>
-                  <Text style={styles.userIdText} numberOfLines={1}>
+                <View style={[styles.userIdPill, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}>
+                  <Text style={[styles.userIdText, { color: colors.textSecondary }]} numberOfLines={1}>
                     {shortId}
                   </Text>
                 </View>
@@ -155,22 +150,9 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
             );
           })
         )}
-
-        {/* Add / Invite Crew Button */}
-        <TouchableOpacity
-          style={styles.addItem}
-          onPress={() => setShowAddModal(true)}
-          activeOpacity={0.8}
-        >
-          <View style={styles.addButton}>
-            <Feather name="plus" size={24} color={colors.limePrimary} />
-          </View>
-          <Text style={styles.addText}>INVITE</Text>
-          <Text style={styles.addSubtitle}>BY ID</Text>
-        </TouchableOpacity>
       </ScrollView>
 
-      {/* 1. RUNNER PROFILE DETAILS MODAL (WITH REQUEST BUTTON) */}
+      {/* 1. INTERACTIVE CREW MEMBER PROFILE MODAL (START DUO / GROUP RUN) */}
       <Modal
         visible={!!selectedMember}
         transparent
@@ -178,10 +160,10 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
         onRequestClose={() => setSelectedMember(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.profileModalCard}>
+          <View style={[styles.profileModalCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             {/* Close button */}
             <TouchableOpacity
-              style={styles.modalCloseBtn}
+              style={[styles.modalCloseBtn, { backgroundColor: colors.cardSubtle }]}
               onPress={() => setSelectedMember(null)}
             >
               <Feather name="x" size={20} color={colors.textSecondary} />
@@ -190,69 +172,91 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
             {selectedMember && (
               <>
                 {/* Avatar & Header */}
-                <View style={styles.modalAvatarCircle}>
-                  <Text style={styles.modalAvatarInitial}>
-                    {selectedMember.initial || selectedMember.name.charAt(0).toUpperCase()}
-                  </Text>
+                <View style={[styles.modalAvatarCircle, { backgroundColor: colors.crewAddBg, borderColor: colors.primary }]}>
+                  {selectedMember.photoURL || selectedMember.avatarUrl ? (
+                    <Image
+                      source={{ uri: selectedMember.photoURL || selectedMember.avatarUrl }}
+                      style={styles.modalAvatarImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Text style={[styles.modalAvatarInitial, { color: colors.primary }]}>
+                      {selectedMember.initial || selectedMember.name.charAt(0).toUpperCase()}
+                    </Text>
+                  )}
                 </View>
 
-                <Text style={styles.modalRunnerName}>{selectedMember.name}</Text>
+                <View style={styles.nameBadgeRow}>
+                  <Text style={[styles.modalRunnerName, { color: colors.textPrimary }]}>{selectedMember.name}</Text>
+                  <View style={[styles.crewBadge, { backgroundColor: colors.accentSubtle, borderColor: colors.primaryMuted }]}>
+                    <Ionicons name="shield-checkmark" size={12} color={colors.primary} />
+                    <Text style={[styles.crewBadgeText, { color: colors.primary }]}>CREW</Text>
+                  </View>
+                </View>
                 
-                {/* Full User ID Card */}
-                <View style={styles.modalIdCard}>
+                {/* User ID Card */}
+                <View style={[styles.modalIdCard, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
                   <View style={styles.idLabelRow}>
-                    <Feather name="hash" size={12} color={colors.limePrimary} />
-                    <Text style={styles.idLabelText}>RUNNER USER ID</Text>
+                    <Feather name="hash" size={12} color={colors.primary} />
+                    <Text style={[styles.idLabelText, { color: colors.primary }]}>RUNNER USER ID</Text>
                   </View>
                   <Text style={styles.fullIdText} selectable>
                     {selectedMember.userId || selectedMember.id}
                   </Text>
                   {selectedMember.email ? (
-                    <Text style={styles.idEmailText}>{selectedMember.email}</Text>
+                    <Text style={[styles.idEmailText, { color: colors.textSecondary }]}>{selectedMember.email}</Text>
                   ) : null}
                 </View>
 
                 {/* Metrics Grid */}
-                <View style={styles.metricsGrid}>
+                <View style={[styles.metricsGrid, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}>
                   <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>LVL {selectedMember.level || 1}</Text>
-                    <Text style={styles.metricLabel}>RUNNER LEVEL</Text>
+                    <Text style={[styles.metricValue, { color: colors.primary }]}>LVL {selectedMember.level || 1}</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textMuted }]}>RUNNER LEVEL</Text>
                   </View>
 
-                  <View style={styles.metricDivider} />
+                  <View style={[styles.metricDivider, { backgroundColor: colors.cardBorder }]} />
 
                   <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>
+                    <Text style={[styles.metricValue, { color: colors.primary }]}>
                       {selectedMember.totalDistanceKm ? `${selectedMember.totalDistanceKm.toFixed(1)}K` : '0.0K'}
                     </Text>
-                    <Text style={styles.metricLabel}>TOTAL DISTANCE</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textMuted }]}>TOTAL DISTANCE</Text>
                   </View>
 
-                  <View style={styles.metricDivider} />
+                  <View style={[styles.metricDivider, { backgroundColor: colors.cardBorder }]} />
 
                   <View style={styles.metricItem}>
-                    <Text style={styles.metricValue}>{selectedMember.streakDays || 0}D</Text>
-                    <Text style={styles.metricLabel}>RUN STREAK</Text>
+                    <Text style={[styles.metricValue, { color: colors.primary }]}>{selectedMember.streakDays || 0}D</Text>
+                    <Text style={[styles.metricLabel, { color: colors.textMuted }]}>RUN STREAK</Text>
                   </View>
                 </View>
 
-                {/* Single REQUEST Button (Replacing cheer and challenge) */}
-                <View style={styles.modalActionRow}>
-                  {requestedRunners[selectedMember.userId || selectedMember.id] ? (
-                    <View style={styles.requestSentBadge}>
-                      <Ionicons name="checkmark-circle" size={18} color={colors.limePrimary} />
-                      <Text style={styles.requestSentText}>REQUEST SENT</Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.requestButton}
-                      onPress={() => handleSendRequest(selectedMember)}
-                      activeOpacity={0.85}
-                    >
-                      <Ionicons name="paper-plane" size={16} color="#000000" />
-                      <Text style={styles.requestButtonText}>REQUEST</Text>
-                    </TouchableOpacity>
-                  )}
+                {/* PROMINENT RUN LAUNCHER ACTIONS: DUO RUN & GROUP RUN */}
+                <View style={styles.runActionSection}>
+                  <Text style={[styles.runActionPrompt, { color: colors.textSecondary }]}>
+                    START A RUN WITH {selectedMember.name.toUpperCase()}:
+                  </Text>
+
+                  {/* 1. START DUO RUN BUTTON */}
+                  <TouchableOpacity
+                    style={[styles.duoRunBtn, { backgroundColor: colors.primary, shadowColor: colors.primary }]}
+                    onPress={() => handleDuoRunClick(selectedMember)}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="flash" size={18} color="#000000" />
+                    <Text style={styles.duoRunBtnText}>START DUO RUN</Text>
+                  </TouchableOpacity>
+
+                  {/* 2. START GROUP RUN BUTTON */}
+                  <TouchableOpacity
+                    style={[styles.groupRunBtn, { backgroundColor: colors.surface, borderColor: colors.primary }]}
+                    onPress={() => handleGroupRunClick(selectedMember)}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="people" size={18} color={colors.primary} />
+                    <Text style={[styles.groupRunBtnText, { color: colors.primary }]}>START GROUP RUN</Text>
+                  </TouchableOpacity>
                 </View>
               </>
             )}
@@ -260,7 +264,7 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
         </View>
       </Modal>
 
-      {/* 2. VIEW ALL & DISCOVER RUNNERS MODAL */}
+      {/* 2. VIEW ALL CREW MEMBERS MODAL */}
       <Modal
         visible={showViewAllModal}
         transparent
@@ -268,194 +272,61 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
         onRequestClose={() => setShowViewAllModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.viewAllModalCard}>
-            {/* Modal Header */}
+          <View style={[styles.viewAllModalCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <View style={styles.viewAllHeader}>
               <View>
-                <Text style={styles.viewAllTitle}>DISCOVER RUNNERS</Text>
-                <Text style={styles.viewAllSubtitle}>Live Firestore Runners & Crew Members</Text>
+                <Text style={[styles.viewAllTitle, { color: colors.textPrimary }]}>YOUR CREW</Text>
+                <Text style={[styles.viewAllSubtitle, { color: colors.textSecondary }]}>
+                  {visibleCrew.length === 1 ? '1 Connected Runner' : `${visibleCrew.length} Connected Runners`}
+                </Text>
               </View>
               <TouchableOpacity
-                style={styles.modalCloseBtn}
+                style={[styles.modalCloseBtn, { backgroundColor: colors.cardSubtle }]}
                 onPress={() => setShowViewAllModal(false)}
               >
                 <Feather name="x" size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
 
-            {/* My User ID Info Card */}
-            {currentUserId ? (
-              <TouchableOpacity
-                style={styles.myIdCard}
-                onPress={() =>
-                  Alert.alert(
-                    'Your Runner ID',
-                    `Your User ID is:\n\n${currentUserId}\n\nGive this ID to other runners to let them add you directly to their crew.`
-                  )
-                }
-                activeOpacity={0.8}
-              >
-                <View style={styles.myIdLeft}>
-                  <View style={styles.myIdIconBadge}>
-                    <Feather name="hash" size={12} color={colors.limePrimary} />
+            <ScrollView style={styles.runnersList} showsVerticalScrollIndicator={false}>
+              {visibleCrew.map((runner) => (
+                <TouchableOpacity
+                  key={runner.id}
+                  style={[styles.runnerRowCard, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}
+                  onPress={() => {
+                    setShowViewAllModal(false);
+                    setSelectedMember(runner);
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.runnerRowAvatar, { backgroundColor: colors.avatarBg, borderColor: colors.avatarBorder }]}>
+                    {runner.photoURL || runner.avatarUrl ? (
+                      <Image
+                        source={{ uri: runner.photoURL || runner.avatarUrl }}
+                        style={styles.runnerRowAvatarImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <Text style={[styles.runnerRowInitial, { color: colors.primary }]}>
+                        {runner.initial || runner.name.charAt(0).toUpperCase()}
+                      </Text>
+                    )}
                   </View>
-                  <View style={styles.myIdTextCol}>
-                    <Text style={styles.myIdLabel}>YOUR RUNNER USER ID</Text>
-                    <Text style={styles.myIdValue} numberOfLines={1} selectable>
-                      {currentUserId}
+
+                  <View style={styles.runnerRowInfo}>
+                    <Text style={[styles.runnerRowName, { color: colors.textPrimary }]}>{runner.name}</Text>
+                    <Text style={[styles.runnerRowId, { color: colors.textSecondary }]} numberOfLines={1}>
+                      ID: {runner.userId || runner.id}
                     </Text>
                   </View>
-                </View>
-                <View style={styles.myIdCopyBtn}>
-                  <Feather name="share-2" size={12} color={colors.limePrimary} />
-                  <Text style={styles.myIdCopyText}>INFO</Text>
-                </View>
-              </TouchableOpacity>
-            ) : null}
 
-            {/* Search Bar */}
-            <View style={styles.searchWrapper}>
-              <Feather name="search" size={16} color={colors.textSecondary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search by User ID or Name..."
-                placeholderTextColor={colors.textMuted}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                autoCapitalize="none"
-              />
-              {!!searchQuery && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <Feather name="x-circle" size={16} color={colors.textMuted} />
+                  <View style={[styles.actionTag, { backgroundColor: colors.accentSubtle, borderColor: colors.primaryMuted }]}>
+                    <Ionicons name="flash" size={12} color={colors.primary} />
+                    <Text style={[styles.actionTagText, { color: colors.primary }]}>RUN</Text>
+                  </View>
                 </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Runners List */}
-            <ScrollView style={styles.runnersList} showsVerticalScrollIndicator={false}>
-              {filteredCrew.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Feather name="users" size={32} color={colors.textMuted} />
-                  <Text style={styles.emptyText}>No runners found matching "{searchQuery}"</Text>
-                </View>
-              ) : (
-                filteredCrew.map((runner) => {
-                  const isRequested = requestedRunners[runner.userId || runner.id];
-
-                  return (
-                    <TouchableOpacity
-                      key={runner.id}
-                      style={styles.runnerRowCard}
-                      onPress={() => {
-                        setShowViewAllModal(false);
-                        setSelectedMember(runner);
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <View style={styles.runnerRowAvatar}>
-                        <Text style={styles.runnerRowInitial}>
-                          {runner.initial || runner.name.charAt(0).toUpperCase()}
-                        </Text>
-                      </View>
-
-                      <View style={styles.runnerRowInfo}>
-                        <Text style={styles.runnerRowName}>{runner.name}</Text>
-                        <Text style={styles.runnerRowId} numberOfLines={1}>
-                          ID: {runner.userId || runner.id}
-                        </Text>
-                      </View>
-
-                      <TouchableOpacity
-                        style={[styles.rowRequestBtn, isRequested && styles.rowRequestBtnSent]}
-                        onPress={(e) => {
-                          e.stopPropagation?.();
-                          handleSendRequest(runner);
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.rowRequestText, isRequested && styles.rowRequestTextSent]}>
-                          {isRequested ? 'SENT' : 'REQUEST'}
-                        </Text>
-                      </TouchableOpacity>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
+              ))}
             </ScrollView>
-
-            {/* Bottom Add Action */}
-            <TouchableOpacity
-              style={styles.modalAddBottomBtn}
-              onPress={() => {
-                setShowViewAllModal(false);
-                setShowAddModal(true);
-              }}
-              activeOpacity={0.85}
-            >
-              <Feather name="user-plus" size={16} color="#000000" />
-              <Text style={styles.modalAddBottomText}>INVITE RUNNER BY USER ID</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* 3. INVITE / ADD MEMBER BY USER ID MODAL */}
-      <Modal
-        visible={showAddModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAddModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.addModalCard}>
-            <View style={styles.viewAllHeader}>
-              <View>
-                <Text style={styles.viewAllTitle}>INVITE RUNNER</Text>
-                <Text style={styles.viewAllSubtitle}>Add to your crew via Firebase User ID</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.modalCloseBtn}
-                onPress={() => setShowAddModal(false)}
-              >
-                <Feather name="x" size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>RUNNER USER ID</Text>
-              <View style={styles.modalInputWrapper}>
-                <Feather name="hash" size={16} color={colors.textSecondary} />
-                <TextInput
-                  style={styles.modalTextInput}
-                  placeholder="Enter Firebase User ID"
-                  placeholderTextColor={colors.textMuted}
-                  value={inputRunnerId}
-                  onChangeText={setInputRunnerId}
-                  autoCapitalize="none"
-                />
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>RUNNER NAME (OPTIONAL)</Text>
-              <View style={styles.modalInputWrapper}>
-                <Feather name="user" size={16} color={colors.textSecondary} />
-                <TextInput
-                  style={styles.modalTextInput}
-                  placeholder="e.g. Alex Rivera"
-                  placeholderTextColor={colors.textMuted}
-                  value={inputRunnerName}
-                  onChangeText={setInputRunnerName}
-                  autoCapitalize="words"
-                />
-              </View>
-            </View>
-
-            <NeonButton
-              title="ADD TO CREW"
-              onPress={handleAddSubmit}
-              style={{ marginTop: 14 }}
-            />
           </View>
         </View>
       </Modal>
@@ -466,14 +337,14 @@ export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 16,
-    marginTop: 26,
-    marginBottom: 20,
+    marginTop: 22,
+    marginBottom: 6,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   titleWithCount: {
     flexDirection: 'row',
@@ -484,21 +355,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
     letterSpacing: 0.8,
-    color: colors.textPrimary,
     textTransform: 'uppercase',
   },
   countBadge: {
-    backgroundColor: '#1E2B08',
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#43610B',
   },
   countText: {
     fontSize: 11,
     fontWeight: '900',
-    color: colors.limePrimary,
   },
   viewAllBtn: {
     flexDirection: 'row',
@@ -509,7 +376,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.8,
-    color: colors.limePrimary,
     textTransform: 'uppercase',
   },
   crewScrollContent: {
@@ -526,12 +392,16 @@ const styles = StyleSheet.create({
     width: 58,
     height: 58,
     borderRadius: 29,
-    backgroundColor: '#1B1B1E',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#303036',
     position: 'relative',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 29,
   },
   onlineDot: {
     position: 'absolute',
@@ -540,85 +410,62 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: colors.limePrimary,
     borderWidth: 2,
     borderColor: '#000000',
   },
   avatarInitial: {
     fontSize: 20,
     fontWeight: '900',
-    color: colors.textPrimary,
   },
   memberName: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.textPrimary,
     marginTop: 6,
     textAlign: 'center',
     maxWidth: 68,
   },
   userIdPill: {
-    backgroundColor: '#161618',
     paddingHorizontal: 5,
     paddingVertical: 1,
     borderRadius: 6,
     marginTop: 2,
     borderWidth: 1,
-    borderColor: '#242428',
   },
   userIdText: {
     fontSize: 9,
     fontWeight: '700',
-    color: colors.textSecondary,
     fontFamily: 'monospace',
   },
-  addItem: {
-    alignItems: 'center',
-    width: 68,
-  },
-  addButton: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: '#162308',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#547B0E',
-  },
-  addText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: colors.limePrimary,
-    marginTop: 6,
-    letterSpacing: 0.5,
-  },
-  addSubtitle: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: colors.textMuted,
-  },
   emptyScrollCard: {
-    backgroundColor: '#151517',
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderWidth: 1,
-    borderColor: '#242428',
+    gap: 12,
+    width: '100%',
+  },
+  emptyIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
     justifyContent: 'center',
-    maxWidth: 240,
+  },
+  emptyTextCol: {
+    flex: 1,
   },
   emptyScrollTitle: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   emptyScrollSubtitle: {
-    fontSize: 10,
-    color: colors.textSecondary,
+    fontSize: 11,
     fontWeight: '600',
+    lineHeight: 15,
   },
 
   // Modals Styles
@@ -632,11 +479,9 @@ const styles = StyleSheet.create({
   profileModalCard: {
     width: '100%',
     maxWidth: 380,
-    backgroundColor: '#141416',
     borderRadius: 24,
     padding: 24,
     borderWidth: 1,
-    borderColor: '#28282E',
     alignItems: 'center',
     position: 'relative',
   },
@@ -647,7 +492,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#202024',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -656,33 +500,52 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: '#1E2A0A',
     borderWidth: 2,
-    borderColor: colors.limePrimary,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
+    overflow: 'hidden',
+  },
+  modalAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 36,
   },
   modalAvatarInitial: {
     fontSize: 28,
     fontWeight: '900',
-    color: colors.limePrimary,
+  },
+  nameBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   modalRunnerName: {
     fontSize: 20,
     fontWeight: '900',
-    color: colors.textPrimary,
+    letterSpacing: 0.5,
+  },
+  crewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    gap: 3,
+  },
+  crewBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
     letterSpacing: 0.5,
   },
   modalIdCard: {
     width: '100%',
-    backgroundColor: '#0D0D0E',
     borderRadius: 14,
     padding: 12,
-    marginTop: 14,
-    marginBottom: 16,
+    marginTop: 12,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: '#222226',
   },
   idLabelRow: {
     flexDirection: 'row',
@@ -693,7 +556,6 @@ const styles = StyleSheet.create({
   idLabelText: {
     fontSize: 10,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.8,
   },
   fullIdText: {
@@ -705,7 +567,6 @@ const styles = StyleSheet.create({
   idEmailText: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.textSecondary,
     marginTop: 2,
   },
   metricsGrid: {
@@ -713,74 +574,72 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     width: '100%',
-    backgroundColor: '#1B1B1E',
     borderRadius: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#2A2A30',
+    marginBottom: 16,
   },
   metricItem: {
     flex: 1,
     alignItems: 'center',
   },
   metricValue: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.5,
   },
   metricLabel: {
     fontSize: 9,
     fontWeight: '800',
-    color: colors.textMuted,
     marginTop: 2,
     letterSpacing: 0.5,
   },
   metricDivider: {
     width: 1,
-    height: 24,
-    backgroundColor: '#303036',
+    height: 22,
   },
-  modalActionRow: {
+  runActionSection: {
     width: '100%',
-    marginTop: 18,
+    gap: 10,
   },
-  requestButton: {
+  runActionPrompt: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  duoRunBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.limePrimary,
-    paddingVertical: 15,
+    paddingVertical: 14,
     borderRadius: 16,
     gap: 8,
-    shadowColor: colors.limePrimary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 6,
   },
-  requestButtonText: {
+  duoRunBtnText: {
     fontSize: 13,
     fontWeight: '900',
     color: '#000000',
     letterSpacing: 1,
   },
-  requestSentBadge: {
+  groupRunBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#162308',
-    paddingVertical: 15,
+    paddingVertical: 14,
     borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#547B0E',
     gap: 8,
   },
-  requestSentText: {
+  groupRunBtnText: {
     fontSize: 13,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 1,
   },
 
@@ -788,12 +647,10 @@ const styles = StyleSheet.create({
   viewAllModalCard: {
     width: '100%',
     maxWidth: 420,
-    maxHeight: '85%',
-    backgroundColor: '#141416',
+    maxHeight: '80%',
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#28282E',
   },
   viewAllHeader: {
     flexDirection: 'row',
@@ -804,129 +661,42 @@ const styles = StyleSheet.create({
   viewAllTitle: {
     fontSize: 18,
     fontWeight: '900',
-    color: colors.textPrimary,
     letterSpacing: 1,
   },
   viewAllSubtitle: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.textSecondary,
     marginTop: 2,
   },
-  myIdCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#18240A',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#4A6F0E',
-  },
-  myIdLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 10,
-  },
-  myIdIconBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#0D1405',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  myIdTextCol: {
-    flex: 1,
-  },
-  myIdLabel: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: colors.limePrimary,
-    letterSpacing: 0.8,
-  },
-  myIdValue: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    fontFamily: 'monospace',
-    marginTop: 1,
-  },
-  myIdCopyBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0D1405',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  myIdCopyText: {
-    fontSize: 9,
-    fontWeight: '900',
-    color: colors.limePrimary,
-    letterSpacing: 0.5,
-  },
-  searchWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0D0D0F',
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    height: 44,
-    borderWidth: 1,
-    borderColor: '#24242A',
-    gap: 8,
-    marginBottom: 14,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 13,
-    color: colors.textPrimary,
-    fontWeight: '600',
-  },
   runnersList: {
-    maxHeight: 320,
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 36,
-    gap: 8,
-  },
-  emptyText: {
-    fontSize: 12,
-    color: colors.textMuted,
-    fontWeight: '600',
+    maxHeight: 340,
   },
   runnerRowCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1A1E',
     borderRadius: 16,
     padding: 12,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#26262E',
     gap: 12,
   },
   runnerRowAvatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#24242A',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#383842',
+    overflow: 'hidden',
+  },
+  runnerRowAvatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
   },
   runnerRowInitial: {
     fontSize: 16,
     fontWeight: '900',
-    color: colors.limePrimary,
   },
   runnerRowInfo: {
     flex: 1,
@@ -934,88 +704,25 @@ const styles = StyleSheet.create({
   runnerRowName: {
     fontSize: 14,
     fontWeight: '800',
-    color: colors.textPrimary,
   },
   runnerRowId: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.textSecondary,
     fontFamily: 'monospace',
     marginTop: 2,
   },
-  rowRequestBtn: {
-    backgroundColor: colors.limePrimary,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 10,
-  },
-  rowRequestBtnSent: {
-    backgroundColor: '#162308',
+  actionTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#547B0E',
+    gap: 4,
   },
-  rowRequestText: {
+  actionTagText: {
     fontSize: 10,
     fontWeight: '900',
-    color: '#000000',
     letterSpacing: 0.5,
-  },
-  rowRequestTextSent: {
-    color: colors.limePrimary,
-  },
-  modalAddBottomBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: colors.limePrimary,
-    height: 48,
-    borderRadius: 14,
-    marginTop: 14,
-    gap: 8,
-  },
-  modalAddBottomText: {
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#000000',
-    letterSpacing: 0.8,
-  },
-
-  // Add Modal
-  addModalCard: {
-    width: '100%',
-    maxWidth: 380,
-    backgroundColor: '#141416',
-    borderRadius: 24,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: '#28282E',
-  },
-  inputGroup: {
-    gap: 6,
-    marginTop: 10,
-  },
-  inputLabel: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: colors.textSecondary,
-    letterSpacing: 0.8,
-    marginLeft: 4,
-  },
-  modalInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0D0D0F',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    height: 48,
-    borderWidth: 1,
-    borderColor: '#24242A',
-    gap: 10,
-  },
-  modalTextInput: {
-    flex: 1,
-    fontSize: 14,
-    color: colors.textPrimary,
-    fontWeight: '600',
   },
 });

@@ -20,7 +20,7 @@ export const HoneycombPattern: React.FC<HoneycombPatternProps> = ({
   const tileHeight = 21;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={[StyleSheet.absoluteFill, styles.root]} pointerEvents="none">
       {/* Left Edge Honeycomb Badge */}
       <View style={[styles.edgeBadge, { left: 0, width: edgeWidth }]}>
         <View style={[StyleSheet.absoluteFill, { opacity }]}>
@@ -105,10 +105,16 @@ export const HoneycombPattern: React.FC<HoneycombPatternProps> = ({
 };
 
 const styles = StyleSheet.create({
+  root: {
+    zIndex: 0,
+    elevation: 0,
+  },
   edgeBadge: {
     position: 'absolute',
     top: 0,
     bottom: 0,
     overflow: 'hidden',
+    zIndex: 0,
+    elevation: 0,
   },
 });
