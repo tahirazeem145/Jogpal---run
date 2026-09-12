@@ -26,7 +26,7 @@ export const NeonButton: React.FC<NeonButtonProps> = ({
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <HoneycombPattern edgeWidth={edgeWidth} opacity={0.35} />
+      <HoneycombPattern edgeWidth={edgeWidth} opacity={0.12} />
       <Text style={[styles.text, textStyle]}>{title}</Text>
     </TouchableOpacity>
   );

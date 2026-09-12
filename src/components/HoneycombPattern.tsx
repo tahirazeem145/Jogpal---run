@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface HoneycombPatternProps {
   edgeWidth?: number;
@@ -11,8 +11,10 @@ interface HoneycombPatternProps {
 
 export const HoneycombPattern: React.FC<HoneycombPatternProps> = ({
   edgeWidth = 70,
-  opacity = 0.35,
+  opacity = 0.12,
 }) => {
+  const { colors } = useTheme();
+
   // Tile dimensions for dense high-tech hexagon lattice
   const tileWidth = 12;
   const tileHeight = 21;
@@ -35,24 +37,24 @@ export const HoneycombPattern: React.FC<HoneycombPatternProps> = ({
                   d="M 6,0 L 12,3.5 L 12,10.5 L 6,14 L 0,10.5 L 0,3.5 Z"
                   fill="none"
                   stroke="#000000"
-                  strokeWidth="0.85"
+                  strokeWidth="0.8"
                 />
                 {/* Hexagon 2 shifted */}
                 <Path
                   d="M 12,10.5 L 18,14 L 18,21 L 12,24.5 L 6,21 L 6,14 Z"
                   fill="none"
                   stroke="#000000"
-                  strokeWidth="0.85"
+                  strokeWidth="0.8"
                 />
               </Pattern>
             </Defs>
             <Rect x="0" y="0" width="100%" height="100%" fill="url(#hexTileLeft)" />
           </Svg>
         </View>
-        {/* Gradient Fade towards center */}
+        {/* Seamless theme-aware fade towards center with zero hardcoded colors */}
         <LinearGradient
-          colors={['rgba(204, 255, 0, 0.05)', 'rgba(204, 255, 0, 0.5)', colors.limePrimary]}
-          locations={[0, 0.5, 1]}
+          colors={['transparent', 'rgba(0, 0, 0, 0.0)', colors.primary]}
+          locations={[0, 0.35, 1]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}
@@ -75,24 +77,24 @@ export const HoneycombPattern: React.FC<HoneycombPatternProps> = ({
                   d="M 6,0 L 12,3.5 L 12,10.5 L 6,14 L 0,10.5 L 0,3.5 Z"
                   fill="none"
                   stroke="#000000"
-                  strokeWidth="0.85"
+                  strokeWidth="0.8"
                 />
                 {/* Hexagon 2 shifted */}
                 <Path
                   d="M 12,10.5 L 18,14 L 18,21 L 12,24.5 L 6,21 L 6,14 Z"
                   fill="none"
                   stroke="#000000"
-                  strokeWidth="0.85"
+                  strokeWidth="0.8"
                 />
               </Pattern>
             </Defs>
             <Rect x="0" y="0" width="100%" height="100%" fill="url(#hexTileRight)" />
           </Svg>
         </View>
-        {/* Gradient Fade towards center */}
+        {/* Seamless theme-aware fade towards center with zero hardcoded colors */}
         <LinearGradient
-          colors={[colors.limePrimary, 'rgba(204, 255, 0, 0.5)', 'rgba(204, 255, 0, 0.05)']}
-          locations={[0, 0.5, 1]}
+          colors={[colors.primary, 'rgba(0, 0, 0, 0.0)', 'transparent']}
+          locations={[0, 0.65, 1]}
           start={{ x: 0, y: 0.5 }}
           end={{ x: 1, y: 0.5 }}
           style={StyleSheet.absoluteFill}

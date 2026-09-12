@@ -16,7 +16,7 @@ export const NeonCard: React.FC<NeonCardProps> = ({
   style,
   contentStyle,
   edgeWidth = 65,
-  patternOpacity = 0.35,
+  patternOpacity = 0.12,
 }) => {
   const { colors } = useTheme();
 

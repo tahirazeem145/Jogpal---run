@@ -18,7 +18,7 @@ export const WeeklyMomentumCard: React.FC<WeeklyMomentumCardProps> = ({
   return (
     <View style={[styles.cardContainer, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
       {/* Background Left & Right Edge Honeycomb Texture Pattern */}
-      <HoneycombPattern edgeWidth={75} opacity={0.35} />
+      <HoneycombPattern edgeWidth={75} opacity={0.12} />
 
       {/* Card Content */}
       <View style={styles.content}>
