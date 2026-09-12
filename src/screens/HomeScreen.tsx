@@ -8,31 +8,20 @@ import { UpcomingSessionCard } from '../components/UpcomingSessionCard';
 import { PersonalBestsSection } from '../components/PersonalBestsSection';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
+import { useSoloRun } from '../context/SoloRunContext';
+import { SoloRunModal } from '../components/SoloRunModal';
 import { colors } from '../theme/colors';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { user, userProfile, weeklyKm, crew, upcomingSession, personalBests, logNewRun, addCrewMember, scheduleSession } = useApp();
 
+  const [soloRunModalVisible, setSoloRunModalVisible] = React.useState(false);
+  const { startPreparation } = useSoloRun();
+
   const handleStartSoloRun = async () => {
-    Alert.alert(
-      'Start Solo Run',
-      'Record a quick 5.0 KM run session to test live Firebase sync?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Record 5.0 KM Run',
-          onPress: async () => {
-            try {
-              await logNewRun(5.0, 1380, '4:36 /km', 'SOLO RUN');
-              Alert.alert('Run Saved', '5.0 KM run synced directly to Firebase Firestore!');
-            } catch (e: any) {
-              Alert.alert('Run Logged', 'Run stored locally in active state.');
-            }
-          },
-        },
-      ]
-    );
+    setSoloRunModalVisible(true);
+    await startPreparation();
   };
 
   const handleNotificationPress = () => {
@@ -106,6 +95,12 @@ export const HomeScreen: React.FC = () => {
 
       {/* Floating Sparkle Action Button */}
       <FloatingSparkleButton onPress={handleSparklePress} />
+
+      {/* Solo Run Feature Modal */}
+      <SoloRunModal
+        visible={soloRunModalVisible}
+        onClose={() => setSoloRunModalVisible(false)}
+      />
     </View>
   );
 };
