@@ -121,7 +121,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activeUserId,
       (registeredUsers) => {
         const filtered = registeredUsers.filter(
-          (u) => u.id !== activeUserId && u.id !== 'PZSFwysaREWaGkLZxIY1qm06b282'
+          (u) => u.id !== activeUserId
         );
         setOtherRunners(filtered);
       },
@@ -158,7 +158,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Combined Crew list: User's saved crew + All other registered users from Firestore
   const combinedCrew: CrewMember[] = React.useMemo(() => {
     const map = new Map<string, CrewMember>();
-    const EXCLUDED_IDS = ['PZSFwysaREWaGkLZxIY1qm06b282', activeUserId];
+    const EXCLUDED_IDS = [activeUserId];
 
     // 1. Add all other real registered users from Firestore
     otherRunners.forEach((r) => {
