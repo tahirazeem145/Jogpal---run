@@ -17,64 +17,10 @@ import { useApp } from '../context/AppContext';
 import { runService } from '../services/runService';
 import { colors } from '../theme/colors';
 
-const ACHIEVEMENT_CATEGORIES = ['ALL', 'COMMON', 'RARE', 'EPIC', 'LEGENDARY'];
-
-const STATIC_ACHIEVEMENTS = [
-  {
-    id: 'ach-1',
-    title: 'First Stride',
-    subtitle: 'Complete your first tracked run session',
-    category: 'COMMON',
-    minRuns: 1,
-    icon: 'shoe-print',
-  },
-  {
-    id: 'ach-2',
-    title: '5K Pioneer',
-    subtitle: 'Complete a single run of 5.0 KM or more',
-    category: 'COMMON',
-    minDist: 5,
-    icon: 'map-marker-distance',
-  },
-  {
-    id: 'ach-3',
-    title: 'Streak Starter',
-    subtitle: 'Maintain a 3-day consecutive run streak',
-    category: 'RARE',
-    minStreak: 3,
-    icon: 'fire',
-  },
-  {
-    id: 'ach-4',
-    title: 'Speed Demon',
-    subtitle: 'Achieve a personal best pace under 4:30 /km',
-    category: 'RARE',
-    minPaceSec: 270,
-    icon: 'flash',
-  },
-  {
-    id: 'ach-5',
-    title: '10K Crusher',
-    subtitle: 'Conquer a single run of 10.0 KM or more',
-    category: 'EPIC',
-    minDist: 10,
-    icon: 'trophy',
-  },
-  {
-    id: 'ach-6',
-    title: 'Century Club',
-    subtitle: 'Accumulate over 100.0 total kilometers',
-    category: 'LEGENDARY',
-    minTotalKm: 100,
-    icon: 'crown',
-  },
-];
-
 export const ProfileScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { userProfile, runs, logNewRun } = useApp();
-  const [activeCategory, setActiveCategory] = useState('ALL');
 
   // Compute Live Analytics from runs history
   const stats = runService.calculateRunningStats(runs);
@@ -115,12 +61,6 @@ export const ProfileScreen: React.FC = () => {
       ]
     );
   };
-
-  // Filter achievements based on active category
-  const filteredAchievements = STATIC_ACHIEVEMENTS.filter((ach) => {
-    if (activeCategory === 'ALL') return true;
-    return ach.category === activeCategory;
-  });
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -398,101 +338,6 @@ export const ProfileScreen: React.FC = () => {
                 />
               </View>
             </View>
-          </View>
-        </View>
-
-        {/* 5. ACHIEVEMENT COLLECTION 🎖️ */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeaderRow}>
-            <Ionicons name="ribbon" size={16} color={colors.limePrimary} />
-            <Text style={styles.sectionTitle}>ACHIEVEMENT COLLECTION</Text>
-          </View>
-
-          {/* Category Filter Pills */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterRow}
-          >
-            {ACHIEVEMENT_CATEGORIES.map((category) => (
-              <TouchableOpacity
-                key={category}
-                style={[
-                  styles.filterPill,
-                  activeCategory === category && styles.filterPillActive,
-                ]}
-                onPress={() => setActiveCategory(category)}
-                activeOpacity={0.8}
-              >
-                <Text
-                  style={[
-                    styles.filterPillText,
-                    activeCategory === category && styles.filterPillTextActive,
-                  ]}
-                >
-                  {category}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {/* Achievements Grid */}
-          <View style={styles.achievementsList}>
-            {filteredAchievements.map((item) => {
-              // Dynamic unlock condition
-              let isUnlocked = false;
-              if (item.minRuns && stats.totalRuns >= item.minRuns) isUnlocked = true;
-              if (item.minDist && stats.longestRunKm >= item.minDist) isUnlocked = true;
-              if (item.minStreak && streakStats.longestStreak >= item.minStreak) isUnlocked = true;
-              if (item.minTotalKm && stats.totalDistanceKm >= item.minTotalKm) isUnlocked = true;
-
-              return (
-                <View
-                  key={item.id}
-                  style={[styles.achievementCard, isUnlocked && styles.achievementCardUnlocked]}
-                >
-                  <View
-                    style={[
-                      styles.achievementIconBox,
-                      isUnlocked && styles.achievementIconBoxUnlocked,
-                    ]}
-                  >
-                    <MaterialCommunityIcons
-                      name={item.icon as any}
-                      size={24}
-                      color={isUnlocked ? '#000000' : colors.textMuted}
-                    />
-                  </View>
-
-                  <View style={styles.achievementInfo}>
-                    <View style={styles.achievementTitleRow}>
-                      <Text style={styles.achievementTitle}>{item.title}</Text>
-                      <View
-                        style={[
-                          styles.categoryBadge,
-                          item.category === 'LEGENDARY' && styles.categoryLegendary,
-                          item.category === 'EPIC' && styles.categoryEpic,
-                          item.category === 'RARE' && styles.categoryRare,
-                        ]}
-                      >
-                        <Text style={styles.categoryBadgeText}>{item.category}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.achievementSub}>{item.subtitle}</Text>
-                  </View>
-
-                  {isUnlocked ? (
-                    <View style={styles.achievementCheck}>
-                      <Ionicons name="checkmark-circle" size={20} color={colors.limePrimary} />
-                    </View>
-                  ) : (
-                    <View style={styles.achievementLock}>
-                      <Feather name="lock" size={14} color={colors.textMuted} />
-                    </View>
-                  )}
-                </View>
-              );
-            })}
           </View>
         </View>
       </ScrollView>
@@ -974,104 +819,5 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: colors.limePrimary,
     borderRadius: 4,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-  },
-  filterPill: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#2C2C34',
-    backgroundColor: '#151518',
-  },
-  filterPillActive: {
-    borderColor: colors.limePrimary,
-    backgroundColor: 'rgba(218, 255, 1, 0.12)',
-  },
-  filterPillText: {
-    fontSize: 11,
-    fontWeight: '900',
-    color: colors.textSecondary,
-    letterSpacing: 0.8,
-  },
-  filterPillTextActive: {
-    color: colors.limePrimary,
-  },
-  achievementsList: {
-    gap: 10,
-  },
-  achievementCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#151518',
-    borderRadius: 18,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#24242A',
-    gap: 14,
-  },
-  achievementCardUnlocked: {
-    borderColor: 'rgba(218, 255, 1, 0.3)',
-    backgroundColor: '#18181D',
-  },
-  achievementIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: '#202026',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  achievementIconBoxUnlocked: {
-    backgroundColor: colors.limePrimary,
-  },
-  achievementInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  achievementTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  achievementTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: colors.textPrimary,
-  },
-  categoryBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    backgroundColor: '#26262E',
-  },
-  categoryRare: {
-    backgroundColor: '#1E2A4A',
-  },
-  categoryEpic: {
-    backgroundColor: '#351E4A',
-  },
-  categoryLegendary: {
-    backgroundColor: '#4A3B1E',
-  },
-  categoryBadgeText: {
-    fontSize: 8,
-    fontWeight: '900',
-    color: colors.textPrimary,
-    letterSpacing: 0.5,
-  },
-  achievementSub: {
-    fontSize: 11,
-    color: colors.textMuted,
-  },
-  achievementCheck: {
-    padding: 4,
-  },
-  achievementLock: {
-    padding: 4,
   },
 });
