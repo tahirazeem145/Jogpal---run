@@ -132,7 +132,7 @@ export const locationService = {
         timeInterval: 1000,
         distanceInterval: 1,
       },
-      (loc) => {
+      (loc: Location.LocationObject) => {
         const point: GPSPoint = {
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
@@ -144,9 +144,9 @@ export const locationService = {
         };
         onPoint(point);
       }
-    ).then((sub) => {
+    ).then((sub: Location.LocationSubscription) => {
       subscription = sub;
-    }).catch((err) => {
+    }).catch((err: any) => {
       if (onError) onError(err);
     });
 
