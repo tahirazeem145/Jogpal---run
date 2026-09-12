@@ -7,9 +7,10 @@ import { YourCrewSection } from '../components/YourCrewSection';
 import { UpcomingSessionCard } from '../components/UpcomingSessionCard';
 import { PersonalBestsSection } from '../components/PersonalBestsSection';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
+import { useApp } from '../context/AppContext';
 import { useSoloRun } from '../context/SoloRunContext';
 import { SoloRunModal } from '../components/SoloRunModal';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();

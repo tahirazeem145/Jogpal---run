@@ -5,9 +5,10 @@ import { Feather } from '@expo/vector-icons';
 import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
+import { useApp } from '../context/AppContext';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { RunSession } from '../types/data';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 export const HistoryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -34,7 +35,7 @@ export const HistoryScreen: React.FC = () => {
 
       // Combine synced runs + pending unsynced runs (deduplicating by id/createdAt)
       const map = new Map<string, RunSession>();
-      runs.forEach((r) => map.set(r.id || r.createdAt, r));
+      runs.forEach((r: RunSession) => map.set(r.id || r.createdAt, r));
       pendingConverted.forEach((p) => {
         if (!map.has(p.id)) map.set(p.id, p);
       });

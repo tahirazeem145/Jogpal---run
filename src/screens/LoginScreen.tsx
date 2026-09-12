@@ -18,7 +18,7 @@ import { GoogleIcon } from '../components/GoogleIcon';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import { UserProfile } from '../types/data';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface LoginScreenProps {
   onLoginSuccess?: () => void;

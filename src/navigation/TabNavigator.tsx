@@ -8,7 +8,7 @@ import { HistoryScreen } from '../screens/HistoryScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { RootTabParamList } from '../types/navigation';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 

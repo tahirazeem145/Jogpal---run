@@ -149,5 +149,3 @@ export const themes: Record<ThemeMode, ThemeColors> = {
 
 // Default export for static/legacy usages
 export const colors = defaultTheme;
-
-export { ThemeProvider, useTheme } from '../context/ThemeContext';

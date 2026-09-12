@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, ViewStyle, StyleProp, TextStyle } from 'react-native';
 import { HoneycombPattern } from './HoneycombPattern';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface NeonButtonProps {
   title: string;

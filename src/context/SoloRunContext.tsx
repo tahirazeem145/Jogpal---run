@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, BackHandler, Alert } from 'react-native';
 import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng } from '../types/soloRun';
-import { locationService, isValidGPSPoint, calculateHaversineDistanceKm } from '../services/locationService';
+import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm } from '../services/locationService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { useApp } from './AppContext';
 
@@ -209,13 +209,17 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // 4. GPS PROCESSING & READINESS PIPELINE
   const handleIncomingGPSPoint = (point: GPSPoint) => {
     totalPointCountRef.current += 1;
-    setCurrentLocation(point);
+
+    // MAP LOCATION: Update current location for map centering & runner marker display
+    if (isValidMapLocation(point)) {
+      setCurrentLocation(point);
+    }
 
     const accuracy = point.accuracy;
-    const isHighAccuracy = accuracy !== null && accuracy <= 25;
+    const isTrackingQuality = accuracy !== null && accuracy <= 35;
 
-    // First time receiving high-accuracy point
-    if (isHighAccuracy && !metrics.stage2Ready) {
+    // First time receiving tracking-quality point
+    if (isTrackingQuality && !metrics.stage2Ready) {
       const trackingLatency = prepStartTimeRef.current ? Date.now() - prepStartTimeRef.current : null;
       console.log(`[TELEMETRY] FIRST_ACCURATE_LOCATION_RECEIVED (Latency: ${trackingLatency}ms)`);
       console.log('[TELEMETRY] TRACKING_READY');
@@ -231,11 +235,11 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let gpsStatus: SoloRunMetrics['gpsStatus'] = 'SEARCHING';
       if (accuracy !== null) {
         if (accuracy <= 15) gpsStatus = 'READY';
-        else if (accuracy <= 25) gpsStatus = 'POOR';
+        else if (accuracy <= 35) gpsStatus = 'POOR';
         else gpsStatus = 'LOST';
       }
 
-      if (runState === 'GPS_SEARCHING' && (accuracy === null || accuracy <= 25)) {
+      if (runState === 'GPS_SEARCHING' && (accuracy === null || accuracy <= 35)) {
         setRunState('GPS_READY');
       }
 
@@ -249,8 +253,13 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // If ACTIVE or COUNTDOWN and NOT PAUSED
     if (!isPausedRef.current && (runState === 'ACTIVE' || runState === 'COUNTDOWN')) {
-      const isValid = isValidGPSPoint(point, lastAcceptedPointRef.current);
-      if (!isValid) return;
+      const validation = validateGPSPoint(point, lastAcceptedPointRef.current);
+      if (!validation.isValid) {
+        if (__DEV__ && validation.reason) {
+          console.log(`[GPS_FILTER_REJECT] Reason: ${validation.reason} (Accuracy: ${point.accuracy}m, Lat: ${point.latitude.toFixed(5)}, Lng: ${point.longitude.toFixed(5)})`);
+        }
+        return;
+      }
 
       // Unlock trackingReady flag
       if (!trackingReadyRef.current) {

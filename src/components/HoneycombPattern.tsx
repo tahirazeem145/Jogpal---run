@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import Svg, { Path, Defs, Pattern, Rect } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface HoneycombPatternProps {
   edgeWidth?: number;

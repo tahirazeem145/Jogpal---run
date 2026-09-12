@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MiniTelemetryChart } from './MiniTelemetryChart';
 import { UpcomingSession } from '../types/data';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface UpcomingSessionCardProps {
   session?: UpcomingSession | null;

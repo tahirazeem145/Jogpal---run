@@ -20,7 +20,7 @@ import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
 import { useApp } from '../context/AppContext';
 import { authService } from '../services/authService';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';

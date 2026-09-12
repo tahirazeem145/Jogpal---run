@@ -12,17 +12,21 @@ import {
   signInWithCredential,
   updateProfile as updateAuthProfile,
 } from '@firebase/auth';
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { auth } from '../config/firebase';
 
-// Configure GoogleSignin for Android / iOS
+// Dynamically require GoogleSignin on Native Android / iOS
+let GoogleSignin: any = null;
+let statusCodes: any = {};
 if (Platform.OS !== 'web') {
   try {
+    const gsign = require('@react-native-google-signin/google-signin');
+    GoogleSignin = gsign.GoogleSignin;
+    statusCodes = gsign.statusCodes || {};
     GoogleSignin.configure({
       scopes: ['email', 'profile'],
     });
   } catch (err) {
-    console.warn('GoogleSignin.configure error:', err);
+    console.warn('GoogleSignin configure warning:', err);
   }
 }
 
