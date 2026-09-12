@@ -8,17 +8,25 @@ import { HistoryScreen } from '../screens/HistoryScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
 import { RootTabParamList } from '../types/navigation';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 const Tab = createBottomTabNavigator<RootTabParamList>();
 
 export const TabNavigator: React.FC = () => {
+  const { colors } = useTheme();
+
   return (
     <Tab.Navigator
       initialRouteName="Home"
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            backgroundColor: colors.tabBarBg,
+            borderTopColor: colors.tabBarBorder,
+          },
+        ],
         tabBarActiveTintColor: colors.tabActive,
         tabBarInactiveTintColor: colors.tabInactive,
         tabBarLabelStyle: styles.tabBarLabel,
@@ -103,12 +111,10 @@ export const TabNavigator: React.FC = () => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: '#000000',
-    borderTopWidth: 1,
-    borderTopColor: '#161616',
     height: 68,
     paddingTop: 8,
     paddingBottom: 10,
+    borderTopWidth: 1,
     elevation: 0,
   },
   tabBarLabel: {

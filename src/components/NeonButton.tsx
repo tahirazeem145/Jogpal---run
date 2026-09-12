@@ -1,7 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ViewStyle, StyleProp, TextStyle } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, ViewStyle, StyleProp, TextStyle } from 'react-native';
 import { HoneycombPattern } from './HoneycombPattern';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface NeonButtonProps {
   title: string;
@@ -18,9 +18,11 @@ export const NeonButton: React.FC<NeonButtonProps> = ({
   textStyle,
   edgeWidth = 45,
 }) => {
+  const { colors } = useTheme();
+
   return (
     <TouchableOpacity
-      style={[styles.button, style]}
+      style={[styles.button, { backgroundColor: colors.primary }, style]}
       onPress={onPress}
       activeOpacity={0.85}
     >
@@ -33,7 +35,6 @@ export const NeonButton: React.FC<NeonButtonProps> = ({
 const styles = StyleSheet.create({
   button: {
     height: 52,
-    backgroundColor: colors.limePrimary,
     borderRadius: 26,
     justifyContent: 'center',
     alignItems: 'center',

@@ -14,13 +14,13 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, Ionicons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
 import { useApp } from '../context/AppContext';
 import { authService } from '../services/authService';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -38,6 +38,7 @@ export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { userProfile, updateProfile } = useApp();
+  const { theme, colors, setTheme, isOrange } = useTheme();
 
   // Edit Profile Modal State
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -167,34 +168,34 @@ export const SettingsScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header Bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
           <Feather name="arrow-left" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Settings</Text>
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* TOP PROFILE HERO CARD */}
-        <View style={styles.profileHeroCard}>
+        {/* 1. TOP PROFILE HERO CARD */}
+        <View style={[styles.profileHeroCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.profileHeroLeft}>
             <View style={styles.avatarWrapper}>
               {userProfile?.photoURL ? (
-                <Image source={{ uri: userProfile.photoURL }} style={styles.profileAvatarImg} />
+                <Image source={{ uri: userProfile.photoURL }} style={[styles.profileAvatarImg, { borderColor: colors.primary }]} />
               ) : (
-                <View style={styles.profileAvatarPlaceholder}>
-                  <Text style={styles.profileAvatarInitial}>
+                <View style={[styles.profileAvatarPlaceholder, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}>
+                  <Text style={[styles.profileAvatarInitial, { color: colors.primary }]}>
                     {(userProfile?.displayName || 'R').trim().charAt(0).toUpperCase()}
                   </Text>
                 </View>
               )}
               <TouchableOpacity
-                style={styles.avatarCameraBadge}
+                style={[styles.avatarCameraBadge, { backgroundColor: colors.primary }]}
                 onPress={handleOpenEditModal}
                 activeOpacity={0.8}
               >
@@ -203,15 +204,15 @@ export const SettingsScreen: React.FC = () => {
             </View>
 
             <View style={styles.profileHeroInfo}>
-              <Text style={styles.profileHeroName} numberOfLines={1}>
+              <Text style={[styles.profileHeroName, { color: colors.textPrimary }]} numberOfLines={1}>
                 {userProfile?.displayName || 'Runner'}
               </Text>
-              <Text style={styles.profileHeroEmail} numberOfLines={1}>
+              <Text style={[styles.profileHeroEmail, { color: colors.textMuted }]} numberOfLines={1}>
                 {userProfile?.email || 'runner@jogpal.app'}
               </Text>
-              <View style={styles.profileHeroBadge}>
-                <Ionicons name="flash" size={10} color={colors.limePrimary} />
-                <Text style={styles.profileHeroBadgeText}>
+              <View style={[styles.profileHeroBadge, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="flash" size={10} color={colors.primary} />
+                <Text style={[styles.profileHeroBadgeText, { color: colors.primary }]}>
                   LEVEL {userProfile?.level || 1} • {userProfile?.rank || 'Runner'}
                 </Text>
               </View>
@@ -219,7 +220,7 @@ export const SettingsScreen: React.FC = () => {
           </View>
 
           <TouchableOpacity
-            style={styles.editProfileBtn}
+            style={[styles.editProfileBtn, { backgroundColor: colors.primary }]}
             onPress={handleOpenEditModal}
             activeOpacity={0.8}
           >
@@ -228,9 +229,85 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
 
-        {/* ACCOUNT Section */}
+        {/* 2. THEME & APPEARANCE SECTION */}
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>ACCOUNT</Text>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="color-palette-outline" size={15} color={colors.primary} />
+            <Text style={[styles.sectionHeader, { color: colors.primary }]}>THEME & APPEARANCE</Text>
+          </View>
+
+          <View style={[styles.themeOptionsContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+            {/* Option 1: Default (Neon Lime) */}
+            <TouchableOpacity
+              style={[
+                styles.themeOptionRow,
+                theme === 'default' && [styles.themeOptionRowActive, { borderColor: '#CCFF00', backgroundColor: 'rgba(204, 255, 0, 0.08)' }],
+              ]}
+              onPress={() => setTheme('default')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.themeSwatch, { backgroundColor: '#CCFF00', borderColor: '#DAFF01' }]}>
+                <Ionicons name="flash" size={14} color="#000000" />
+              </View>
+
+              <View style={styles.themeInfoContainer}>
+                <View style={styles.themeTitleRow}>
+                  <Text style={[styles.themeTitle, { color: colors.textPrimary }]}>Default (Neon Lime)</Text>
+                  {theme === 'default' && (
+                    <View style={[styles.activeThemeBadge, { backgroundColor: '#CCFF00' }]}>
+                      <Text style={styles.activeThemeBadgeText}>ACTIVE</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.themeSubtitle, { color: colors.textMuted }]}>
+                  High-visibility neon lime palette
+                </Text>
+              </View>
+
+              <View style={[styles.radioCircle, theme === 'default' && { borderColor: '#CCFF00', backgroundColor: '#CCFF00' }]}>
+                {theme === 'default' && <Ionicons name="checkmark" size={14} color="#000000" />}
+              </View>
+            </TouchableOpacity>
+
+            <View style={[styles.themeDivider, { backgroundColor: colors.cardBorder }]} />
+
+            {/* Option 2: Orange Theme (Claude) */}
+            <TouchableOpacity
+              style={[
+                styles.themeOptionRow,
+                theme === 'orange' && [styles.themeOptionRowActive, { borderColor: '#D97757', backgroundColor: 'rgba(217, 119, 87, 0.12)' }],
+              ]}
+              onPress={() => setTheme('orange')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.themeSwatch, { backgroundColor: '#D97757', borderColor: '#E88665' }]}>
+                <Ionicons name="flame" size={14} color="#000000" />
+              </View>
+
+              <View style={styles.themeInfoContainer}>
+                <View style={styles.themeTitleRow}>
+                  <Text style={[styles.themeTitle, { color: colors.textPrimary }]}>Orange Theme (Claude)</Text>
+                  {theme === 'orange' && (
+                    <View style={[styles.activeThemeBadge, { backgroundColor: '#D97757' }]}>
+                      <Text style={styles.activeThemeBadgeText}>ACTIVE</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={[styles.themeSubtitle, { color: colors.textMuted }]}>
+                  Warm Anthropic Claude terracotta orange
+                </Text>
+              </View>
+
+              <View style={[styles.radioCircle, theme === 'orange' && { borderColor: '#D97757', backgroundColor: '#D97757' }]}>
+                {theme === 'orange' && <Ionicons name="checkmark" size={14} color="#000000" />}
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 3. ACCOUNT SECTION */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionHeader, { color: colors.primary }]}>ACCOUNT</Text>
           <NeonCard style={styles.card} contentStyle={styles.cardContent}>
             {/* Edit Profile & Photo */}
             <TouchableOpacity
@@ -255,11 +332,11 @@ export const SettingsScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <View style={styles.iconBox}>
-                <Ionicons name="id-card-outline" size={20} color="#000000" />
+                <Ionicons name="bar-chart-outline" size={20} color="#000000" />
               </View>
               <View style={styles.itemTextContainer}>
-                <Text style={styles.itemTitle}>Jogpal Passport</Text>
-                <Text style={styles.itemSubtitle}>View your trophies and milestones</Text>
+                <Text style={styles.itemTitle}>Runner Analytics</Text>
+                <Text style={styles.itemSubtitle}>View personal bests & stats</Text>
               </View>
               <Feather name="chevron-right" size={20} color="#000000" />
             </TouchableOpacity>
@@ -310,10 +387,10 @@ export const SettingsScreen: React.FC = () => {
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.modalContainer}>
+          <View style={[styles.modalContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>EDIT RUNNER PROFILE</Text>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.cardBorder }]}>
+              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>EDIT RUNNER PROFILE</Text>
               <TouchableOpacity
                 onPress={() => setIsEditModalVisible(false)}
                 style={styles.modalCloseBtn}
@@ -327,10 +404,10 @@ export const SettingsScreen: React.FC = () => {
               <View style={styles.modalAvatarSection}>
                 <View style={styles.largeAvatarWrapper}>
                   {editPhotoURL ? (
-                    <Image source={{ uri: editPhotoURL }} style={styles.largeAvatarImg} />
+                    <Image source={{ uri: editPhotoURL }} style={[styles.largeAvatarImg, { borderColor: colors.primary }]} />
                   ) : (
-                    <View style={styles.largeAvatarPlaceholder}>
-                      <Text style={styles.largeAvatarInitial}>
+                    <View style={[styles.largeAvatarPlaceholder, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}>
+                      <Text style={[styles.largeAvatarInitial, { color: colors.primary }]}>
                         {(editName || 'R').trim().charAt(0).toUpperCase()}
                       </Text>
                     </View>
@@ -338,47 +415,47 @@ export const SettingsScreen: React.FC = () => {
                 </View>
 
                 {/* Photo Action Buttons */}
-                <View style={styles.photoActionRow}>
+                <View style={styles.photoActionsRow}>
                   <TouchableOpacity
-                    style={styles.photoActionBtn}
+                    style={[styles.photoActionBtn, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}
                     onPress={handlePickFromGallery}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
-                    <Feather name="image" size={16} color={colors.limePrimary} />
-                    <Text style={styles.photoActionText}>Choose Photo</Text>
+                    <Feather name="image" size={16} color={colors.primary} />
+                    <Text style={[styles.photoActionBtnText, { color: colors.textPrimary }]}>Gallery</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.photoActionBtn}
+                    style={[styles.photoActionBtn, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}
                     onPress={handleTakePhoto}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
-                    <Feather name="camera" size={16} color={colors.limePrimary} />
-                    <Text style={styles.photoActionText}>Take Photo</Text>
+                    <Feather name="camera" size={16} color={colors.primary} />
+                    <Text style={[styles.photoActionBtnText, { color: colors.textPrimary }]}>Camera</Text>
                   </TouchableOpacity>
 
                   {!!editPhotoURL && (
                     <TouchableOpacity
-                      style={[styles.photoActionBtn, styles.removePhotoBtn]}
+                      style={[styles.photoActionBtn, styles.photoRemoveBtn]}
                       onPress={handleRemovePhoto}
-                      activeOpacity={0.8}
+                      activeOpacity={0.7}
                     >
-                      <Feather name="trash-2" size={16} color="#FF453A" />
-                      <Text style={styles.removePhotoText}>Remove</Text>
+                      <Feather name="trash" size={16} color="#FF453A" />
+                      <Text style={[styles.photoActionBtnText, styles.photoRemoveBtnText]}>Remove</Text>
                     </TouchableOpacity>
                   )}
                 </View>
 
-                {/* Preset Avatars Selector */}
+                {/* Preset Avatars Selection */}
                 <View style={styles.presetSection}>
-                  <Text style={styles.presetLabel}>OR CHOOSE A RUNNER AVATAR</Text>
+                  <Text style={[styles.presetSectionLabel, { color: colors.textMuted }]}>OR CHOOSE A RUNNER AVATAR</Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetRow}>
                     {PRESET_AVATARS.map((url, idx) => (
                       <TouchableOpacity
                         key={idx}
                         style={[
-                          styles.presetAvatarBtn,
-                          editPhotoURL === url && styles.presetAvatarSelected,
+                          styles.presetAvatarWrapper,
+                          editPhotoURL === url && [styles.presetAvatarSelected, { borderColor: colors.primary }],
                         ]}
                         onPress={() => setEditPhotoURL(url)}
                         activeOpacity={0.8}
@@ -390,50 +467,39 @@ export const SettingsScreen: React.FC = () => {
                 </View>
               </View>
 
-              {/* Name Input Field */}
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>RUNNER DISPLAY NAME</Text>
-                <View style={styles.inputWrapper}>
-                  <Feather name="user" size={18} color={colors.limePrimary} />
+              {/* Display Name Input */}
+              <View style={styles.modalInputGroup}>
+                <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>DISPLAY NAME</Text>
+                <View style={[styles.inputWrapper, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}>
+                  <Feather name="user" size={18} color={colors.primary} />
                   <TextInput
-                    style={styles.textInput}
-                    placeholder="Enter your runner name"
-                    placeholderTextColor={colors.textMuted}
+                    style={[styles.textInput, { color: colors.textPrimary }]}
                     value={editName}
                     onChangeText={setEditName}
-                    autoCapitalize="words"
+                    placeholder="Enter your runner name"
+                    placeholderTextColor={colors.textMuted}
                     maxLength={30}
+                    autoCapitalize="words"
                   />
                   {editName.length > 0 && (
-                    <TouchableOpacity onPress={() => setEditName('')} style={styles.clearBtn}>
+                    <TouchableOpacity onPress={() => setEditName('')}>
                       <Feather name="x-circle" size={16} color={colors.textMuted} />
                     </TouchableOpacity>
                   )}
                 </View>
               </View>
 
-              {/* Save & Cancel Buttons */}
-              <View style={styles.modalButtonContainer}>
-                {isSaving ? (
-                  <View style={styles.savingContainer}>
-                    <ActivityIndicator size="small" color={colors.limePrimary} />
-                    <Text style={styles.savingText}>Saving to Firebase...</Text>
+              {/* Save Button */}
+              <View style={styles.modalFooter}>
+                <NeonButton
+                  title={isSaving ? 'SAVING...' : 'SAVE CHANGES'}
+                  onPress={handleSaveProfile}
+                  style={styles.saveBtn}
+                />
+                {isSaving && (
+                  <View style={styles.savingIndicator}>
+                    <ActivityIndicator size="small" color={colors.primary} />
                   </View>
-                ) : (
-                  <>
-                    <NeonButton
-                      title="SAVE CHANGES"
-                      onPress={handleSaveProfile}
-                      style={styles.saveBtn}
-                    />
-                    <TouchableOpacity
-                      style={styles.cancelBtn}
-                      onPress={() => setIsEditModalVisible(false)}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={styles.cancelBtnText}>CANCEL</Text>
-                    </TouchableOpacity>
-                  </>
                 )}
               </View>
             </ScrollView>
@@ -447,13 +513,12 @@ export const SettingsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     gap: 12,
   },
   backButton: {
@@ -463,9 +528,8 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
-    color: colors.textPrimary,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -475,12 +539,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#151518',
     borderRadius: 22,
     padding: 16,
-    marginBottom: 24,
     borderWidth: 1,
-    borderColor: '#26262B',
+    marginBottom: 24,
   },
   profileHeroLeft: {
     flexDirection: 'row',
@@ -496,22 +558,18 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     borderWidth: 2,
-    borderColor: colors.limePrimary,
   },
   profileAvatarPlaceholder: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#26262B',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.limePrimary,
   },
   profileAvatarInitial: {
     fontSize: 24,
     fontWeight: '900',
-    color: colors.limePrimary,
   },
   avatarCameraBadge: {
     position: 'absolute',
@@ -520,176 +578,236 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: colors.limePrimary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#151518',
+    borderColor: '#000000',
   },
   profileHeroInfo: {
     flex: 1,
     gap: 2,
   },
   profileHeroName: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '900',
-    color: colors.textPrimary,
   },
   profileHeroEmail: {
     fontSize: 12,
-    fontWeight: '600',
-    color: colors.textMuted,
   },
   profileHeroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 6,
     marginTop: 4,
   },
   profileHeroBadgeText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.limePrimary,
+    fontSize: 9,
+    fontWeight: '900',
     letterSpacing: 0.5,
   },
   editProfileBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.limePrimary,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
-    gap: 5,
+    gap: 4,
   },
   editProfileBtnText: {
     fontSize: 11,
     fontWeight: '900',
     color: '#000000',
-    letterSpacing: 0.8,
+    letterSpacing: 0.5,
   },
   section: {
     marginBottom: 24,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
   sectionHeader: {
     fontSize: 12,
     fontWeight: '900',
-    color: colors.limePrimary,
-    letterSpacing: 1.2,
-    marginBottom: 10,
+    letterSpacing: 1,
     textTransform: 'uppercase',
   },
+  themeOptionsContainer: {
+    borderRadius: 22,
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  themeOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    gap: 14,
+  },
+  themeOptionRowActive: {
+    borderWidth: 1,
+  },
+  themeSwatch: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  themeInfoContainer: {
+    flex: 1,
+  },
+  themeTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  themeTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  activeThemeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  activeThemeBadgeText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: '#000000',
+    letterSpacing: 0.5,
+  },
+  themeSubtitle: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  radioCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: '#44444C',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  themeDivider: {
+    height: 1,
+    marginHorizontal: 16,
+  },
   card: {
-    borderRadius: 26,
+    borderRadius: 24,
   },
   cardContent: {
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
   },
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.08)',
   },
   lastItemRow: {
-    paddingBottom: 4,
+    borderBottomWidth: 0,
   },
   iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.12)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
   deleteIconBox: {
-    backgroundColor: 'rgba(153, 27, 27, 0.15)',
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
   },
   itemTextContainer: {
     flex: 1,
-    paddingRight: 8,
   },
   itemTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: '#000000',
+    letterSpacing: -0.2,
   },
   deleteTitle: {
     color: '#991B1B',
   },
   itemSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
-    color: '#2A2A2A',
+    color: 'rgba(0, 0, 0, 0.65)',
     marginTop: 2,
   },
-  // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.78)',
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    backgroundColor: '#121215',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 36,
-    maxHeight: '90%',
     borderWidth: 1,
-    borderColor: '#24242A',
+    borderBottomWidth: 0,
+    maxHeight: '90%',
+    paddingBottom: 30,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#202024',
   },
   modalTitle: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '900',
-    color: colors.limePrimary,
-    letterSpacing: 1.5,
+    letterSpacing: 1,
   },
   modalCloseBtn: {
-    padding: 6,
+    padding: 4,
   },
   modalBody: {
-    marginTop: 16,
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
   modalAvatarSection: {
     alignItems: 'center',
     marginBottom: 20,
   },
   largeAvatarWrapper: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   largeAvatarImg: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     borderWidth: 3,
-    borderColor: colors.limePrimary,
   },
   largeAvatarPlaceholder: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#1E1E22',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: colors.limePrimary,
   },
   largeAvatarInitial: {
-    fontSize: 40,
+    fontSize: 36,
     fontWeight: '900',
-    color: colors.limePrimary,
   },
-  photoActionRow: {
+  photoActionsRow: {
     flexDirection: 'row',
     gap: 10,
     marginBottom: 16,
@@ -697,26 +815,21 @@ const styles = StyleSheet.create({
   photoActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1C1C20',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 14,
     gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#2C2C34',
   },
-  photoActionText: {
+  photoActionBtnText: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.textPrimary,
   },
-  removePhotoBtn: {
+  photoRemoveBtn: {
     borderColor: 'rgba(255, 69, 58, 0.4)',
     backgroundColor: 'rgba(255, 69, 58, 0.1)',
   },
-  removePhotoText: {
-    fontSize: 12,
-    fontWeight: '800',
+  photoRemoveBtnText: {
     color: '#FF453A',
   },
   presetSection: {
@@ -724,89 +837,62 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 4,
   },
-  presetLabel: {
+  presetSectionLabel: {
     fontSize: 10,
     fontWeight: '900',
-    color: colors.textMuted,
     letterSpacing: 1,
     marginBottom: 10,
   },
   presetRow: {
-    gap: 12,
-    paddingHorizontal: 10,
+    gap: 10,
+    paddingHorizontal: 4,
   },
-  presetAvatarBtn: {
-    borderRadius: 24,
+  presetAvatarWrapper: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     borderWidth: 2,
     borderColor: 'transparent',
-    padding: 2,
+    overflow: 'hidden',
   },
   presetAvatarSelected: {
-    borderColor: colors.limePrimary,
+    borderWidth: 2,
   },
   presetAvatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: '100%',
+    height: '100%',
   },
-  inputGroup: {
-    gap: 8,
-    marginBottom: 20,
+  modalInputGroup: {
+    marginBottom: 24,
   },
   inputLabel: {
     fontSize: 11,
     fontWeight: '900',
-    color: colors.textSecondary,
-    letterSpacing: 1,
-    marginLeft: 4,
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#18181C',
     borderRadius: 16,
-    paddingHorizontal: 16,
-    height: 52,
     borderWidth: 1,
-    borderColor: '#2A2A32',
-    gap: 12,
+    paddingHorizontal: 14,
+    height: 52,
+    gap: 10,
   },
   textInput: {
     flex: 1,
     fontSize: 15,
-    color: colors.textPrimary,
     fontWeight: '700',
   },
-  clearBtn: {
-    padding: 4,
-  },
-  modalButtonContainer: {
+  modalFooter: {
     gap: 10,
-    marginTop: 8,
+    marginBottom: 20,
   },
   saveBtn: {
     width: '100%',
   },
-  cancelBtn: {
-    paddingVertical: 14,
+  savingIndicator: {
     alignItems: 'center',
-  },
-  cancelBtnText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: colors.textMuted,
-    letterSpacing: 1,
-  },
-  savingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    gap: 10,
-  },
-  savingText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.limePrimary,
   },
 });

@@ -8,11 +8,12 @@ import { UpcomingSessionCard } from '../components/UpcomingSessionCard';
 import { PersonalBestsSection } from '../components/PersonalBestsSection';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { user, userProfile, weeklyKm, crew, upcomingSession, personalBests, logNewRun, addCrewMember, scheduleSession } = useApp();
+  const { colors } = useTheme();
 
   const handleStartSoloRun = async () => {
     Alert.alert(
@@ -64,8 +65,8 @@ export const HomeScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.rootContainer, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+    <View style={[styles.rootContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
       
       <ScrollView
         style={styles.scrollView}
@@ -113,7 +114,6 @@ export const HomeScreen: React.FC = () => {
 const styles = StyleSheet.create({
   rootContainer: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   scrollView: {
     flex: 1,

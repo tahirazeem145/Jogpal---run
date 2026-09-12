@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -15,12 +15,13 @@ import { NeonCard } from '../components/NeonCard';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
 import { runService } from '../services/runService';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 export const ProfileScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const { userProfile, runs, logNewRun } = useApp();
+  const { colors, isOrange } = useTheme();
 
   // Compute Live Analytics from runs history
   const stats = runService.calculateRunningStats(runs);
@@ -63,7 +64,7 @@ export const ProfileScreen: React.FC = () => {
   };
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header Bar */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={handleBack} activeOpacity={0.7}>
@@ -71,12 +72,12 @@ export const ProfileScreen: React.FC = () => {
         </TouchableOpacity>
         <View style={styles.headerTitleGroup}>
           <View style={styles.titleRow}>
-            <Text style={styles.headerTitle}>Runner Analytics</Text>
-            <View style={styles.passportIconBox}>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Runner Analytics</Text>
+            <View style={[styles.passportIconBox, { backgroundColor: colors.primary }]}>
               <Ionicons name="stats-chart" size={13} color="#000000" />
             </View>
           </View>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
             Performance stats, personal bests & consistency
           </Text>
         </View>
@@ -103,7 +104,7 @@ export const ProfileScreen: React.FC = () => {
                 <Text style={styles.runnerTitle}>{userProfile?.displayName || 'Runner'}</Text>
                 <View style={styles.badgesRow}>
                   <View style={styles.levelPill}>
-                    <Text style={styles.levelPillText}>LEVEL {level}</Text>
+                    <Text style={[styles.levelPillText, { color: colors.primary }]}>LEVEL {level}</Text>
                   </View>
                   <View style={styles.rankPill}>
                     <Text style={styles.rankPillText}>{rank.toUpperCase()}</Text>
@@ -117,8 +118,8 @@ export const ProfileScreen: React.FC = () => {
               onPress={handleRecordQuickRun}
               activeOpacity={0.8}
             >
-              <Ionicons name="add" size={16} color="#000000" />
-              <Text style={styles.quickRunBtnText}>LOG RUN</Text>
+              <Ionicons name="add" size={16} color={colors.primary} />
+              <Text style={[styles.quickRunBtnText, { color: colors.primary }]}>LOG RUN</Text>
             </TouchableOpacity>
           </View>
 
@@ -144,59 +145,63 @@ export const ProfileScreen: React.FC = () => {
         {/* 2. RUNNING STATS OVERVIEW SECTION */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
-            <Ionicons name="bar-chart" size={16} color={colors.limePrimary} />
-            <Text style={styles.sectionTitle}>RUNNING STATS OVERVIEW</Text>
+            <Ionicons name="bar-chart" size={16} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>RUNNING STATS OVERVIEW</Text>
           </View>
 
           <View style={styles.statsGrid}>
             {/* Total Runs */}
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.statCardHeader}>
-                <Text style={styles.statCardLabel}>TOTAL RUNS</Text>
-                <MaterialCommunityIcons name="run" size={18} color={colors.limePrimary} />
+                <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>TOTAL RUNS</Text>
+                <MaterialCommunityIcons name="run" size={18} color={colors.primary} />
               </View>
-              <Text style={styles.statCardValue}>{stats.totalRuns}</Text>
-              <Text style={styles.statCardSub}>Completed sessions</Text>
+              <Text style={[styles.statCardValue, { color: colors.textPrimary }]}>{stats.totalRuns}</Text>
+              <Text style={[styles.statCardSub, { color: colors.textMuted }]}>Completed sessions</Text>
             </View>
 
             {/* Total Distance */}
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.statCardHeader}>
-                <Text style={styles.statCardLabel}>TOTAL DISTANCE</Text>
-                <Ionicons name="navigate" size={16} color={colors.limePrimary} />
+                <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>TOTAL DISTANCE</Text>
+                <Ionicons name="navigate" size={16} color={colors.primary} />
               </View>
-              <Text style={styles.statCardValue}>{stats.totalDistanceKm} <Text style={styles.statCardUnit}>KM</Text></Text>
-              <Text style={styles.statCardSub}>Lifetime distance</Text>
+              <Text style={[styles.statCardValue, { color: colors.textPrimary }]}>
+                {stats.totalDistanceKm} <Text style={[styles.statCardUnit, { color: colors.textSecondary }]}>KM</Text>
+              </Text>
+              <Text style={[styles.statCardSub, { color: colors.textMuted }]}>Lifetime distance</Text>
             </View>
 
             {/* Total Running Time */}
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.statCardHeader}>
-                <Text style={styles.statCardLabel}>TOTAL TIME</Text>
-                <Ionicons name="time" size={16} color={colors.limePrimary} />
+                <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>TOTAL TIME</Text>
+                <Ionicons name="time" size={16} color={colors.primary} />
               </View>
-              <Text style={styles.statCardValue}>{stats.totalTimeFormatted}</Text>
-              <Text style={styles.statCardSub}>Time on feet</Text>
+              <Text style={[styles.statCardValue, { color: colors.textPrimary }]}>{stats.totalTimeFormatted}</Text>
+              <Text style={[styles.statCardSub, { color: colors.textMuted }]}>Time on feet</Text>
             </View>
 
             {/* Average Pace */}
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.statCardHeader}>
-                <Text style={styles.statCardLabel}>AVERAGE PACE</Text>
-                <Ionicons name="speedometer" size={16} color={colors.limePrimary} />
+                <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>AVERAGE PACE</Text>
+                <Ionicons name="speedometer" size={16} color={colors.primary} />
               </View>
-              <Text style={styles.statCardValue}>{stats.averagePace}</Text>
-              <Text style={styles.statCardSub}>Across all runs</Text>
+              <Text style={[styles.statCardValue, { color: colors.textPrimary }]}>{stats.averagePace}</Text>
+              <Text style={[styles.statCardSub, { color: colors.textMuted }]}>Across all runs</Text>
             </View>
 
             {/* Longest Run */}
-            <View style={[styles.statCard, styles.statCardFull]}>
+            <View style={[styles.statCard, styles.statCardFull, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
               <View style={styles.statCardHeader}>
                 <View style={styles.longestRunLeft}>
-                  <Text style={styles.statCardLabel}>LONGEST SINGLE RUN</Text>
-                  <Text style={styles.statCardValueLarge}>{stats.longestRunKm} <Text style={styles.statCardUnit}>KM</Text></Text>
+                  <Text style={[styles.statCardLabel, { color: colors.textMuted }]}>LONGEST SINGLE RUN</Text>
+                  <Text style={[styles.statCardValueLarge, { color: colors.primary }]}>
+                    {stats.longestRunKm} <Text style={[styles.statCardUnit, { color: colors.textSecondary }]}>KM</Text>
+                  </Text>
                 </View>
-                <View style={styles.medalBadge}>
+                <View style={[styles.medalBadge, { backgroundColor: colors.primary }]}>
                   <Ionicons name="medal" size={24} color="#000000" />
                 </View>
               </View>
@@ -207,8 +212,8 @@ export const ProfileScreen: React.FC = () => {
         {/* 3. PERSONAL BESTS 🏆 SECTION */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
-            <Ionicons name="trophy" size={16} color={colors.limePrimary} />
-            <Text style={styles.sectionTitle}>PERSONAL BESTS 🏆</Text>
+            <Ionicons name="trophy" size={16} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>PERSONAL BESTS 🏆</Text>
           </View>
 
           <ScrollView
@@ -219,10 +224,14 @@ export const ProfileScreen: React.FC = () => {
             {personalBests.map((pb) => (
               <View
                 key={pb.id}
-                style={[styles.pbCard, pb.unlocked && styles.pbCardUnlocked]}
+                style={[
+                  styles.pbCard,
+                  { backgroundColor: colors.card, borderColor: colors.cardBorder },
+                  pb.unlocked && { borderColor: colors.primaryLight, backgroundColor: colors.cardSubtle },
+                ]}
               >
                 <View style={styles.pbCardHeader}>
-                  <View style={[styles.pbIconBox, pb.unlocked && styles.pbIconBoxUnlocked]}>
+                  <View style={[styles.pbIconBox, pb.unlocked && { backgroundColor: colors.primary }]}>
                     <Ionicons
                       name={pb.iconName as any}
                       size={18}
@@ -230,26 +239,26 @@ export const ProfileScreen: React.FC = () => {
                     />
                   </View>
                   {pb.unlocked ? (
-                    <View style={styles.unlockedBadge}>
-                      <Text style={styles.unlockedBadgeText}>UNLOCKED</Text>
+                    <View style={[styles.unlockedBadge, { backgroundColor: colors.primaryLight }]}>
+                      <Text style={[styles.unlockedBadgeText, { color: colors.primary }]}>UNLOCKED</Text>
                     </View>
                   ) : (
                     <View style={styles.lockedBadge}>
-                      <Text style={styles.lockedBadgeText}>READY</Text>
+                      <Text style={[styles.lockedBadgeText, { color: colors.textMuted }]}>READY</Text>
                     </View>
                   )}
                 </View>
 
-                <Text style={styles.pbTitle}>{pb.title}</Text>
-                <Text style={styles.pbValue}>{pb.value}</Text>
+                <Text style={[styles.pbTitle, { color: colors.textSecondary }]}>{pb.title}</Text>
+                <Text style={[styles.pbValue, { color: colors.textPrimary }]}>{pb.value}</Text>
 
-                <View style={styles.pbFooter}>
+                <View style={[styles.pbFooter, { borderTopColor: colors.cardBorder }]}>
                   {pb.pace ? (
-                    <Text style={styles.pbPace}>{pb.pace}</Text>
+                    <Text style={[styles.pbPace, { color: colors.primary }]}>{pb.pace}</Text>
                   ) : (
-                    <Text style={styles.pbSubtitle}>{pb.subtitle}</Text>
+                    <Text style={[styles.pbSubtitle, { color: colors.textMuted }]}>{pb.subtitle}</Text>
                   )}
-                  {!!pb.date && <Text style={styles.pbDate}>{pb.date}</Text>}
+                  {!!pb.date && <Text style={[styles.pbDate, { color: colors.textMuted }]}>{pb.date}</Text>}
                 </View>
               </View>
             ))}
@@ -259,33 +268,33 @@ export const ProfileScreen: React.FC = () => {
         {/* 4. RUNNING STREAK & CONSISTENCY 🔥 SECTION */}
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
-            <Ionicons name="flame" size={18} color="#FFA500" />
-            <Text style={styles.sectionTitle}>RUNNING STREAK & CONSISTENCY 🔥</Text>
+            <Ionicons name="flame" size={18} color={isOrange ? '#FF7A50' : '#FFA500'} />
+            <Text style={[styles.sectionTitle, { color: colors.primary }]}>RUNNING STREAK & CONSISTENCY 🔥</Text>
           </View>
 
-          <View style={styles.streakContainer}>
+          <View style={[styles.streakContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             {/* Streak Counters */}
             <View style={styles.streakCountersRow}>
               <View style={styles.streakBox}>
-                <Text style={styles.streakCountNumber}>🔥 {streakStats.currentStreak}</Text>
-                <Text style={styles.streakBoxLabel}>CURRENT STREAK</Text>
-                <Text style={styles.streakBoxSub}>Consecutive active days</Text>
+                <Text style={[styles.streakCountNumber, { color: colors.textPrimary }]}>🔥 {streakStats.currentStreak}</Text>
+                <Text style={[styles.streakBoxLabel, { color: colors.primary }]}>CURRENT STREAK</Text>
+                <Text style={[styles.streakBoxSub, { color: colors.textMuted }]}>Consecutive active days</Text>
               </View>
 
-              <View style={styles.streakBoxDivider} />
+              <View style={[styles.streakBoxDivider, { backgroundColor: colors.cardBorder }]} />
 
               <View style={styles.streakBox}>
-                <Text style={styles.streakCountNumber}>🌟 {streakStats.longestStreak}</Text>
-                <Text style={styles.streakBoxLabel}>LONGEST STREAK</Text>
-                <Text style={styles.streakBoxSub}>All-time consistency</Text>
+                <Text style={[styles.streakCountNumber, { color: colors.textPrimary }]}>🌟 {streakStats.longestStreak}</Text>
+                <Text style={[styles.streakBoxLabel, { color: colors.primary }]}>LONGEST STREAK</Text>
+                <Text style={[styles.streakBoxSub, { color: colors.textMuted }]}>All-time consistency</Text>
               </View>
             </View>
 
             {/* Weekly Activity 7-Day Matrix */}
-            <View style={styles.weeklyMatrix}>
+            <View style={[styles.weeklyMatrix, { borderTopColor: colors.cardBorder }]}>
               <View style={styles.weeklyMatrixHeader}>
-                <Text style={styles.weeklyMatrixTitle}>THIS WEEK'S MOMENTUM</Text>
-                <Text style={styles.weeklyMatrixScore}>
+                <Text style={[styles.weeklyMatrixTitle, { color: colors.textSecondary }]}>THIS WEEK'S MOMENTUM</Text>
+                <Text style={[styles.weeklyMatrixScore, { color: colors.primary }]}>
                   {streakStats.activeDaysCount} / 7 Days Active
                 </Text>
               </View>
@@ -296,8 +305,9 @@ export const ProfileScreen: React.FC = () => {
                     <View
                       style={[
                         styles.dayCircle,
-                        item.active && styles.dayCircleActive,
-                        item.isToday && styles.dayCircleToday,
+                        { borderColor: colors.cardBorder, backgroundColor: colors.cardSubtle },
+                        item.active && { backgroundColor: colors.primary, borderColor: colors.primary },
+                        item.isToday && { borderColor: colors.primary, borderWidth: 2 },
                       ]}
                     >
                       {item.active ? (
@@ -306,14 +316,21 @@ export const ProfileScreen: React.FC = () => {
                         <Text
                           style={[
                             styles.dayCircleText,
-                            item.isToday && styles.dayCircleTextToday,
+                            { color: colors.textMuted },
+                            item.isToday && { color: colors.primary },
                           ]}
                         >
                           {item.day}
                         </Text>
                       )}
                     </View>
-                    <Text style={[styles.dayLabel, item.isToday && styles.dayLabelToday]}>
+                    <Text
+                      style={[
+                        styles.dayLabel,
+                        { color: colors.textMuted },
+                        item.isToday && { color: colors.primary, fontWeight: '900' },
+                      ]}
+                    >
                       {item.day}
                     </Text>
                   </View>
@@ -322,18 +339,21 @@ export const ProfileScreen: React.FC = () => {
             </View>
 
             {/* Monthly Consistency Bar */}
-            <View style={styles.monthlyConsistencyBox}>
+            <View style={[styles.monthlyConsistencyBox, { borderTopColor: colors.cardBorder }]}>
               <View style={styles.monthlyHeader}>
-                <Text style={styles.monthlyTitle}>MONTHLY CONSISTENCY RATING</Text>
-                <Text style={styles.monthlyPercent}>
+                <Text style={[styles.monthlyTitle, { color: colors.textSecondary }]}>MONTHLY CONSISTENCY RATING</Text>
+                <Text style={[styles.monthlyPercent, { color: colors.primary }]}>
                   {streakStats.monthlyConsistencyPercent}%
                 </Text>
               </View>
-              <View style={styles.progressBarTrack}>
+              <View style={[styles.progressBarTrack, { backgroundColor: colors.cardSubtle }]}>
                 <View
                   style={[
                     styles.progressBarFill,
-                    { width: `${Math.max(streakStats.monthlyConsistencyPercent, 6)}%` },
+                    {
+                      backgroundColor: colors.primary,
+                      width: `${Math.max(streakStats.monthlyConsistencyPercent, 6)}%`,
+                    },
                   ]}
                 />
               </View>
@@ -351,7 +371,6 @@ export const ProfileScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -378,17 +397,14 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '800',
-    color: colors.textPrimary,
   },
   passportIconBox: {
-    backgroundColor: colors.limePrimary,
     borderRadius: 4,
     padding: 2,
   },
   headerSubtitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: colors.textSecondary,
     marginTop: 2,
   },
   scrollContent: {
@@ -458,7 +474,6 @@ const styles = StyleSheet.create({
   levelPillText: {
     fontSize: 10,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.5,
   },
   rankPill: {
@@ -485,7 +500,6 @@ const styles = StyleSheet.create({
   quickRunBtnText: {
     fontSize: 11,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.8,
   },
   heroHighlights: {
@@ -529,7 +543,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
@@ -540,11 +553,9 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: '48%',
-    backgroundColor: '#151518',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#24242A',
   },
   statCardFull: {
     width: '100%',
@@ -558,29 +569,24 @@ const styles = StyleSheet.create({
   statCardLabel: {
     fontSize: 10,
     fontWeight: '900',
-    color: colors.textMuted,
     letterSpacing: 0.8,
   },
   statCardValue: {
     fontSize: 22,
     fontWeight: '900',
-    color: colors.textPrimary,
   },
   statCardValueLarge: {
     fontSize: 26,
     fontWeight: '900',
-    color: colors.limePrimary,
     marginTop: 2,
   },
   statCardUnit: {
     fontSize: 13,
     fontWeight: '700',
-    color: colors.textSecondary,
   },
   statCardSub: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.textMuted,
     marginTop: 4,
   },
   longestRunLeft: {
@@ -590,7 +596,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.limePrimary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -600,15 +605,9 @@ const styles = StyleSheet.create({
   },
   pbCard: {
     width: 175,
-    backgroundColor: '#151518',
     borderRadius: 20,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#24242A',
-  },
-  pbCardUnlocked: {
-    borderColor: 'rgba(218, 255, 1, 0.35)',
-    backgroundColor: '#17171C',
   },
   pbCardHeader: {
     flexDirection: 'row',
@@ -624,11 +623,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  pbIconBoxUnlocked: {
-    backgroundColor: colors.limePrimary,
-  },
   unlockedBadge: {
-    backgroundColor: 'rgba(218, 255, 1, 0.15)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
@@ -636,7 +631,6 @@ const styles = StyleSheet.create({
   unlockedBadgeText: {
     fontSize: 9,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.5,
   },
   lockedBadge: {
@@ -648,46 +642,37 @@ const styles = StyleSheet.create({
   lockedBadgeText: {
     fontSize: 9,
     fontWeight: '800',
-    color: colors.textMuted,
   },
   pbTitle: {
     fontSize: 11,
     fontWeight: '900',
-    color: colors.textSecondary,
     letterSpacing: 0.6,
   },
   pbValue: {
     fontSize: 22,
     fontWeight: '900',
-    color: colors.textPrimary,
     marginVertical: 4,
   },
   pbFooter: {
     borderTopWidth: 1,
-    borderTopColor: '#24242A',
     paddingTop: 8,
     gap: 2,
   },
   pbPace: {
     fontSize: 12,
     fontWeight: '700',
-    color: colors.limePrimary,
   },
   pbSubtitle: {
     fontSize: 11,
     fontWeight: '600',
-    color: colors.textMuted,
   },
   pbDate: {
     fontSize: 10,
-    color: colors.textMuted,
   },
   streakContainer: {
-    backgroundColor: '#151518',
     borderRadius: 22,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#24242A',
     gap: 16,
   },
   streakCountersRow: {
@@ -702,29 +687,24 @@ const styles = StyleSheet.create({
   streakCountNumber: {
     fontSize: 22,
     fontWeight: '900',
-    color: colors.textPrimary,
   },
   streakBoxLabel: {
     fontSize: 10,
     fontWeight: '900',
-    color: colors.limePrimary,
     letterSpacing: 0.8,
     marginTop: 2,
   },
   streakBoxSub: {
     fontSize: 10,
     fontWeight: '600',
-    color: colors.textMuted,
     marginTop: 2,
   },
   streakBoxDivider: {
     width: 1,
     height: 36,
-    backgroundColor: '#24242A',
   },
   weeklyMatrix: {
     borderTopWidth: 1,
-    borderTopColor: '#222228',
     paddingTop: 14,
   },
   weeklyMatrixHeader: {
@@ -736,13 +716,11 @@ const styles = StyleSheet.create({
   weeklyMatrixTitle: {
     fontSize: 11,
     fontWeight: '900',
-    color: colors.textSecondary,
     letterSpacing: 0.8,
   },
   weeklyMatrixScore: {
     fontSize: 11,
     fontWeight: '800',
-    color: colors.limePrimary,
   },
   daysRow: {
     flexDirection: 'row',
@@ -756,40 +734,20 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1E1E24',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#2A2A34',
-  },
-  dayCircleActive: {
-    backgroundColor: colors.limePrimary,
-    borderColor: colors.limePrimary,
-  },
-  dayCircleToday: {
-    borderColor: colors.limePrimary,
-    borderWidth: 2,
   },
   dayCircleText: {
     fontSize: 12,
     fontWeight: '800',
-    color: colors.textMuted,
-  },
-  dayCircleTextToday: {
-    color: colors.limePrimary,
   },
   dayLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: colors.textMuted,
-  },
-  dayLabelToday: {
-    color: colors.limePrimary,
-    fontWeight: '900',
   },
   monthlyConsistencyBox: {
     borderTopWidth: 1,
-    borderTopColor: '#222228',
     paddingTop: 14,
     gap: 8,
   },
@@ -801,23 +759,19 @@ const styles = StyleSheet.create({
   monthlyTitle: {
     fontSize: 11,
     fontWeight: '900',
-    color: colors.textSecondary,
     letterSpacing: 0.8,
   },
   monthlyPercent: {
     fontSize: 12,
     fontWeight: '900',
-    color: colors.limePrimary,
   },
   progressBarTrack: {
     height: 8,
-    backgroundColor: '#202026',
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    backgroundColor: colors.limePrimary,
     borderRadius: 4,
   },
 });

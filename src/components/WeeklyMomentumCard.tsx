@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { HoneycombPattern } from './HoneycombPattern';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface WeeklyMomentumCardProps {
   distance?: number | string;
@@ -13,8 +13,10 @@ export const WeeklyMomentumCard: React.FC<WeeklyMomentumCardProps> = ({
   distance = '0.1',
   onStartRunPress,
 }) => {
+  const { colors } = useTheme();
+
   return (
-    <View style={styles.cardContainer}>
+    <View style={[styles.cardContainer, { backgroundColor: colors.primary, shadowColor: colors.primary }]}>
       {/* Background Left & Right Edge Honeycomb Texture Pattern */}
       <HoneycombPattern edgeWidth={75} opacity={0.35} />
 
@@ -54,7 +56,7 @@ export const WeeklyMomentumCard: React.FC<WeeklyMomentumCardProps> = ({
           onPress={onStartRunPress}
           activeOpacity={0.85}
         >
-          <Text style={styles.actionButtonText}>START SOLO RUN</Text>
+          <Text style={[styles.actionButtonText, { color: colors.primary }]}>START SOLO RUN</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -64,11 +66,9 @@ export const WeeklyMomentumCard: React.FC<WeeklyMomentumCardProps> = ({
 const styles = StyleSheet.create({
   cardContainer: {
     marginHorizontal: 16,
-    backgroundColor: colors.limePrimary,
     borderRadius: 30,
     overflow: 'hidden',
     position: 'relative',
-    shadowColor: colors.limePrimary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -159,7 +159,6 @@ const styles = StyleSheet.create({
     borderColor: '#1E1E1E',
   },
   actionButtonText: {
-    color: colors.limePrimary,
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1.2,

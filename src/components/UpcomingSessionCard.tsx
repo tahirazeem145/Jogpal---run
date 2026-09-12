@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { MiniTelemetryChart } from './MiniTelemetryChart';
 import { UpcomingSession } from '../types/data';
-import { colors } from '../theme/colors';
+import { useTheme } from '../theme/colors';
 
 interface UpcomingSessionCardProps {
   session?: UpcomingSession | null;
@@ -15,10 +15,12 @@ export const UpcomingSessionCard: React.FC<UpcomingSessionCardProps> = ({
   onPress,
   onSchedulePress,
 }) => {
+  const { colors } = useTheme();
+
   if (!session) {
     return (
       <TouchableOpacity
-        style={styles.cardContainer}
+        style={[styles.cardContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
         onPress={onSchedulePress || onPress}
         activeOpacity={0.85}
       >
@@ -26,13 +28,13 @@ export const UpcomingSessionCard: React.FC<UpcomingSessionCardProps> = ({
           <View style={styles.calendarIconContainer}>
             <Text style={styles.calendarEmoji}>📅</Text>
           </View>
-          <Text style={styles.tagText}>UPCOMING SESSION</Text>
+          <Text style={[styles.tagText, { color: colors.primary }]}>UPCOMING SESSION</Text>
         </View>
 
         <View style={styles.detailsRow}>
           <View style={styles.textContainer}>
-            <Text style={styles.sessionTitleText}>No upcoming session scheduled</Text>
-            <Text style={styles.sessionMetaText}>Tap to plan your next route</Text>
+            <Text style={[styles.sessionTitleText, { color: colors.textPrimary }]}>No upcoming session scheduled</Text>
+            <Text style={[styles.sessionMetaText, { color: colors.textSecondary }]}>Tap to plan your next route</Text>
           </View>
           <MiniTelemetryChart />
         </View>
@@ -42,7 +44,7 @@ export const UpcomingSessionCard: React.FC<UpcomingSessionCardProps> = ({
 
   return (
     <TouchableOpacity
-      style={styles.cardContainer}
+      style={[styles.cardContainer, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
       onPress={onPress}
       activeOpacity={0.85}
     >
@@ -51,16 +53,16 @@ export const UpcomingSessionCard: React.FC<UpcomingSessionCardProps> = ({
         <View style={styles.calendarIconContainer}>
           <Text style={styles.calendarEmoji}>📅</Text>
         </View>
-        <Text style={styles.tagText}>UPCOMING SESSION</Text>
+        <Text style={[styles.tagText, { color: colors.primary }]}>UPCOMING SESSION</Text>
       </View>
 
       {/* Main Details and Mini Chart */}
       <View style={styles.detailsRow}>
         <View style={styles.textContainer}>
-          <Text style={styles.sessionTitleText}>
-            SESSION: <Text style={styles.sessionNameText}>{session.title}</Text>
+          <Text style={[styles.sessionTitleText, { color: colors.textPrimary }]}>
+            SESSION: <Text style={[styles.sessionNameText, { color: colors.textPrimary }]}>{session.title}</Text>
           </Text>
-          <Text style={styles.sessionMetaText}>
+          <Text style={[styles.sessionMetaText, { color: colors.textSecondary }]}>
             {session.scheduledAt} • {session.distanceKm}
           </Text>
         </View>
@@ -75,12 +77,10 @@ export const UpcomingSessionCard: React.FC<UpcomingSessionCardProps> = ({
 const styles = StyleSheet.create({
   cardContainer: {
     marginHorizontal: 16,
-    backgroundColor: '#151517',
     borderRadius: 22,
     paddingHorizontal: 18,
     paddingVertical: 18,
     borderWidth: 1,
-    borderColor: '#242428',
     marginBottom: 24,
   },
   tagRow: {
@@ -100,7 +100,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '900',
     letterSpacing: 0.8,
-    color: colors.limePrimary,
     textTransform: 'uppercase',
   },
   detailsRow: {
@@ -115,16 +114,13 @@ const styles = StyleSheet.create({
   sessionTitleText: {
     fontSize: 16,
     fontWeight: '800',
-    color: colors.textPrimary,
   },
   sessionNameText: {
     fontWeight: '800',
-    color: colors.textPrimary,
   },
   sessionMetaText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.textSecondary,
     marginTop: 6,
   },
 });
