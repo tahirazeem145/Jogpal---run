@@ -70,6 +70,14 @@ export interface TrackingSession {
   totalPausedMs: number;
 }
 
+export type OfflineRouteMode = 'LOOP' | 'STRAIGHT';
+
+export interface OfflineTargetConfig {
+  isOfflineMode: boolean;
+  targetDistanceKm: number;
+  routeMode: OfflineRouteMode;
+}
+
 export interface PendingRun {
   localId: string;
   userId: string;
@@ -85,4 +93,5 @@ export interface PendingRun {
   actualRoute?: LatLng[];
   trackingIntegrityScore?: number;
   syncStatus: 'SYNC_PENDING' | 'SYNCED' | 'FAILED';
+  offlineConfig?: OfflineTargetConfig;
 }

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, BackHandler, Alert } from 'react-native';
-import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng } from '../types/soloRun';
+import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng, OfflineRouteMode, OfflineTargetConfig } from '../types/soloRun';
 import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm, calculateRollingPaceString, getAccuracyTier } from '../services/locationService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { useApp } from './AppContext';
@@ -17,7 +17,9 @@ interface SoloRunContextType {
   errorMessage: string | null;
   activeRunTitle: string;
   activeRunType: 'SOLO' | 'CREW';
+  offlineConfig: OfflineTargetConfig | null;
   startPreparation: (title?: string, type?: 'SOLO' | 'CREW') => Promise<void>;
+  startOfflinePreparation: (targetKm: number, routeMode: OfflineRouteMode) => Promise<void>;
   startCountdown: () => void;
   pauseRun: () => void;
   resumeRun: () => void;
@@ -71,6 +73,17 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeRunTitle, setActiveRunTitle] = useState<string>('SOLO RUN');
   const [activeRunType, setActiveRunType] = useState<'SOLO' | 'CREW'>('SOLO');
+  const [offlineConfig, setOfflineConfig] = useState<OfflineTargetConfig | null>(null);
+
+  const startOfflinePreparation = async (targetKm: number, routeMode: OfflineRouteMode) => {
+    const config: OfflineTargetConfig = {
+      isOfflineMode: true,
+      targetDistanceKm: targetKm,
+      routeMode,
+    };
+    setOfflineConfig(config);
+    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO');
+  };
 
   // Telemetry & Timing Refs
   const locationSubRef = useRef<{ remove: () => void } | null>(null);
@@ -536,6 +549,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     typeRef.current = 'SOLO';
     setActiveRunTitle('SOLO RUN');
     setActiveRunType('SOLO');
+    setOfflineConfig(null);
   };
 
   return (
@@ -552,7 +566,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         errorMessage,
         activeRunTitle,
         activeRunType,
+        offlineConfig,
         startPreparation,
+        startOfflinePreparation,
         startCountdown,
         pauseRun,
         resumeRun,
