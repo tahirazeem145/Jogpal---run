@@ -16,19 +16,41 @@ import { StartMarker } from './StartMarker';
 import { FinishMarker } from './FinishMarker';
 import { PartnerMarker } from './PartnerMarker';
 
-// Safely require MapLibre Native on Android / iOS
+// 1. Try require MapLibre Native on Android / iOS
 let MapComponent: any = null;
 let CameraComponent: any = null;
 if (Platform.OS !== 'web') {
   try {
     const ML = require('@maplibre/maplibre-react-native');
     const MapLibre = ML.default || ML;
-    MapComponent = MapLibre.MapView || MapLibre.Map;
-    CameraComponent = MapLibre.Camera;
-  } catch (err) {
-    console.warn('[MAPLIBRE_INIT_WARN] Native Map module could not be loaded:', err);
-  }
+    MapComponent = MapLibre.MapView || MapLibre.Map || MapLibre.default?.MapView;
+    CameraComponent = MapLibre.Camera || MapLibre.default?.Camera;
+  } catch (err) {}
 }
+
+// 2. Try require React Native Maps as standard Android fallback
+let RNMapView: any = null;
+let RNPolyline: any = null;
+let RNMarker: any = null;
+if (Platform.OS !== 'web') {
+  try {
+    const RNMaps = require('react-native-maps');
+    const Maps = RNMaps.default || RNMaps;
+    RNMapView = Maps.MapView || Maps.default || Maps;
+    RNPolyline = Maps.Polyline;
+    RNMarker = Maps.Marker;
+  } catch (err) {}
+}
+
+const darkMapStyle = [
+  { elementType: 'geometry', stylers: [{ color: '#16161B' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#16161B' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8E8E93' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#262630' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#101014' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#3A3A48' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0A0A0E' }] },
+];
 
 export const JogpalMap: React.FC<JogpalMapProps> = ({
   currentLocation,
@@ -50,12 +72,11 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   const cameraRef = useRef<any>(null);
   const lastCameraUpdateRef = useRef<number>(0);
   const initialCenterSetRef = useRef<boolean>(false);
-
-  // 1. Web Environment: Interactive Leaflet Dark Map Container
   const iframeRef = useRef<any>(null);
 
+  // Send real-time updates to Web Leaflet container
   useEffect(() => {
-    if (Platform.OS === 'web' && iframeRef.current && iframeRef.current.contentWindow) {
+    if (iframeRef.current && iframeRef.current.contentWindow) {
       const lat = currentLocation?.latitude;
       const lng = currentLocation?.longitude;
       const actualCoords = actualRoute.map((p) => [p.latitude, p.longitude]);
@@ -73,83 +94,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     }
   }, [currentLocation?.latitude, currentLocation?.longitude, actualRoute.length]);
 
-  if (Platform.OS === 'web') {
-    const lat = currentLocation?.latitude || MAP_CONFIG.defaultCenterCoordinate[1];
-    const lng = currentLocation?.longitude || MAP_CONFIG.defaultCenterCoordinate[0];
-    const actualCoords = actualRoute.map((p) => [p.latitude, p.longitude]);
-    const plannedCoords = plannedRoute.map((p) => [p.latitude, p.longitude]);
-
-    const leafletHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-          <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-          <style>
-            html, body, #map { width: 100%; height: 100%; margin: 0; padding: 0; background: #0E0F14; }
-            .leaflet-container { background: #0E0F14 !important; }
-            .dark-tiles {
-              filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%);
-            }
-            .runner-marker {
-              width: 24px; height: 24px; border-radius: 12px;
-              background: ${colors.glow}; border: 2px solid ${colors.primary};
-              display: flex; align-items: center; justify-content: center;
-              box-shadow: 0 0 10px ${colors.glow};
-            }
-            .runner-inner { width: 10px; height: 10px; border-radius: 5px; background: ${colors.primary}; }
-          </style>
-        </head>
-        <body>
-          <div id="map"></div>
-          <script>
-            var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([${lat}, ${lng}], 16);
-            L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              maxZoom: 19,
-              className: 'dark-tiles'
-            }).addTo(map);
-
-            var customIcon = L.divIcon({
-              className: '',
-              html: '<div class="runner-marker"><div class="runner-inner"></div></div>',
-              iconSize: [24, 24],
-              iconAnchor: [12, 12]
-            });
-            var marker = L.marker([${lat}, ${lng}], { icon: customIcon }).addTo(map);
-            var polyline = L.polyline(${JSON.stringify(actualCoords)}, { color: '${colors.primary}', weight: 5, opacity: 0.95 }).addTo(map);
-            ${plannedCoords.length > 1 ? `L.polyline(${JSON.stringify(plannedCoords)}, { color: '#555566', weight: 4, dashArray: '8, 6' }).addTo(map);` : ''}
-
-            window.addEventListener('message', function(event) {
-              if (!event.data || event.data.type !== 'UPDATE_LOCATION') return;
-              var nLat = event.data.lat;
-              var nLng = event.data.lng;
-              if (nLat && nLng) {
-                marker.setLatLng([nLat, nLng]);
-                map.panTo([nLat, nLng], { animate: true, duration: 0.5 });
-              }
-              if (event.data.actualCoords) {
-                polyline.setLatLngs(event.data.actualCoords);
-              }
-            });
-          </script>
-        </body>
-      </html>
-    `;
-
-    return (
-      <View style={[styles.container, style]}>
-        <iframe
-          ref={iframeRef}
-          srcDoc={leafletHTML}
-          style={{ width: '100%', height: '100%', border: 'none', borderRadius: 20 }}
-          title="JOGPAL Web Map"
-        />
-      </View>
-    );
-  }
-
-  // 2. Center Camera Once on Initial Position Acquisition
+  // Center Camera Once on Initial Position Acquisition
   useEffect(() => {
     if (currentLocation && cameraMode === 'FOLLOWING' && !fitRouteOnLoad) {
       if (!initialCenterSetRef.current) {
@@ -165,7 +110,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     }
   }, [currentLocation?.latitude, currentLocation?.longitude, cameraMode, fitRouteOnLoad]);
 
-  // 3. Smart Throttled Camera Follow (~800ms)
+  // Smart Throttled Camera Follow (~800ms)
   const cameraCenterCoordinate: JogpalCoordinate | undefined = useMemo(() => {
     if (!currentLocation || cameraMode === 'USER_CONTROLLED' || fitRouteOnLoad) {
       return undefined;
@@ -182,14 +127,14 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
 
   const [zoomLevel, setZoomLevel] = useState<number>(MAP_CONFIG.defaultZoom);
 
-  // 4. Handle User Gestures (Panning cancels follow mode)
+  // Handle User Gestures (Panning cancels follow mode)
   const handleCameraChanged = useCallback((e: any) => {
     if (e?.userInteraction && cameraMode !== 'USER_CONTROLLED') {
       setCameraMode('USER_CONTROLLED');
     }
   }, [cameraMode]);
 
-  // 5. Compass / Recenter Button Handler
+  // Compass / Recenter Button Handler
   const handleCompassPress = useCallback(() => {
     setCameraMode('FOLLOWING');
     if (cameraRef.current) {
@@ -205,7 +150,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     }
   }, [currentLocation]);
 
-  // 6. Zoom In & Out Controls
+  // Zoom Controls
   const handleZoomIn = useCallback(() => {
     const nextZoom = Math.min(zoomLevel + 1, MAP_CONFIG.maxZoom);
     setZoomLevel(nextZoom);
@@ -228,7 +173,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     }
   }, [zoomLevel]);
 
-  // 7. Calculate Bounding Box for Completed Route (Run History)
+  // Calculate Bounding Box for Completed Route
   const routeBounds = useMemo(() => {
     if (!fitRouteOnLoad || actualRoute.length < 2) return undefined;
 
@@ -269,145 +214,250 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     return null;
   }, [actualRoute]);
 
-  if (!MapComponent || !CameraComponent) {
+  // 1. PRIMARY RENDERER: MapLibre Native Map
+  if (MapComponent && CameraComponent && Platform.OS !== 'web') {
+    const initialCenter: [number, number] = currentLocation
+      ? [currentLocation.longitude, currentLocation.latitude]
+      : MAP_CONFIG.defaultCenterCoordinate;
+
     return (
-      <View
-        style={[
-          styles.container,
-          { borderColor: colors.primary, shadowColor: colors.primary },
-          styles.fallbackContainer,
-          style,
-        ]}
-      >
-        <MaterialCommunityIcons name="map-marker-radius" size={32} color={colors.primary} />
-        <Text style={[styles.fallbackTitle, { color: colors.textPrimary }]}>MAP ENGINE LOADING</Text>
-        <Text style={[styles.fallbackSubtext, { color: colors.textSecondary }]}>
-          High-accuracy GPS telemetry active
-        </Text>
+      <View style={[styles.container, { borderColor: colors.primary, shadowColor: colors.primary }, style]}>
+        <MapComponent
+          style={styles.map}
+          mapStyle={MAP_CONFIG.styleURL}
+          logo={false}
+          attribution={false}
+          scrollGestures={interactive}
+          zoomGestures={interactive}
+          rotateGestures={interactive}
+          pitchGestures={false}
+          onCameraChanged={handleCameraChanged}
+          onMapLoaded={() => {
+            setIsMapReady(true);
+            if (currentLocation && cameraRef.current) {
+              cameraRef.current.easeTo({
+                center: [currentLocation.longitude, currentLocation.latitude],
+                zoom: MAP_CONFIG.defaultZoom,
+                duration: 500,
+              });
+            }
+            if (onMapLoaded) onMapLoaded();
+          }}
+          onMapError={(e: any) => {
+            if (onMapError) onMapError(e);
+          }}
+        >
+          <CameraComponent
+            ref={cameraRef}
+            initialViewState={{
+              center: initialCenter,
+              zoom: MAP_CONFIG.defaultZoom,
+            }}
+            center={cameraCenterCoordinate || (currentLocation ? [currentLocation.longitude, currentLocation.latitude] : initialCenter)}
+            zoom={zoomLevel}
+            minZoom={MAP_CONFIG.minZoom}
+            maxZoom={MAP_CONFIG.maxZoom}
+            bounds={
+              routeBounds
+                ? {
+                    bounds: [
+                      routeBounds.sw[0],
+                      routeBounds.sw[1],
+                      routeBounds.ne[0],
+                      routeBounds.ne[1],
+                    ],
+                    padding: {
+                      top: routeBounds.paddingTop,
+                      right: routeBounds.paddingRight,
+                      bottom: routeBounds.paddingBottom,
+                      left: routeBounds.paddingLeft,
+                    },
+                  }
+                : undefined
+            }
+          />
+
+          <RunRoute
+            actualRoute={actualRoute}
+            plannedRoute={plannedRoute}
+            routeColor={colors.primary}
+          />
+
+          {showStartFinishMarkers && startCoord && <StartMarker coordinate={startCoord} />}
+          {showStartFinishMarkers && finishCoord && actualRoute.length > 1 && (
+            <FinishMarker coordinate={finishCoord} />
+          )}
+
+          {currentLocation && (
+            <RunnerMarker
+              coordinate={[currentLocation.longitude, currentLocation.latitude]}
+              color={colors.primary}
+              glowColor={colors.glow}
+            />
+          )}
+
+          {partnerRunners.map((partner) => (
+            <PartnerMarker key={partner.id} runner={partner} accentColor={colors.primary} />
+          ))}
+        </MapComponent>
+
+        {interactive && (
+          <TouchableOpacity
+            style={[styles.compassBtn, { backgroundColor: 'rgba(20, 20, 24, 0.88)', borderColor: '#33333E' }]}
+            onPress={handleCompassPress}
+            activeOpacity={0.8}
+          >
+            <MaterialCommunityIcons name="navigation" size={20} color={colors.primary} style={styles.compassIcon} />
+          </TouchableOpacity>
+        )}
+
+        {interactive && (
+          <View style={styles.zoomControlGroup}>
+            <TouchableOpacity
+              style={[styles.zoomBtn, { backgroundColor: 'rgba(20, 20, 24, 0.88)', borderColor: '#33333E' }]}
+              onPress={handleZoomIn}
+              activeOpacity={0.8}
+            >
+              <Feather name="plus" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.zoomBtn, { backgroundColor: 'rgba(20, 20, 24, 0.88)', borderColor: '#33333E' }]}
+              onPress={handleZoomOut}
+              activeOpacity={0.8}
+            >
+              <Feather name="minus" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     );
   }
 
-  const initialCenter: [number, number] = currentLocation
-    ? [currentLocation.longitude, currentLocation.latitude]
-    : MAP_CONFIG.defaultCenterCoordinate;
+  // 2. SECONDARY RENDERER: React Native Maps (Google Maps Dark Style)
+  if (RNMapView && Platform.OS !== 'web') {
+    const region = {
+      latitude: currentLocation?.latitude || MAP_CONFIG.defaultCenterCoordinate[1],
+      longitude: currentLocation?.longitude || MAP_CONFIG.defaultCenterCoordinate[0],
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    };
+
+    return (
+      <View style={[styles.container, { borderColor: colors.primary, shadowColor: colors.primary }, style]}>
+        <RNMapView
+          style={styles.map}
+          initialRegion={region}
+          region={interactive ? undefined : region}
+          showsUserLocation={false}
+          showsCompass={false}
+          customMapStyle={darkMapStyle}
+        >
+          {actualRoute.length > 1 && RNPolyline && (
+            <RNPolyline
+              coordinates={actualRoute}
+              strokeColor={colors.primary}
+              strokeWidth={5}
+            />
+          )}
+          {plannedRoute.length > 1 && RNPolyline && (
+            <RNPolyline
+              coordinates={plannedRoute}
+              strokeColor="#555566"
+              strokeWidth={3}
+              lineDashPattern={[5, 5]}
+            />
+          )}
+          {currentLocation && RNMarker && (
+            <RNMarker
+              coordinate={{
+                latitude: currentLocation.latitude,
+                longitude: currentLocation.longitude,
+              }}
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <View style={[styles.fallbackMarkerRing, { borderColor: colors.primary, backgroundColor: colors.glow }]}>
+                <View style={[styles.fallbackMarkerInner, { backgroundColor: colors.primary }]} />
+              </View>
+            </RNMarker>
+          )}
+        </RNMapView>
+      </View>
+    );
+  }
+
+  // 3. TERTIARY UNIVERSAL RENDERER: Interactive Leaflet Dark Street Map
+  const lat = currentLocation?.latitude || MAP_CONFIG.defaultCenterCoordinate[1];
+  const lng = currentLocation?.longitude || MAP_CONFIG.defaultCenterCoordinate[0];
+  const actualCoords = actualRoute.map((p) => [p.latitude, p.longitude]);
+  const plannedCoords = plannedRoute.map((p) => [p.latitude, p.longitude]);
+
+  const leafletHTML = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+        <style>
+          html, body, #map { width: 100%; height: 100%; margin: 0; padding: 0; background: #0E0F14; }
+          .leaflet-container { background: #0E0F14 !important; }
+          .dark-tiles {
+            filter: invert(100%) hue-rotate(180deg) brightness(85%) contrast(110%);
+          }
+          .runner-marker {
+            width: 24px; height: 24px; border-radius: 12px;
+            background: ${colors.glow}; border: 2px solid ${colors.primary};
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 0 10px ${colors.glow};
+          }
+          .runner-inner { width: 10px; height: 10px; border-radius: 5px; background: ${colors.primary}; }
+        </style>
+      </head>
+      <body>
+        <div id="map"></div>
+        <script>
+          var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([${lat}, ${lng}], 16);
+          L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            className: 'dark-tiles'
+          }).addTo(map);
+
+          var customIcon = L.divIcon({
+            className: '',
+            html: '<div class="runner-marker"><div class="runner-inner"></div></div>',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+          var marker = L.marker([${lat}, ${lng}], { icon: customIcon }).addTo(map);
+          var polyline = L.polyline(${JSON.stringify(actualCoords)}, { color: '${colors.primary}', weight: 5, opacity: 0.95 }).addTo(map);
+          ${plannedCoords.length > 1 ? `L.polyline(${JSON.stringify(plannedCoords)}, { color: '#555566', weight: 4, dashArray: '8, 6' }).addTo(map);` : ''}
+
+          window.addEventListener('message', function(event) {
+            if (!event.data || event.data.type !== 'UPDATE_LOCATION') return;
+            var nLat = event.data.lat;
+            var nLng = event.data.lng;
+            if (nLat && nLng) {
+              marker.setLatLng([nLat, nLng]);
+              map.panTo([nLat, nLng], { animate: true, duration: 0.5 });
+            }
+            if (event.data.actualCoords) {
+              polyline.setLatLngs(event.data.actualCoords);
+            }
+          });
+        </script>
+      </body>
+    </html>
+  `;
 
   return (
     <View style={[styles.container, { borderColor: colors.primary, shadowColor: colors.primary }, style]}>
-      <MapComponent
-        style={styles.map}
-        mapStyle={MAP_CONFIG.styleURL}
-        logo={false}
-        attribution={false}
-        scrollGestures={interactive}
-        zoomGestures={interactive}
-        rotateGestures={interactive}
-        pitchGestures={false}
-        onCameraChanged={handleCameraChanged}
-        onMapLoaded={() => {
-          setIsMapReady(true);
-          if (currentLocation && cameraRef.current) {
-            cameraRef.current.easeTo({
-              center: [currentLocation.longitude, currentLocation.latitude],
-              zoom: MAP_CONFIG.defaultZoom,
-              duration: 500,
-            });
-          }
-          if (onMapLoaded) onMapLoaded();
-        }}
-        onMapError={(e: any) => {
-          if (onMapError) onMapError(e);
-        }}
-      >
-        <CameraComponent
-          ref={cameraRef}
-          initialViewState={{
-            center: initialCenter,
-            zoom: MAP_CONFIG.defaultZoom,
-          }}
-          center={cameraCenterCoordinate || (currentLocation ? [currentLocation.longitude, currentLocation.latitude] : initialCenter)}
-          zoom={zoomLevel}
-          minZoom={MAP_CONFIG.minZoom}
-          maxZoom={MAP_CONFIG.maxZoom}
-          bounds={
-            routeBounds
-              ? {
-                  bounds: [
-                    routeBounds.sw[0],
-                    routeBounds.sw[1],
-                    routeBounds.ne[0],
-                    routeBounds.ne[1],
-                  ],
-                  padding: {
-                    top: routeBounds.paddingTop,
-                    right: routeBounds.paddingRight,
-                    bottom: routeBounds.paddingBottom,
-                    left: routeBounds.paddingLeft,
-                  },
-                }
-              : undefined
-          }
-        />
-
-        {/* Polylines for Live and Planned Routes */}
-        <RunRoute
-          actualRoute={actualRoute}
-          plannedRoute={plannedRoute}
-          routeColor={colors.primary}
-        />
-
-        {/* Start and Finish Pins for Route Overview */}
-        {showStartFinishMarkers && startCoord && <StartMarker coordinate={startCoord} />}
-        {showStartFinishMarkers && finishCoord && actualRoute.length > 1 && (
-          <FinishMarker coordinate={finishCoord} />
-        )}
-
-        {/* Live Runner Marker */}
-        {currentLocation && (
-          <RunnerMarker
-            coordinate={[currentLocation.longitude, currentLocation.latitude]}
-            color={colors.primary}
-            glowColor={colors.glow}
-          />
-        )}
-
-        {/* Active Partner / Crew Runner Markers */}
-        {partnerRunners.map((partner) => (
-          <PartnerMarker key={partner.id} runner={partner} accentColor={colors.primary} />
-        ))}
-      </MapComponent>
-
-      {/* Floating Compass Button (Top Right) */}
-      {interactive && (
-        <TouchableOpacity
-          style={[styles.compassBtn, { backgroundColor: 'rgba(20, 20, 24, 0.88)', borderColor: '#33333E' }]}
-          onPress={handleCompassPress}
-          activeOpacity={0.8}
-        >
-          <MaterialCommunityIcons name="navigation" size={20} color={colors.primary} style={styles.compassIcon} />
-        </TouchableOpacity>
-      )}
-
-      {/* Floating Zoom Controls (Bottom Right) */}
-      {interactive && (
-        <View style={styles.zoomControlGroup}>
-          <TouchableOpacity
-            style={[styles.zoomBtn, { backgroundColor: 'rgba(20, 20, 24, 0.88)', borderColor: '#33333E' }]}
-            onPress={handleZoomIn}
-            activeOpacity={0.8}
-          >
-            <Feather name="plus" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.zoomBtn, { backgroundColor: 'rgba(20, 20, 24, 0.88)', borderColor: '#33333E' }]}
-            onPress={handleZoomOut}
-            activeOpacity={0.8}
-          >
-            <Feather name="minus" size={18} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-      )}
+      <iframe
+        ref={iframeRef}
+        srcDoc={leafletHTML}
+        style={{ width: '100%', height: '100%', border: 'none', borderRadius: 20 }}
+        title="JOGPAL Web Map"
+      />
     </View>
   );
 };
@@ -429,21 +479,18 @@ const styles = StyleSheet.create({
   map: {
     ...StyleSheet.absoluteFill,
   },
-  fallbackContainer: {
+  fallbackMarkerRing: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
-    backgroundColor: '#0E0F14',
   },
-  fallbackTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    marginTop: 8,
-  },
-  fallbackSubtext: {
-    fontSize: 10,
-    marginTop: 4,
+  fallbackMarkerInner: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   compassBtn: {
     position: 'absolute',
