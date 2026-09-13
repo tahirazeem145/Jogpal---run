@@ -265,7 +265,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Advance runState to GPS_READY if currently PREPARING or SEARCHING
     const currentRunState = runStateRef.current;
-    if ((currentRunState === 'GPS_SEARCHING' || currentRunState === 'PREPARING') && (accuracy === null || accuracy <= 100)) {
+    if ((currentRunState === 'GPS_SEARCHING' || currentRunState === 'PREPARING') && (accuracy === null || accuracy <= 500)) {
       updateRunState('GPS_READY');
     }
 
@@ -273,8 +273,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       let gpsStatus: SoloRunMetrics['gpsStatus'] = 'SEARCHING';
       if (accuracy !== null) {
         if (accuracy <= 25) gpsStatus = 'READY';
-        else if (accuracy <= 60) gpsStatus = 'GOOD';
-        else if (accuracy <= 120) gpsStatus = 'POOR';
+        else if (accuracy <= 100) gpsStatus = 'GOOD';
+        else if (accuracy <= 500) gpsStatus = 'POOR';
         else gpsStatus = 'LOST';
       }
 
@@ -323,8 +323,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
           point.longitude
         );
 
-        // Accumulate distance whenever displacement >= 1.0 meters (0.0010 km)
-        if (segKm >= 0.0010) {
+        // Accumulate distance whenever displacement >= 0.3 meters (0.0003 km)
+        if (segKm >= 0.0003) {
           lastAcceptedPointRef.current = point;
           actualRouteRef.current.push(newCoord);
           setActualRoute([...actualRouteRef.current]);
