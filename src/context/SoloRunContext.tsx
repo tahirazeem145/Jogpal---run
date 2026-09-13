@@ -185,6 +185,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setActiveRunType(type);
 
     console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title}`);
+    setOfflineConfig(null);
     updateRunState('PREPARING');
     setErrorMessage(null);
     setMetrics(initialMetrics);
