@@ -39,9 +39,9 @@ export const MAP_CONFIG = {
   locationSettings: {
     timeInterval: 1000, // 1 second interval
     distanceInterval: 1, // 1 meter update sensitivity
-    maxAccuracyThresholdMeters: 80, // Allow GPS points up to 80m for initial lock, tightening continuously
-    maxMapAccuracyThresholdMeters: 150, // GPS points for map centering
-    stationaryJitterThresholdMeters: 1.5, // 1.5m movement threshold to accumulate running distance
+    maxAccuracyThresholdMeters: 500, // Allow GPS points up to 500m for web/mobile location fixes
+    maxMapAccuracyThresholdMeters: 1000, // GPS points for map centering
+    stationaryJitterThresholdMeters: 0.3, // 0.3m movement threshold to accumulate running distance
     maxReasonableSpeedMs: 15.0, // 15 m/s (~54 km/h) max reasonable running/sprinting speed
   },
 };

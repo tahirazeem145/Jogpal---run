@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { CrewMember, UserProfile } from '../types/data';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 import { NeonButton } from './NeonButton';
 
 interface YourFriendsSectionProps {

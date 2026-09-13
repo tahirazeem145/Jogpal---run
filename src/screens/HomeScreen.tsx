@@ -46,83 +46,19 @@ export const HomeScreen: React.FC = () => {
     await startPreparation('SOLO RUN', 'SOLO');
   };
 
-  const handleStartDuoRunWithFriend = async (friend: CrewMember) => {
-    Alert.alert(
-      '⚡ Start Duo Run',
-      `Synchronizing live telemetry and route with ${friend.name}...\n\nStarting Duo Run now!`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: "Let's Go!",
-          onPress: async () => {
-            setSoloRunModalVisible(true);
-            await startPreparation(`DUO RUN • ${friend.name.toUpperCase()}`, 'CREW');
-          },
-        },
-      ]
-    );
+  const handleStartDuoRunWithFriend = async (friend?: CrewMember) => {
+    setSoloRunModalVisible(true);
+    await startPreparation(friend ? `DUO RUN • ${friend.name.toUpperCase()}` : 'DUO RUN', 'CREW');
   };
 
   const handleStartGroupRunWithFriend = async (friend?: CrewMember) => {
-    Alert.alert(
-      '👥 Group Run Lobby',
-      `Choose an option for your squad run${friend ? ` with ${friend.name}` : ''}:`,
-      [
-        {
-          text: 'Start Live Squad Run',
-          onPress: async () => {
-            setSoloRunModalVisible(true);
-            await startPreparation(friend ? `GROUP RUN • ${friend.name.toUpperCase()} & CREW` : 'GROUP SQUAD RUN', 'CREW');
-          },
-        },
-        {
-          text: 'Schedule Group Event',
-          onPress: handleSchedulePress,
-        },
-        { text: 'Cancel', style: 'cancel' },
-      ]
-    );
+    setSoloRunModalVisible(true);
+    await startPreparation(friend ? `GROUP RUN • ${friend.name.toUpperCase()} & CREW` : 'GROUP SQUAD RUN', 'CREW');
   };
 
-  const handleGeneralDuoRun = () => {
-    const activeRunners = friends.length > 0 ? friends : crew;
-    if (activeRunners.length > 0) {
-      const buddyButtons = activeRunners.slice(0, 3).map((member) => ({
-        text: `Run with ${member.name}`,
-        onPress: () => handleStartDuoRunWithFriend(member),
-      }));
-
-      Alert.alert(
-        'Duo Run Partner',
-        'Choose a partner to start a synced duo run session:',
-        [
-          ...buddyButtons,
-          {
-            text: 'Solo Duo Run',
-            onPress: async () => {
-              setSoloRunModalVisible(true);
-              await startPreparation('DUO RUN (SOLO MODE)', 'CREW');
-            },
-          },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
-    } else {
-      Alert.alert(
-        'Duo Run',
-        'Add friends in the section below to run together in real-time, or start a partner session now!',
-        [
-          {
-            text: 'Start Partner Run',
-            onPress: async () => {
-              setSoloRunModalVisible(true);
-              await startPreparation('PARTNER RUN', 'CREW');
-            },
-          },
-          { text: 'Cancel', style: 'cancel' },
-        ]
-      );
-    }
+  const handleGeneralDuoRun = async () => {
+    setSoloRunModalVisible(true);
+    await startPreparation('DUO RUN', 'CREW');
   };
 
   const handleNotificationPress = () => {

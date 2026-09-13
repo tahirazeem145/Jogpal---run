@@ -1,4 +1,5 @@
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 import { GPSPoint } from '../types/soloRun';
 import { MAP_CONFIG } from '../config/map';
 import { runTrackingService, GPSValidationResult, GPSAccuracyTier } from './tracking/runTrackingService';
@@ -28,9 +29,14 @@ export function isValidMapLocation(point: GPSPoint): boolean {
   return point.accuracy === null || point.accuracy <= MAP_CONFIG.locationSettings.maxMapAccuracyThresholdMeters;
 }
 
+const isWeb = Platform.OS === 'web';
+
 export const locationService = {
   // Check if hardware GPS services are enabled on device
   async checkServicesEnabled(): Promise<boolean> {
+    if (isWeb) {
+      return typeof window !== 'undefined' && 'geolocation' in navigator;
+    }
     try {
       const enabled = await Location.hasServicesEnabledAsync();
       if (!enabled) {
@@ -41,12 +47,15 @@ export const locationService = {
       return await Location.hasServicesEnabledAsync();
     } catch (e) {
       console.warn('[LOCATION_SERVICE] Error checking location services:', e);
-      return false;
+      return typeof window !== 'undefined' && 'geolocation' in navigator;
     }
   },
 
   // Request foreground location permissions (Fine / Precise)
   async requestPermissions(): Promise<boolean> {
+    if (isWeb) {
+      return typeof window !== 'undefined' && 'geolocation' in navigator;
+    }
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === 'granted') {
@@ -58,12 +67,13 @@ export const locationService = {
       return false;
     } catch (e) {
       console.warn('[LOCATION_SERVICE] Error requesting foreground permissions:', e);
-      return false;
+      return typeof window !== 'undefined' && 'geolocation' in navigator;
     }
   },
 
   // Request background location permissions for continuous tracking
   async requestBackgroundPermissions(): Promise<boolean> {
+    if (isWeb) return true;
     try {
       const { status } = await Location.requestBackgroundPermissionsAsync();
       return status === 'granted';
@@ -75,6 +85,9 @@ export const locationService = {
 
   // Check current permission status without prompting
   async getPermissionStatus(): Promise<Location.PermissionStatus> {
+    if (isWeb) {
+      return Location.PermissionStatus.GRANTED;
+    }
     try {
       const { status } = await Location.getForegroundPermissionsAsync();
       return status;
@@ -85,6 +98,25 @@ export const locationService = {
 
   // Fast last known position (cached) for immediate UI / map framing
   async getLastKnownLocation(): Promise<GPSPoint | null> {
+    if (isWeb && typeof window !== 'undefined' && 'geolocation' in navigator) {
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy ?? null,
+              timestamp: pos.timestamp,
+              speed: pos.coords.speed ?? null,
+              heading: pos.coords.heading ?? null,
+              altitude: pos.coords.altitude ?? null,
+            });
+          },
+          () => resolve(null),
+          { timeout: 3000, maximumAge: 60000, enableHighAccuracy: false }
+        );
+      });
+    }
     try {
       const loc = await Location.getLastKnownPositionAsync({
         maxAge: 30000,
@@ -105,12 +137,36 @@ export const locationService = {
     }
   },
 
-  // Quick initial location with highest accuracy (< 1.5s)
+  // Quick initial location with balanced accuracy (< 3s timeout)
   async getQuickInitialLocation(): Promise<GPSPoint | null> {
-    try {
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.BestForNavigation,
+    if (isWeb && typeof window !== 'undefined' && 'geolocation' in navigator) {
+      return new Promise((resolve) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            resolve({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy ?? null,
+              timestamp: pos.timestamp,
+              speed: pos.coords.speed ?? null,
+              heading: pos.coords.heading ?? null,
+              altitude: pos.coords.altitude ?? null,
+            });
+          },
+          () => resolve(null),
+          { timeout: 3000, maximumAge: 10000, enableHighAccuracy: true }
+        );
       });
+    }
+    try {
+      const loc = (await Promise.race([
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+      ])) as Location.LocationObject | null;
+
+      if (!loc || !loc.coords) return null;
       return {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
@@ -130,6 +186,38 @@ export const locationService = {
     onPoint: (point: GPSPoint) => void,
     onError?: (error: any) => void
   ): { remove: () => void } {
+    if (isWeb && typeof window !== 'undefined' && 'geolocation' in navigator) {
+      const watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          const point: GPSPoint = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy ?? null,
+            timestamp: pos.timestamp || Date.now(),
+            speed: pos.coords.speed ?? null,
+            heading: pos.coords.heading ?? null,
+            altitude: pos.coords.altitude ?? null,
+          };
+          onPoint(point);
+        },
+        (err) => {
+          console.warn('[WEB_GEOLOCATION_WATCH_WARN]', err);
+          if (onError) onError(err);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0,
+        }
+      );
+
+      return {
+        remove: () => {
+          navigator.geolocation.clearWatch(watchId);
+        },
+      };
+    }
+
     let subscription: Location.LocationSubscription | null = null;
 
     Location.watchPositionAsync(
@@ -157,7 +245,29 @@ export const locationService = {
       })
       .catch((err: any) => {
         console.error('[LOCATION_WATCH_ERROR]', err);
-        if (onError) onError(err);
+        // Fallback to HTML5 Geolocation API on error
+        if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+          const watchId = navigator.geolocation.watchPosition(
+            (pos) => {
+              onPoint({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                accuracy: pos.coords.accuracy ?? null,
+                timestamp: pos.timestamp || Date.now(),
+                speed: pos.coords.speed ?? null,
+                heading: pos.coords.heading ?? null,
+                altitude: pos.coords.altitude ?? null,
+              });
+            },
+            (gErr) => {
+              if (onError) onError(gErr);
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+          );
+          subscription = { remove: () => navigator.geolocation.clearWatch(watchId) } as any;
+        } else if (onError) {
+          onError(err);
+        }
       });
 
     return {

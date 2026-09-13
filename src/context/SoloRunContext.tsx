@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, BackHandler, Alert } from 'react-native';
-import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng } from '../types/soloRun';
+import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng, OfflineRouteMode, OfflineTargetConfig } from '../types/soloRun';
 import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm, calculateRollingPaceString, getAccuracyTier } from '../services/locationService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { useApp } from './AppContext';
@@ -17,7 +17,9 @@ interface SoloRunContextType {
   errorMessage: string | null;
   activeRunTitle: string;
   activeRunType: 'SOLO' | 'CREW';
+  offlineConfig: OfflineTargetConfig | null;
   startPreparation: (title?: string, type?: 'SOLO' | 'CREW') => Promise<void>;
+  startOfflinePreparation: (targetKm: number, routeMode: OfflineRouteMode) => Promise<void>;
   startCountdown: () => void;
   pauseRun: () => void;
   resumeRun: () => void;
@@ -52,6 +54,15 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const activeUserId = user?.uid || userProfile?.id || 'guest_runner';
 
   const [runState, setRunState] = useState<RunState>('IDLE');
+  const runStateRef = useRef<RunState>('IDLE');
+
+  const updateRunState = (newState: RunState | ((prev: RunState) => RunState)) => {
+    setRunState((prev) => {
+      const next = typeof newState === 'function' ? newState(prev) : newState;
+      runStateRef.current = next;
+      return next;
+    });
+  };
   const [metrics, setMetrics] = useState<SoloRunMetrics>(initialMetrics);
   const [routePoints, setRoutePoints] = useState<GPSPoint[]>([]);
   const [currentLocation, setCurrentLocation] = useState<GPSPoint | null>(null);
@@ -62,6 +73,17 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeRunTitle, setActiveRunTitle] = useState<string>('SOLO RUN');
   const [activeRunType, setActiveRunType] = useState<'SOLO' | 'CREW'>('SOLO');
+  const [offlineConfig, setOfflineConfig] = useState<OfflineTargetConfig | null>(null);
+
+  const startOfflinePreparation = async (targetKm: number, routeMode: OfflineRouteMode) => {
+    const config: OfflineTargetConfig = {
+      isOfflineMode: true,
+      targetDistanceKm: targetKm,
+      routeMode,
+    };
+    setOfflineConfig(config);
+    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO');
+  };
 
   // Telemetry & Timing Refs
   const locationSubRef = useRef<{ remove: () => void } | null>(null);
@@ -163,7 +185,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setActiveRunType(type);
 
     console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title}`);
-    setRunState('PREPARING');
+    setOfflineConfig(null);
+    updateRunState('PREPARING');
     setErrorMessage(null);
     setMetrics(initialMetrics);
     setRoutePoints([]);
@@ -182,19 +205,19 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // Check permissions & location services
     const granted = await locationService.requestPermissions();
     if (!granted) {
-      setRunState('ERROR');
+      updateRunState('ERROR');
       setErrorMessage('Location permission was denied. Enable GPS in device settings.');
       return;
     }
 
     const servicesEnabled = await locationService.checkServicesEnabled();
     if (!servicesEnabled) {
-      setRunState('ERROR');
+      updateRunState('ERROR');
       setErrorMessage('Location services (GPS) are disabled on this device. Please turn on GPS.');
       return;
     }
 
-    setRunState('GPS_SEARCHING');
+    updateRunState('GPS_SEARCHING');
 
     // STAGE 1 (FAST PARALLEL ACQUISITION): Get last known position / quick position for immediate map centering (< 1.5s)
     Promise.all([
@@ -215,7 +238,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }));
 
         // Enable GPS_READY stage immediately so user can press START RUN without waiting
-        setRunState((curr) => (curr === 'GPS_SEARCHING' || curr === 'PREPARING' ? 'GPS_READY' : curr));
+        updateRunState((curr) => (curr === 'GPS_SEARCHING' || curr === 'PREPARING' ? 'GPS_READY' : curr));
       }
     }).catch(() => {});
 
@@ -254,17 +277,19 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }));
     }
 
+    // Advance runState to GPS_READY if currently PREPARING or SEARCHING
+    const currentRunState = runStateRef.current;
+    if ((currentRunState === 'GPS_SEARCHING' || currentRunState === 'PREPARING') && (accuracy === null || accuracy <= 500)) {
+      updateRunState('GPS_READY');
+    }
+
     setMetrics((prev) => {
       let gpsStatus: SoloRunMetrics['gpsStatus'] = 'SEARCHING';
       if (accuracy !== null) {
         if (accuracy <= 25) gpsStatus = 'READY';
-        else if (accuracy <= 60) gpsStatus = 'GOOD';
-        else if (accuracy <= 120) gpsStatus = 'POOR';
+        else if (accuracy <= 100) gpsStatus = 'GOOD';
+        else if (accuracy <= 500) gpsStatus = 'POOR';
         else gpsStatus = 'LOST';
-      }
-
-      if (runState === 'GPS_SEARCHING' && (accuracy === null || accuracy <= 80)) {
-        setRunState('GPS_READY');
       }
 
       return {
@@ -276,7 +301,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     // If ACTIVE or COUNTDOWN and NOT PAUSED
-    if (!isPausedRef.current && (runState === 'ACTIVE' || runState === 'COUNTDOWN')) {
+    const activeState = runStateRef.current;
+    if (!isPausedRef.current && (activeState === 'ACTIVE' || activeState === 'COUNTDOWN')) {
       const validation = validateGPSPoint(point, lastAcceptedPointRef.current, acceptedPointCountRef.current);
       if (!validation.isValid) {
         console.log(`[GPS_REJECTED] Reason: ${validation.reason || 'UNKNOWN'} | Acc: ${point.accuracy}m | Speed: ${point.speed} | Lat: ${point.latitude.toFixed(5)}, Lng: ${point.longitude.toFixed(5)}`);
@@ -311,13 +337,16 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
           point.longitude
         );
 
-        // Accumulate distance whenever displacement >= 1.5 meters (0.0015 km)
-        if (segKm >= 0.0015) {
+        // Accumulate distance whenever displacement >= 0.3 meters (0.0003 km)
+        if (segKm >= 0.0003) {
           lastAcceptedPointRef.current = point;
           actualRouteRef.current.push(newCoord);
           setActualRoute([...actualRouteRef.current]);
 
-          accumulatedDistanceKmRef.current += segKm;
+          // Only accumulate distance during ACTIVE state (not during countdown)
+          if (activeState === 'ACTIVE') {
+            accumulatedDistanceKmRef.current += segKm;
+          }
           const currentTotalDistance = Math.round(accumulatedDistanceKmRef.current * 1000) / 1000;
 
           const recentSlice = routePointsRef.current.slice(-8);
@@ -344,8 +373,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // 5. Countdown & Smart Start
   const startCountdown = () => {
-    if (runState !== 'GPS_READY' && runState !== 'GPS_SEARCHING') return;
-    setRunState('COUNTDOWN');
+    const currState = runStateRef.current;
+    if (currState !== 'GPS_READY' && currState !== 'GPS_SEARCHING') return;
+    updateRunState('COUNTDOWN');
     setCountdownValue(3);
 
     let count = 3;
@@ -360,7 +390,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const startActiveRun = () => {
-    setRunState('ACTIVE');
+    updateRunState('ACTIVE');
     isPausedRef.current = false;
     startTimeRef.current = Date.now();
 
@@ -388,15 +418,15 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // 6. Pause Run
   const pauseRun = () => {
-    if (runState !== 'ACTIVE') return;
-    setRunState('PAUSED');
+    if (runStateRef.current !== 'ACTIVE') return;
+    updateRunState('PAUSED');
     isPausedRef.current = true;
   };
 
   // 7. Resume Run
   const resumeRun = () => {
-    if (runState !== 'PAUSED') return;
-    setRunState('ACTIVE');
+    if (runStateRef.current !== 'PAUSED') return;
+    updateRunState('ACTIVE');
     isPausedRef.current = false;
     // Reset reference point on resume so paused physical movement is NOT counted
     lastAcceptedPointRef.current = null;
@@ -407,9 +437,10 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // 8. Finish Run (Idempotent: executes exactly once per session)
   const finishRun = async () => {
-    if (isCompletingRef.current || (runState !== 'ACTIVE' && runState !== 'PAUSED')) return;
+    const state = runStateRef.current;
+    if (isCompletingRef.current || (state !== 'ACTIVE' && state !== 'PAUSED')) return;
     isCompletingRef.current = true;
-    setRunState('COMPLETING');
+    updateRunState('COMPLETING');
     isPausedRef.current = true;
     stopTimer();
     stopLocationWatching();
@@ -441,9 +472,10 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // 9. Save Run (Idempotent: saves local first, syncs Firebase separately)
   const saveRun = async () => {
-    if (isSavedRef.current || !lastRunSummary || runState === 'SAVING' || runState === 'SAVED') return;
+    const currentState = runStateRef.current;
+    if (isSavedRef.current || !lastRunSummary || currentState === 'SAVING' || currentState === 'SAVED') return;
     isSavedRef.current = true;
-    setRunState('SAVING');
+    updateRunState('SAVING');
 
     try {
       await logNewRun(
@@ -467,7 +499,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
               : undefined,
         }
       );
-      setRunState('SAVED');
+      updateRunState('SAVED');
       offlineSyncService.syncPendingRuns(activeUserId).catch(() => {});
     } catch (err) {
       await offlineSyncService.savePendingRun({
@@ -482,7 +514,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         actualRoute: lastRunSummary.actualRoute,
         trackingIntegrityScore: lastRunSummary.trackingIntegrityScore,
       });
-      setRunState('SYNC_PENDING');
+      updateRunState('SYNC_PENDING');
     }
   };
 
@@ -494,7 +526,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const resetState = () => {
-    setRunState('IDLE');
+    updateRunState('IDLE');
     setMetrics(initialMetrics);
     setRoutePoints([]);
     setActualRoute([]);
@@ -518,6 +550,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     typeRef.current = 'SOLO';
     setActiveRunTitle('SOLO RUN');
     setActiveRunType('SOLO');
+    setOfflineConfig(null);
   };
 
   return (
@@ -534,7 +567,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         errorMessage,
         activeRunTitle,
         activeRunType,
+        offlineConfig,
         startPreparation,
+        startOfflinePreparation,
         startCountdown,
         pauseRun,
         resumeRun,

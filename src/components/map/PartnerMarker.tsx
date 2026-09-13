@@ -6,7 +6,8 @@ let ViewAnnotation: any = null;
 if (Platform.OS !== 'web') {
   try {
     const ML = require('@maplibre/maplibre-react-native');
-    ViewAnnotation = ML.ViewAnnotation;
+    const MapLibre = ML.default || ML;
+    ViewAnnotation = MapLibre.PointAnnotation || MapLibre.MarkerView || MapLibre.ViewAnnotation;
   } catch (e) {}
 }
 
@@ -24,6 +25,7 @@ export const PartnerMarker: React.FC<PartnerMarkerProps> = React.memo(({
   return (
     <ViewAnnotation
       id={`partnerMarker_${runner.id}`}
+      coordinate={[runner.longitude, runner.latitude]}
       lngLat={[runner.longitude, runner.latitude]}
     >
       <View style={styles.container}>

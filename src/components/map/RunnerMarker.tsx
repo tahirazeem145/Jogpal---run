@@ -5,7 +5,8 @@ let ViewAnnotation: any = null;
 if (Platform.OS !== 'web') {
   try {
     const ML = require('@maplibre/maplibre-react-native');
-    ViewAnnotation = ML.ViewAnnotation;
+    const MapLibre = ML.default || ML;
+    ViewAnnotation = MapLibre.PointAnnotation || MapLibre.MarkerView || MapLibre.ViewAnnotation;
   } catch (e) {}
 }
 
@@ -23,7 +24,7 @@ export const RunnerMarker: React.FC<RunnerMarkerProps> = React.memo(({
   if (!ViewAnnotation || Platform.OS === 'web') return null;
 
   return (
-    <ViewAnnotation id="jogpalLiveRunnerMarker" lngLat={coordinate}>
+    <ViewAnnotation id="jogpalLiveRunnerMarker" coordinate={coordinate} lngLat={coordinate}>
       <View style={[styles.outerRing, { borderColor: color }]}>
         <View style={styles.middleSpacer}>
           <View style={[styles.innerCore, { backgroundColor: color }]} />
