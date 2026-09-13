@@ -3,7 +3,6 @@ import { StyleSheet, View, ScrollView, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
 import { WeeklyMomentumCard } from '../components/WeeklyMomentumCard';
-import { YourCrewSection } from '../components/YourCrewSection';
 import { YourFriendsSection } from '../components/YourFriendsSection';
 import { UpcomingSessionCard } from '../components/UpcomingSessionCard';
 import { PersonalBestsSection } from '../components/PersonalBestsSection';
@@ -176,13 +175,7 @@ export const HomeScreen: React.FC = () => {
           onGroupRunPress={() => handleStartGroupRunWithFriend()}
         />
 
-        {/* 1. YOUR CREW SECTION */}
-        <YourCrewSection
-          crew={crew}
-          currentUserId={userProfile?.id || user?.uid}
-        />
-
-        {/* 2. YOUR FRIENDS SECTION (Accepted friends show here + discover & add friends below) */}
+        {/* YOUR FRIENDS SECTION (Accepted friends show here + discover & add friends below) */}
         <YourFriendsSection
           friends={friends}
           discoverableRunners={otherRunners}
