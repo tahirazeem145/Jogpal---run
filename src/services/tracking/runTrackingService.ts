@@ -94,6 +94,15 @@ export const runTrackingService = {
         return { isValid: true };
       }
 
+      // Stationary GPS Noise Filter: Reject tiny jitter movements when stationary (speed < 0.35 m/s)
+      const isStationarySpeed = calculatedSpeedMs < 0.35 || (point.speed !== null && point.speed < 0.35);
+      const movementMeters = segmentKm * 1000;
+      const accuracyThresholdMeters = Math.max(8, (point.accuracy || 15) * 0.5);
+
+      if (isStationarySpeed && movementMeters < accuracyThresholdMeters && pointCount > 2) {
+        return { isValid: false, reason: 'LOW_ACCURACY' };
+      }
+
       // Reject movement faster than max reasonable running/sprinting speed
       if (
         calculatedSpeedMs > MAP_CONFIG.locationSettings.maxReasonableSpeedMs ||
