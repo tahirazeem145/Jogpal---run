@@ -44,7 +44,7 @@ export const runTrackingService = {
   },
 
   // Comprehensive GPS Validation against spikes, jitter, and bad accuracy
-  validateGPSPoint(point: GPSPoint, lastPoint?: GPSPoint | null): GPSValidationResult {
+  validateGPSPoint(point: GPSPoint, lastPoint?: GPSPoint | null, pointCount = 0): GPSValidationResult {
     // 1. Boundary & 0,0 Coordinate Checks
     if (
       isNaN(point.latitude) ||
@@ -89,7 +89,12 @@ export const runTrackingService = {
 
       const calculatedSpeedMs = (segmentKm * 1000) / timeDiffSeconds;
 
-      // Reject movement faster than 12 m/s (~43.2 km/h)
+      // During initial fix settling (first 3 points) or after a gap (> 5s), allow re-anchoring to true GPS location
+      if (pointCount <= 2 || timeDiffSeconds > 5) {
+        return { isValid: true };
+      }
+
+      // Reject movement faster than max reasonable running/sprinting speed
       if (
         calculatedSpeedMs > MAP_CONFIG.locationSettings.maxReasonableSpeedMs ||
         (point.speed !== null && point.speed > MAP_CONFIG.locationSettings.maxReasonableSpeedMs)

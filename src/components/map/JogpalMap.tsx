@@ -116,10 +116,19 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
 
   // 2. Center Camera Once on Initial Position Acquisition
   useEffect(() => {
-    if (currentLocation && !initialCenterSetRef.current) {
-      initialCenterSetRef.current = true;
+    if (currentLocation && cameraMode === 'FOLLOWING' && !fitRouteOnLoad) {
+      if (!initialCenterSetRef.current) {
+        initialCenterSetRef.current = true;
+        if (cameraRef.current) {
+          cameraRef.current.easeTo({
+            center: [currentLocation.longitude, currentLocation.latitude],
+            zoom: MAP_CONFIG.defaultZoom,
+            duration: 600,
+          });
+        }
+      }
     }
-  }, [currentLocation?.latitude, currentLocation?.longitude]);
+  }, [currentLocation?.latitude, currentLocation?.longitude, cameraMode, fitRouteOnLoad]);
 
   // 3. Smart Throttled Camera Follow (~800ms)
   const cameraCenterCoordinate: JogpalCoordinate | undefined = useMemo(() => {
@@ -136,7 +145,6 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     return [currentLocation.longitude, currentLocation.latitude];
   }, [currentLocation?.latitude, currentLocation?.longitude, cameraMode, fitRouteOnLoad]);
 
-  // 4. Handle User Gestures (Panning cancels follow mode)
   const [zoomLevel, setZoomLevel] = useState<number>(MAP_CONFIG.defaultZoom);
 
   // 4. Handle User Gestures (Panning cancels follow mode)
@@ -263,6 +271,13 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
         onCameraChanged={handleCameraChanged}
         onMapLoaded={() => {
           setIsMapReady(true);
+          if (currentLocation && cameraRef.current) {
+            cameraRef.current.easeTo({
+              center: [currentLocation.longitude, currentLocation.latitude],
+              zoom: MAP_CONFIG.defaultZoom,
+              duration: 500,
+            });
+          }
           if (onMapLoaded) onMapLoaded();
         }}
         onMapError={(e: any) => {

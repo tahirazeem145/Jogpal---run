@@ -32,6 +32,12 @@ export const locationService = {
   // Check if hardware GPS services are enabled on device
   async checkServicesEnabled(): Promise<boolean> {
     try {
+      const enabled = await Location.hasServicesEnabledAsync();
+      if (!enabled) {
+        try {
+          await Location.enableNetworkProviderAsync();
+        } catch (e) {}
+      }
       return await Location.hasServicesEnabledAsync();
     } catch (e) {
       console.warn('[LOCATION_SERVICE] Error checking location services:', e);
@@ -39,11 +45,17 @@ export const locationService = {
     }
   },
 
-  // Request foreground location permissions
+  // Request foreground location permissions (Fine / Precise)
   async requestPermissions(): Promise<boolean> {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      return status === 'granted';
+      if (status === 'granted') {
+        try {
+          await Location.enableNetworkProviderAsync();
+        } catch (e) {}
+        return true;
+      }
+      return false;
     } catch (e) {
       console.warn('[LOCATION_SERVICE] Error requesting foreground permissions:', e);
       return false;
@@ -75,7 +87,7 @@ export const locationService = {
   async getLastKnownLocation(): Promise<GPSPoint | null> {
     try {
       const loc = await Location.getLastKnownPositionAsync({
-        maxAge: 10000,
+        maxAge: 30000,
         requiredAccuracy: 50,
       });
       if (!loc) return null;
@@ -97,7 +109,7 @@ export const locationService = {
   async getQuickInitialLocation(): Promise<GPSPoint | null> {
     try {
       const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Highest,
+        accuracy: Location.Accuracy.BestForNavigation,
       });
       return {
         latitude: loc.coords.latitude,

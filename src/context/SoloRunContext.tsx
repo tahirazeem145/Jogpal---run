@@ -259,11 +259,11 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (accuracy !== null) {
         if (accuracy <= 25) gpsStatus = 'READY';
         else if (accuracy <= 60) gpsStatus = 'GOOD';
-        else if (accuracy <= 100) gpsStatus = 'POOR';
+        else if (accuracy <= 120) gpsStatus = 'POOR';
         else gpsStatus = 'LOST';
       }
 
-      if (runState === 'GPS_SEARCHING' && (accuracy === null || accuracy <= 60)) {
+      if (runState === 'GPS_SEARCHING' && (accuracy === null || accuracy <= 80)) {
         setRunState('GPS_READY');
       }
 
@@ -277,7 +277,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // If ACTIVE or COUNTDOWN and NOT PAUSED
     if (!isPausedRef.current && (runState === 'ACTIVE' || runState === 'COUNTDOWN')) {
-      const validation = validateGPSPoint(point, lastAcceptedPointRef.current);
+      const validation = validateGPSPoint(point, lastAcceptedPointRef.current, acceptedPointCountRef.current);
       if (!validation.isValid) {
         console.log(`[GPS_REJECTED] Reason: ${validation.reason || 'UNKNOWN'} | Acc: ${point.accuracy}m | Speed: ${point.speed} | Lat: ${point.latitude.toFixed(5)}, Lng: ${point.longitude.toFixed(5)}`);
         return;
