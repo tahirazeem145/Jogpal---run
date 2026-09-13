@@ -82,7 +82,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       routeMode,
     };
     setOfflineConfig(config);
-    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO');
+    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO', config);
   };
 
   // Telemetry & Timing Refs
@@ -176,7 +176,11 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // 3. TWO-STAGE PARALLEL LOCATION ACQUISITION
-  const startPreparation = async (title = 'SOLO RUN', type: 'SOLO' | 'CREW' = 'SOLO') => {
+  const startPreparation = async (
+    title = 'SOLO RUN',
+    type: 'SOLO' | 'CREW' = 'SOLO',
+    offlineTargetConfig: OfflineTargetConfig | null = null
+  ) => {
     const prepStart = Date.now();
     prepStartTimeRef.current = prepStart;
     titleRef.current = title;
@@ -185,7 +189,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setActiveRunType(type);
 
     console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title}`);
-    setOfflineConfig(null);
+    setOfflineConfig(offlineTargetConfig);
     updateRunState('PREPARING');
     setErrorMessage(null);
     setMetrics(initialMetrics);
