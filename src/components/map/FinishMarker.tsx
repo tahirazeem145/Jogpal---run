@@ -6,7 +6,8 @@ let ViewAnnotation: any = null;
 if (Platform.OS !== 'web') {
   try {
     const ML = require('@maplibre/maplibre-react-native');
-    ViewAnnotation = ML.ViewAnnotation;
+    const MapLibre = ML.default || ML;
+    ViewAnnotation = MapLibre.PointAnnotation || MapLibre.MarkerView || MapLibre.ViewAnnotation;
   } catch (e) {}
 }
 
@@ -18,7 +19,7 @@ export const FinishMarker: React.FC<FinishMarkerProps> = React.memo(({ coordinat
   if (!ViewAnnotation || Platform.OS === 'web') return null;
 
   return (
-    <ViewAnnotation id="jogpalRouteFinishMarker" lngLat={coordinate}>
+    <ViewAnnotation id="jogpalRouteFinishMarker" coordinate={coordinate} lngLat={coordinate}>
       <View style={styles.container}>
         <View style={styles.badge}>
           <Ionicons name="flag" size={11} color="#000" />

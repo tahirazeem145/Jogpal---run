@@ -8,8 +8,9 @@ let Layer: any = null;
 if (Platform.OS !== 'web') {
   try {
     const ML = require('@maplibre/maplibre-react-native');
-    GeoJSONSource = ML.GeoJSONSource;
-    Layer = ML.Layer;
+    const MapLibre = ML.default || ML;
+    GeoJSONSource = MapLibre.ShapeSource || MapLibre.GeoJSONSource;
+    Layer = MapLibre.LineLayer || MapLibre.Layer;
   } catch (e) {}
 }
 

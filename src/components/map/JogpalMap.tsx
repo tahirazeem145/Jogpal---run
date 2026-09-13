@@ -22,8 +22,9 @@ let CameraComponent: any = null;
 if (Platform.OS !== 'web') {
   try {
     const ML = require('@maplibre/maplibre-react-native');
-    MapComponent = ML.Map;
-    CameraComponent = ML.Camera;
+    const MapLibre = ML.default || ML;
+    MapComponent = MapLibre.MapView || MapLibre.Map;
+    CameraComponent = MapLibre.Camera;
   } catch (err) {
     console.warn('[MAPLIBRE_INIT_WARN] Native Map module could not be loaded:', err);
   }
