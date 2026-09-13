@@ -51,6 +51,27 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   const initialCenterSetRef = useRef<boolean>(false);
 
   // 1. Web Environment: Interactive Leaflet Dark Map Container
+  const iframeRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && iframeRef.current && iframeRef.current.contentWindow) {
+      const lat = currentLocation?.latitude;
+      const lng = currentLocation?.longitude;
+      const actualCoords = actualRoute.map((p) => [p.latitude, p.longitude]);
+      try {
+        iframeRef.current.contentWindow.postMessage(
+          {
+            type: 'UPDATE_LOCATION',
+            lat,
+            lng,
+            actualCoords,
+          },
+          '*'
+        );
+      } catch (e) {}
+    }
+  }, [currentLocation?.latitude, currentLocation?.longitude, actualRoute.length]);
+
   if (Platform.OS === 'web') {
     const lat = currentLocation?.latitude || MAP_CONFIG.defaultCenterCoordinate[1];
     const lng = currentLocation?.longitude || MAP_CONFIG.defaultCenterCoordinate[0];
@@ -94,10 +115,22 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
               iconSize: [24, 24],
               iconAnchor: [12, 12]
             });
-            L.marker([${lat}, ${lng}], { icon: customIcon }).addTo(map);
-
+            var marker = L.marker([${lat}, ${lng}], { icon: customIcon }).addTo(map);
+            var polyline = L.polyline(${JSON.stringify(actualCoords)}, { color: '${colors.primary}', weight: 5, opacity: 0.95 }).addTo(map);
             ${plannedCoords.length > 1 ? `L.polyline(${JSON.stringify(plannedCoords)}, { color: '#555566', weight: 4, dashArray: '8, 6' }).addTo(map);` : ''}
-            ${actualCoords.length > 1 ? `L.polyline(${JSON.stringify(actualCoords)}, { color: '${colors.primary}', weight: 5, opacity: 0.95 }).addTo(map);` : ''}
+
+            window.addEventListener('message', function(event) {
+              if (!event.data || event.data.type !== 'UPDATE_LOCATION') return;
+              var nLat = event.data.lat;
+              var nLng = event.data.lng;
+              if (nLat && nLng) {
+                marker.setLatLng([nLat, nLng]);
+                map.panTo([nLat, nLng], { animate: true, duration: 0.5 });
+              }
+              if (event.data.actualCoords) {
+                polyline.setLatLngs(event.data.actualCoords);
+              }
+            });
           </script>
         </body>
       </html>
@@ -106,6 +139,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     return (
       <View style={[styles.container, style]}>
         <iframe
+          ref={iframeRef}
           srcDoc={leafletHTML}
           style={{ width: '100%', height: '100%', border: 'none', borderRadius: 20 }}
           title="JOGPAL Web Map"

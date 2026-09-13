@@ -87,6 +87,14 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const formatDistanceDisplay = (distKm: number): { value: string; unit: string } => {
+    if (distKm < 1.0) {
+      const meters = Math.round(distKm * 1000);
+      return { value: `${meters}`, unit: 'METERS' };
+    }
+    return { value: distKm.toFixed(2), unit: 'KILOMETERS' };
+  };
+
   return (
     <Modal
       visible={visible}
@@ -176,8 +184,12 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
           <View style={styles.activeContainer}>
             {/* Top Stat: Distance */}
             <View style={styles.distanceBlock}>
-              <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>{metrics.distanceKm.toFixed(2)}</Text>
-              <Text style={[styles.distanceUnit, { color: colors.primary }]}>KILOMETERS</Text>
+              <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>
+                {formatDistanceDisplay(metrics.distanceKm).value}
+              </Text>
+              <Text style={[styles.distanceUnit, { color: colors.primary }]}>
+                {formatDistanceDisplay(metrics.distanceKm).unit}
+              </Text>
             </View>
 
             {/* Custom JOGPAL Live Dark Map */}
@@ -236,8 +248,12 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </View>
 
             <View style={styles.distanceBlock}>
-              <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>{metrics.distanceKm.toFixed(2)}</Text>
-              <Text style={[styles.distanceUnit, { color: colors.primary }]}>KILOMETERS</Text>
+              <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>
+                {formatDistanceDisplay(metrics.distanceKm).value}
+              </Text>
+              <Text style={[styles.distanceUnit, { color: colors.primary }]}>
+                {formatDistanceDisplay(metrics.distanceKm).unit}
+              </Text>
             </View>
 
             {/* Custom JOGPAL Live Dark Map */}
@@ -305,8 +321,8 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
 
               <View style={styles.telemetryRow}>
                 <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>{lastRunSummary.distanceKm.toFixed(2)}</Text>
-                  <Text style={styles.telemetryLabel}>KM</Text>
+                  <Text style={styles.telemetryValue}>{formatDistanceDisplay(lastRunSummary.distanceKm).value}</Text>
+                  <Text style={styles.telemetryLabel}>{formatDistanceDisplay(lastRunSummary.distanceKm).unit}</Text>
                 </View>
                 <View style={styles.telemetryDivider} />
                 <View style={styles.telemetryCol}>
