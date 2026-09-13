@@ -105,12 +105,17 @@ export const locationService = {
     }
   },
 
-  // Quick initial location with highest accuracy (< 1.5s)
+  // Quick initial location with balanced accuracy (< 3s timeout)
   async getQuickInitialLocation(): Promise<GPSPoint | null> {
     try {
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.BestForNavigation,
-      });
+      const loc = (await Promise.race([
+        Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        }),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
+      ])) as Location.LocationObject | null;
+
+      if (!loc || !loc.coords) return null;
       return {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
