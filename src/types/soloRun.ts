@@ -36,7 +36,7 @@ export interface SoloRunMetrics {
   avgSpeedKmH: number | null;
   maxSpeedKmH: number | null;
   gpsAccuracy: number | null;
-  gpsStatus: 'SEARCHING' | 'READY' | 'POOR' | 'LOST' | 'DISABLED';
+  gpsStatus: 'SEARCHING' | 'READY' | 'GOOD' | 'POOR' | 'LOST' | 'DISABLED';
   trackingIntegrityScore: number; // 0 to 100%
   stage1Ready: boolean; // Fast initial location ready (< 1.5s)
   stage2Ready: boolean; // High-accuracy location ready

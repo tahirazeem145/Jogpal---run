@@ -11,8 +11,7 @@ import {
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSoloRun } from '../context/SoloRunContext';
-import { JogpalMapView } from './JogpalMapView';
-import { HoneycombPattern } from './HoneycombPattern';
+import { JogpalMap } from './map/JogpalMap';
 import { NeonButton } from './NeonButton';
 import { NeonCard } from './NeonCard';
 import { useTheme } from '../theme/colors';
@@ -150,7 +149,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </Text>
 
             {/* Preview Custom JOGPAL Map */}
-            <JogpalMapView
+            <JogpalMap
               currentLocation={currentLocation}
               actualRoute={actualRoute}
               plannedRoute={plannedRoute}
@@ -175,9 +174,6 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         {/* --- STATE 5: ACTIVE LIVE RUN --- */}
         {runState === 'ACTIVE' && (
           <View style={styles.activeContainer}>
-            {/* Background Honeycomb Texture */}
-            <HoneycombPattern edgeWidth={60} opacity={0.15} />
-
             {/* Top Stat: Distance */}
             <View style={styles.distanceBlock}>
               <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>{metrics.distanceKm.toFixed(2)}</Text>
@@ -185,7 +181,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </View>
 
             {/* Custom JOGPAL Live Dark Map */}
-            <JogpalMapView
+            <JogpalMap
               currentLocation={currentLocation}
               actualRoute={actualRoute}
               plannedRoute={plannedRoute}
@@ -245,7 +241,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </View>
 
             {/* Custom JOGPAL Live Dark Map */}
-            <JogpalMapView
+            <JogpalMap
               currentLocation={currentLocation}
               actualRoute={actualRoute}
               plannedRoute={plannedRoute}
@@ -288,11 +284,13 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>GREAT WORK! SESSION COMPLETED</Text>
 
             {/* Completed Route Map View */}
-            <JogpalMapView
+            <JogpalMap
               actualRoute={lastRunSummary.actualRoute || actualRoute}
               plannedRoute={lastRunSummary.plannedRoute || plannedRoute}
               style={styles.summaryMap}
               interactive={true}
+              showStartFinishMarkers={true}
+              fitRouteOnLoad={true}
             />
 
             <NeonCard style={styles.summaryCard} contentStyle={styles.summaryContent}>
@@ -391,17 +389,17 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   previewMap: {
-    height: 160,
+    height: 180,
     width: '100%',
     marginBottom: 20,
   },
   liveMap: {
-    height: 180,
+    height: 260,
     width: '100%',
-    marginVertical: 12,
+    marginVertical: 10,
   },
   summaryMap: {
-    height: 150,
+    height: 160,
     width: '100%',
     marginVertical: 10,
   },

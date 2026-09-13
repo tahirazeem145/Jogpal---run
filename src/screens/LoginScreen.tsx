@@ -341,7 +341,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <MaterialCommunityIcons name="run-fast" size={36} color="#000000" />
           </View>
           <Text style={[styles.brandTitle, { color: colors.textPrimary }]}>JOGPAL</Text>
-          <Text style={[styles.brandTagline, { color: colors.primary }]}>TRACK. RUN. CONQUER.</Text>
+          <Text style={[styles.brandTagline, { color: colors.primary }]}>RUN TOGETHER, ANYWHERE</Text>
         </View>
 
         {/* Tab Selector: Sign In / Create Account */}

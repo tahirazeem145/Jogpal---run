@@ -24,7 +24,14 @@ interface AppContextType {
   incomingRequests: CrewRequest[];
   unreadRequestCount: number;
   isLoading: boolean;
-  logNewRun: (distanceKm: number, durationSec: number, pace: string, title?: string, type?: 'SOLO' | 'CREW') => Promise<void>;
+  logNewRun: (
+    distanceKm: number,
+    durationSec: number,
+    pace: string,
+    title?: string,
+    type?: 'SOLO' | 'CREW',
+    extra?: Partial<Omit<RunSession, 'id' | 'userId' | 'distanceKm' | 'durationSeconds' | 'pace' | 'title' | 'type'>>
+  ) => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   addCrewMember: (name: string, email?: string, userId?: string) => Promise<void>;
   scheduleSession: (title: string, scheduledAt: string, distanceKm: string) => Promise<void>;
@@ -216,7 +223,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     durationSec: number,
     pace: string,
     title = 'SOLO RUN',
-    type: 'SOLO' | 'CREW' = 'SOLO'
+    type: 'SOLO' | 'CREW' = 'SOLO',
+    extra?: Partial<Omit<RunSession, 'id' | 'userId' | 'distanceKm' | 'durationSeconds' | 'pace' | 'title' | 'type'>>
   ) => {
     const newRun: Omit<RunSession, 'id'> = {
       userId: activeUserId,
@@ -226,6 +234,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       durationSeconds: durationSec,
       pace,
       createdAt: new Date().toISOString(),
+      ...(extra || {}),
     };
     await runService.logRun(newRun);
 

@@ -54,6 +54,16 @@ export const offlineSyncService = {
               durationSeconds: run.durationSeconds,
               pace: run.pace,
               createdAt: run.createdAt,
+              route: run.actualRoute,
+              avgSpeedKmH: run.avgSpeedKmH,
+              maxSpeedKmH: run.maxSpeedKmH,
+              calories: Math.round(run.distanceKm * 62),
+              startLocation:
+                run.actualRoute && run.actualRoute.length > 0 ? run.actualRoute[0] : undefined,
+              endLocation:
+                run.actualRoute && run.actualRoute.length > 1
+                  ? run.actualRoute[run.actualRoute.length - 1]
+                  : undefined,
             });
             syncedCount++;
           } catch (err) {

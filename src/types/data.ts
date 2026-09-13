@@ -25,6 +25,12 @@ export interface RunSession {
   durationSeconds: number; // e.g. 540 seconds = 09:00
   pace: string; // e.g. "4:30 /km" or "--:--"
   avgBpm?: number;
+  calories?: number;
+  avgSpeedKmH?: number;
+  maxSpeedKmH?: number;
+  route?: { latitude: number; longitude: number; timestamp?: number }[];
+  startLocation?: { latitude: number; longitude: number };
+  endLocation?: { latitude: number; longitude: number };
   createdAt: string; // ISO string
   dateLabel?: string; // e.g. "TODAY", "YESTERDAY", "AUG 31, 2026"
 }

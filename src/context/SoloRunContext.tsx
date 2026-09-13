@@ -67,6 +67,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const locationSubRef = useRef<{ remove: () => void } | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastAcceptedPointRef = useRef<GPSPoint | null>(null);
+  const routePointsRef = useRef<GPSPoint[]>([]);
+  const actualRouteRef = useRef<LatLng[]>([]);
+  const accumulatedDistanceKmRef = useRef<number>(0);
   const startTimeRef = useRef<number | null>(null);
   const prepStartTimeRef = useRef<number | null>(null);
   const accumulatedDurationRef = useRef<number>(0);
@@ -166,6 +169,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setRoutePoints([]);
     setActualRoute([]);
     setCurrentLocation(null);
+    routePointsRef.current = [];
+    actualRouteRef.current = [];
+    accumulatedDistanceKmRef.current = 0;
     accumulatedDurationRef.current = 0;
     lastAcceptedPointRef.current = null;
     isPausedRef.current = false;
@@ -251,12 +257,13 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setMetrics((prev) => {
       let gpsStatus: SoloRunMetrics['gpsStatus'] = 'SEARCHING';
       if (accuracy !== null) {
-        if (accuracy <= 15) gpsStatus = 'READY';
-        else if (accuracy <= 35) gpsStatus = 'POOR';
+        if (accuracy <= 25) gpsStatus = 'READY';
+        else if (accuracy <= 60) gpsStatus = 'GOOD';
+        else if (accuracy <= 100) gpsStatus = 'POOR';
         else gpsStatus = 'LOST';
       }
 
-      if (runState === 'GPS_SEARCHING' && (accuracy === null || accuracy <= 35)) {
+      if (runState === 'GPS_SEARCHING' && (accuracy === null || accuracy <= 60)) {
         setRunState('GPS_READY');
       }
 
@@ -289,11 +296,14 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const integrity = Math.min(100, Math.max(0, Math.round((acceptedPointCountRef.current / totalPointCountRef.current) * 100)));
 
       const newCoord: LatLng = { latitude: point.latitude, longitude: point.longitude };
-      const updatedPoints = [...routePoints, point];
-      setRoutePoints(updatedPoints);
-      setActualRoute((prev) => [...prev, newCoord]);
+      routePointsRef.current.push(point);
+      setRoutePoints([...routePointsRef.current]);
 
-      if (lastAcceptedPointRef.current) {
+      if (!lastAcceptedPointRef.current) {
+        lastAcceptedPointRef.current = point;
+        actualRouteRef.current = [newCoord];
+        setActualRoute([newCoord]);
+      } else {
         const segKm = calculateHaversineDistanceKm(
           lastAcceptedPointRef.current.latitude,
           lastAcceptedPointRef.current.longitude,
@@ -301,30 +311,34 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
           point.longitude
         );
 
-        if (segKm >= 0.003) { // 3m minimum movement threshold to prevent stationary GPS jitter
-          const recentSlice = updatedPoints.slice(-10);
+        // Accumulate distance whenever displacement >= 1.5 meters (0.0015 km)
+        if (segKm >= 0.0015) {
+          lastAcceptedPointRef.current = point;
+          actualRouteRef.current.push(newCoord);
+          setActualRoute([...actualRouteRef.current]);
+
+          accumulatedDistanceKmRef.current += segKm;
+          const currentTotalDistance = Math.round(accumulatedDistanceKmRef.current * 1000) / 1000;
+
+          const recentSlice = routePointsRef.current.slice(-8);
           const rollingPace = calculateRollingPaceString(recentSlice);
+          const overallPace = calculatePaceString(currentTotalDistance, accumulatedDurationRef.current);
+          const speedKmH = point.speed !== null && point.speed > 0 ? Math.round(point.speed * 3.6 * 10) / 10 : null;
 
           setMetrics((prev) => {
-            const newDist = Math.round((prev.distanceKm + segKm) * 1000) / 1000;
-            const overallPace = calculatePaceString(newDist, prev.durationSeconds);
-            const speedKmH = point.speed !== null && point.speed > 0 ? Math.round(point.speed * 3.6 * 10) / 10 : null;
             const maxSpeed = Math.max(prev.maxSpeedKmH || 0, speedKmH || 0);
-
             return {
               ...prev,
-              distanceKm: newDist,
+              distanceKm: currentTotalDistance,
               currentPace: rollingPace !== '--:--' ? rollingPace : overallPace,
               avgPace: overallPace,
               currentSpeedKmH: speedKmH,
-              maxSpeedKmH: maxSpeed > 0 ? maxSpeed : null,
+              maxSpeedKmH: maxSpeed > 0 ? maxSpeed : prev.maxSpeedKmH,
               trackingIntegrityScore: integrity,
             };
           });
         }
       }
-
-      lastAcceptedPointRef.current = point;
     }
   };
 
@@ -400,9 +414,10 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     stopTimer();
     stopLocationWatching();
 
-    const finalDistance = Math.round(metrics.distanceKm * 100) / 100;
-    const finalDuration = metrics.durationSeconds;
+    const finalDistance = Math.round(accumulatedDistanceKmRef.current * 100) / 100;
+    const finalDuration = accumulatedDurationRef.current;
     const finalPace = calculatePaceString(finalDistance, finalDuration);
+    const finalRoute = actualRouteRef.current.length > 0 ? [...actualRouteRef.current] : actualRoute;
 
     const summary: PendingRun = {
       localId: `run_${Date.now()}`,
@@ -416,7 +431,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       maxSpeedKmH: metrics.maxSpeedKmH ?? undefined,
       createdAt: new Date().toISOString(),
       plannedRoute,
-      actualRoute,
+      actualRoute: finalRoute,
       trackingIntegrityScore: metrics.trackingIntegrityScore,
       syncStatus: 'SYNC_PENDING',
     };
@@ -436,7 +451,21 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         lastRunSummary.durationSeconds,
         lastRunSummary.pace,
         lastRunSummary.title,
-        lastRunSummary.type
+        lastRunSummary.type,
+        {
+          route: lastRunSummary.actualRoute,
+          avgSpeedKmH: lastRunSummary.avgSpeedKmH,
+          maxSpeedKmH: lastRunSummary.maxSpeedKmH,
+          calories: Math.round(lastRunSummary.distanceKm * 62),
+          startLocation:
+            lastRunSummary.actualRoute && lastRunSummary.actualRoute.length > 0
+              ? lastRunSummary.actualRoute[0]
+              : undefined,
+          endLocation:
+            lastRunSummary.actualRoute && lastRunSummary.actualRoute.length > 1
+              ? lastRunSummary.actualRoute[lastRunSummary.actualRoute.length - 1]
+              : undefined,
+        }
       );
       setRunState('SAVED');
       offlineSyncService.syncPendingRuns(activeUserId).catch(() => {});
@@ -473,7 +502,10 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCurrentLocation(null);
     setLastRunSummary(null);
     setErrorMessage(null);
+    accumulatedDistanceKmRef.current = 0;
     accumulatedDurationRef.current = 0;
+    routePointsRef.current = [];
+    actualRouteRef.current = [];
     lastAcceptedPointRef.current = null;
     isPausedRef.current = false;
     isCompletingRef.current = false;
