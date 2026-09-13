@@ -147,6 +147,4 @@ export const themes: Record<ThemeMode, ThemeColors> = {
   orange: orangeTheme,
 };
 
-// Re-export useTheme from ThemeContext for compatibility
-export { useTheme } from '../context/ThemeContext';
 export const colors = defaultTheme;

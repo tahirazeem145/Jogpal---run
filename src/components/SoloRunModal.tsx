@@ -14,7 +14,7 @@ import { useSoloRun } from '../context/SoloRunContext';
 import { JogpalMap } from './map/JogpalMap';
 import { NeonButton } from './NeonButton';
 import { NeonCard } from './NeonCard';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface SoloRunModalProps {
   visible: boolean;

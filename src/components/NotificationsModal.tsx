@@ -13,7 +13,7 @@ import {
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CrewRequest } from '../types/data';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface NotificationsModalProps {
   visible: boolean;

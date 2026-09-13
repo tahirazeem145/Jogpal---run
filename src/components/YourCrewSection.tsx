@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { CrewMember } from '../types/data';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface YourCrewSectionProps {
   crew?: CrewMember[];

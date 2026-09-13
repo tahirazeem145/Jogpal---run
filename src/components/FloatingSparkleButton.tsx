@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../theme/colors';
+import { useTheme } from '../context/ThemeContext';
 
 interface FloatingSparkleButtonProps {
   onPress?: () => void;
