@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
-import { RanksScreen } from '../screens/RanksScreen';
+import { TransformationScreen } from '../screens/TransformationScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { SettingsScreen } from '../screens/SettingsScreen';
@@ -50,15 +50,19 @@ export const TabNavigator: React.FC = () => {
         }}
       />
 
-      {/* Ranks Tab */}
+      {/* 30-Day Transformation Camera Tab (Replaces Rank) */}
       <Tab.Screen
-        name="Ranks"
-        component={RanksScreen}
+        name="Transformation"
+        component={TransformationScreen}
         options={{
-          tabBarLabel: 'RANKS',
-          tabBarIcon: ({ color }) => (
+          tabBarLabel: '30 DAYS',
+          tabBarIcon: ({ color, focused }) => (
             <View style={styles.iconWrapper}>
-              <Feather name="trending-up" size={22} color={color} />
+              <Ionicons
+                name={focused ? 'camera' : 'camera-outline'}
+                size={22}
+                color={color}
+              />
             </View>
           ),
         }}
