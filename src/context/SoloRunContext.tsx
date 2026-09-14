@@ -4,6 +4,8 @@ import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng, OfflineRouteMod
 import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm, calculateRollingPaceString, getAccuracyTier } from '../services/locationService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { useApp } from './AppContext';
+import { PartnerRunner } from '../types/map';
+import { CrewMember } from '../types/data';
 
 interface SoloRunContextType {
   runState: RunState;
@@ -18,7 +20,14 @@ interface SoloRunContextType {
   activeRunTitle: string;
   activeRunType: 'SOLO' | 'CREW';
   offlineConfig: OfflineTargetConfig | null;
-  startPreparation: (title?: string, type?: 'SOLO' | 'CREW') => Promise<void>;
+  activePartner: CrewMember | null;
+  partnerRunner: PartnerRunner | null;
+  startPreparation: (
+    title?: string,
+    type?: 'SOLO' | 'CREW',
+    offlineTargetConfig?: OfflineTargetConfig | null,
+    partner?: CrewMember | null
+  ) => Promise<void>;
   startOfflinePreparation: (targetKm: number, routeMode: OfflineRouteMode) => Promise<void>;
   startCountdown: () => void;
   pauseRun: () => void;
@@ -74,6 +83,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [activeRunTitle, setActiveRunTitle] = useState<string>('SOLO RUN');
   const [activeRunType, setActiveRunType] = useState<'SOLO' | 'CREW'>('SOLO');
   const [offlineConfig, setOfflineConfig] = useState<OfflineTargetConfig | null>(null);
+  const [activePartner, setActivePartner] = useState<CrewMember | null>(null);
+  const [partnerRunner, setPartnerRunner] = useState<PartnerRunner | null>(null);
+  const activePartnerRef = useRef<CrewMember | null>(null);
 
   const startOfflinePreparation = async (targetKm: number, routeMode: OfflineRouteMode) => {
     const config: OfflineTargetConfig = {
@@ -82,7 +94,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       routeMode,
     };
     setOfflineConfig(config);
-    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO', config);
+    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO', config, null);
   };
 
   // Telemetry & Timing Refs
@@ -179,12 +191,18 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const startPreparation = async (
     title = 'SOLO RUN',
     type: 'SOLO' | 'CREW' = 'SOLO',
-    offlineTargetConfig: OfflineTargetConfig | null = null
+    offlineTargetConfig: OfflineTargetConfig | null = null,
+    partner: CrewMember | null = null
   ) => {
     const prepStart = Date.now();
     prepStartTimeRef.current = prepStart;
     titleRef.current = title;
     typeRef.current = type;
+    activePartnerRef.current = partner;
+    setActivePartner(partner);
+    if (!partner) {
+      setPartnerRunner(null);
+    }
     setActiveRunTitle(title);
     setActiveRunType(type);
 
@@ -234,6 +252,18 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.log(`[TELEMETRY] FIRST_LOCATION_RECEIVED (Latency: ${latency}ms)`);
         setCurrentLocation(stage1Point);
 
+        if (activePartnerRef.current) {
+          setPartnerRunner({
+            id: activePartnerRef.current.id || activePartnerRef.current.userId || 'partner_1',
+            name: activePartnerRef.current.name || 'Partner',
+            avatarUrl: activePartnerRef.current.avatarUrl || activePartnerRef.current.photoURL,
+            latitude: stage1Point.latitude + 0.00012,
+            longitude: stage1Point.longitude + 0.00012,
+            distanceMeters: 0,
+            pace: '--:--',
+          });
+        }
+
         setMetrics((prev) => ({
           ...prev,
           stage1Ready: true,
@@ -263,6 +293,17 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // MAP LOCATION: Update current location for map centering & runner marker display
     if (isValidMapLocation(point)) {
       setCurrentLocation(point);
+      if (activePartnerRef.current) {
+        setPartnerRunner((prev) => ({
+          id: activePartnerRef.current?.id || activePartnerRef.current?.userId || 'partner_1',
+          name: activePartnerRef.current?.name || 'Partner',
+          avatarUrl: activePartnerRef.current?.avatarUrl || activePartnerRef.current?.photoURL,
+          latitude: point.latitude + 0.00012,
+          longitude: point.longitude + 0.00012,
+          distanceMeters: Math.round(accumulatedDistanceKmRef.current * 1000 * 0.98),
+          pace: calculatePaceString(accumulatedDistanceKmRef.current, accumulatedDurationRef.current),
+        }));
+      }
     }
 
     const accuracy = point.accuracy;
@@ -552,6 +593,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     prepStartTimeRef.current = null;
     titleRef.current = 'SOLO RUN';
     typeRef.current = 'SOLO';
+    activePartnerRef.current = null;
+    setActivePartner(null);
+    setPartnerRunner(null);
     setActiveRunTitle('SOLO RUN');
     setActiveRunType('SOLO');
     setOfflineConfig(null);
@@ -572,6 +616,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         activeRunTitle,
         activeRunType,
         offlineConfig,
+        activePartner,
+        partnerRunner,
         startPreparation,
         startOfflinePreparation,
         startCountdown,

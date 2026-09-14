@@ -9,6 +9,7 @@ import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
 import { useSoloRun } from '../context/SoloRunContext';
 import { SoloRunModal } from '../components/SoloRunModal';
+import { DuoRunnerSelectModal } from '../components/DuoRunnerSelectModal';
 import { NotificationsModal } from '../components/NotificationsModal';
 import { useTheme } from '../context/ThemeContext';
 import { CrewMember } from '../types/data';
@@ -35,6 +36,7 @@ export const HomeScreen: React.FC = () => {
   const { colors } = useTheme();
 
   const [soloRunModalVisible, setSoloRunModalVisible] = React.useState(false);
+  const [duoSelectModalVisible, setDuoSelectModalVisible] = React.useState(false);
   const [notificationsVisible, setNotificationsVisible] = React.useState(false);
   const { startPreparation } = useSoloRun();
 
@@ -43,9 +45,18 @@ export const HomeScreen: React.FC = () => {
     await startPreparation('SOLO RUN', 'SOLO');
   };
 
-  const handleStartDuoRunWithFriend = async (friend?: CrewMember) => {
+  const handleSelectDuoPartner = async (partner: CrewMember) => {
     setSoloRunModalVisible(true);
-    await startPreparation(friend ? `DUO RUN • ${friend.name.toUpperCase()}` : 'DUO RUN', 'CREW');
+    await startPreparation(`DUO RUN • ${partner.name.toUpperCase()}`, 'CREW', null, partner);
+  };
+
+  const handleStartDuoRunWithFriend = async (friend?: CrewMember) => {
+    if (friend) {
+      setSoloRunModalVisible(true);
+      await startPreparation(`DUO RUN • ${friend.name.toUpperCase()}`, 'CREW', null, friend);
+    } else {
+      setDuoSelectModalVisible(true);
+    }
   };
 
   const handleStartGroupRunWithFriend = async (friend?: CrewMember) => {
@@ -53,9 +64,8 @@ export const HomeScreen: React.FC = () => {
     await startPreparation(friend ? `GROUP RUN • ${friend.name.toUpperCase()} & CREW` : 'GROUP SQUAD RUN', 'CREW');
   };
 
-  const handleGeneralDuoRun = async () => {
-    setSoloRunModalVisible(true);
-    await startPreparation('DUO RUN', 'CREW');
+  const handleGeneralDuoRun = () => {
+    setDuoSelectModalVisible(true);
   };
 
   const handleNotificationPress = () => {
@@ -116,6 +126,14 @@ export const HomeScreen: React.FC = () => {
       <SoloRunModal
         visible={soloRunModalVisible}
         onClose={() => setSoloRunModalVisible(false)}
+      />
+
+      {/* Duo Partner Picker Modal (Select from Friends List) */}
+      <DuoRunnerSelectModal
+        visible={duoSelectModalVisible}
+        onClose={() => setDuoSelectModalVisible(false)}
+        friends={friends}
+        onSelectPartner={handleSelectDuoPartner}
       />
 
       {/* Real-time Notifications & Crew Requests Modal */}

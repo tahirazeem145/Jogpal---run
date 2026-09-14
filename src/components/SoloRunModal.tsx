@@ -37,6 +37,8 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     activeRunTitle,
     errorMessage,
     offlineConfig,
+    activePartner,
+    partnerRunner,
     startPreparation,
     startOfflinePreparation,
     startCountdown,
@@ -261,6 +263,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                 currentLocation={currentLocation}
                 actualRoute={actualRoute}
                 plannedRoute={plannedRoute}
+                partnerRunners={partnerRunner ? [partnerRunner] : []}
                 style={styles.previewMap}
                 interactive={false}
               />
@@ -295,6 +298,27 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               </Text>
             </View>
 
+            {/* Active Partner Pill Indicator */}
+            {activePartner && (
+              <View
+                style={[
+                  styles.partnerActivePill,
+                  {
+                    backgroundColor: colors.crewAddBg,
+                    borderColor: colors.primary,
+                  },
+                ]}
+              >
+                <Ionicons name="people" size={14} color={colors.primary} />
+                <Text style={[styles.partnerActivePillText, { color: colors.textPrimary }]}>
+                  DUO PARTNER:{' '}
+                  <Text style={{ color: colors.primary, fontWeight: '800' }}>
+                    {activePartner.name.toUpperCase()}
+                  </Text>
+                </Text>
+              </View>
+            )}
+
             {/* Map Component (Offline Synthetic Map OR Live Street Map) */}
             {offlineConfig?.isOfflineMode ? (
               <OfflineSyntheticMap
@@ -308,6 +332,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                 currentLocation={currentLocation}
                 actualRoute={actualRoute}
                 plannedRoute={plannedRoute}
+                partnerRunners={partnerRunner ? [partnerRunner] : []}
                 style={styles.liveMap}
                 interactive={true}
               />
@@ -848,5 +873,22 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     width: '100%',
+  },
+  partnerActivePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 6,
+    marginTop: -8,
+    marginBottom: 10,
+  },
+  partnerActivePillText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
