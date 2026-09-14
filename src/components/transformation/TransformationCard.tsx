@@ -52,15 +52,17 @@ export const TransformationCard: React.FC<TransformationCardProps> = ({
           </View>
           <View style={styles.textCol}>
             <View style={styles.titleRow}>
-              <Text style={[styles.title, { color: colors.textPrimary }]}>30-DAY TRANSFORMATION</Text>
+              <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
+                30-DAY TRANSFORMATION
+              </Text>
               <View style={[styles.countBadge, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
                 <Text style={[styles.countText, { color: colors.primary }]}>{capturedCount}/30</Text>
               </View>
             </View>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={2}>
               {capturedCount === 0
                 ? 'Tap to start your 30-day transformation calendar!'
-                : `Latest photo added for Day ${sortedDays[0]}. Tap to view calendar!`}
+                : `Day ${sortedDays[0]} photo captured. Tap to view calendar!`}
             </Text>
           </View>
         </View>
@@ -68,7 +70,11 @@ export const TransformationCard: React.FC<TransformationCardProps> = ({
         {/* Right Preview Thumbnail or Plus Icon */}
         <View style={styles.rightBox}>
           {latestPhoto ? (
-            <Image source={{ uri: latestPhoto.imageUri }} style={styles.thumbImage} resizeMode="cover" />
+            <Image
+              source={{ uri: latestPhoto.imageUri }}
+              style={[styles.thumbImage, { borderColor: colors.primary }]}
+              resizeMode="cover"
+            />
           ) : (
             <View style={[styles.plusBox, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
               <Feather name="plus" size={18} color={colors.primary} />
@@ -92,15 +98,14 @@ export const TransformationCard: React.FC<TransformationCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
     marginTop: 18,
-    marginBottom: 6,
+    marginBottom: 20,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 14,
+    padding: 16,
     borderRadius: 20,
     borderWidth: 1,
   },
@@ -109,12 +114,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     flex: 1,
+    marginRight: 12,
   },
   iconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    borderWidth: 1,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -124,7 +130,8 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    marginBottom: 3,
   },
   title: {
     fontSize: 13,
@@ -132,31 +139,33 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   countBadge: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 6,
     borderWidth: 1,
   },
   countText: {
-    fontSize: 9,
+    fontSize: 10,
     fontWeight: '900',
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
-    marginTop: 2,
+    lineHeight: 15,
   },
   rightBox: {
-    marginLeft: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   thumbImage: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: 12,
+    borderWidth: 1.5,
   },
   plusBox: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: 12,
     borderWidth: 1,
     justifyContent: 'center',

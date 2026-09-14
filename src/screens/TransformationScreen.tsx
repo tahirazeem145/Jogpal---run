@@ -254,13 +254,11 @@ export const TransformationScreen: React.FC = () => {
     <View style={[styles.rootContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       {/* Header Bar */}
       <View style={styles.header}>
-        <View style={styles.headerTitleGroup}>
-          <View style={styles.titleRow}>
-            <View style={[styles.iconBox, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
-              <Ionicons name="camera" size={20} color={colors.primary} />
-            </View>
-            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>30-DAY TRANSFORMATION</Text>
-          </View>
+        <View style={[styles.iconBox, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
+          <Ionicons name="camera" size={20} color={colors.primary} />
+        </View>
+        <View style={styles.headerTextGroup}>
+          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>30-DAY TRANSFORMATION</Text>
           <Text style={[styles.headerSubtitle, { color: colors.textSecondary }]}>
             Continuous body progress, photo calendar & streak
           </Text>
@@ -569,32 +567,32 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  headerTitleGroup: {
-    flex: 1,
-  },
-  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 10,
+    paddingBottom: 16,
+    gap: 12,
   },
   iconBox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  headerTextGroup: {
+    flex: 1,
+  },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -603,34 +601,34 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   progressBox: {
-    borderRadius: 16,
-    padding: 14,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    marginBottom: 16,
+    marginBottom: 20,
   },
   progressHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   progressLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
   progressCount: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '900',
   },
   progressBarTrack: {
-    height: 8,
-    borderRadius: 4,
+    height: 10,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 5,
   },
   comparisonCard: {
     borderRadius: 18,
