@@ -39,7 +39,8 @@
         {
           "photosPermission": "The app accesses your photos to let you set your runner profile picture."
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

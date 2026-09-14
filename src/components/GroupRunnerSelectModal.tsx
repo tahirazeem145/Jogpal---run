@@ -14,7 +14,6 @@ import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CrewMember } from '../types/data';
 import { useTheme } from '../context/ThemeContext';
-import { NeonButton } from './NeonButton';
 
 interface GroupRunnerSelectModalProps {
   visible: boolean;

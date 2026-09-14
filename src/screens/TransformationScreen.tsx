@@ -62,13 +62,6 @@ export const TransformationScreen: React.FC = () => {
   const capturedCount = Object.keys(photosMap).length;
   const daysArray = Array.from({ length: 30 }, (_, i) => i + 1);
 
-  const day1Photo = photosMap[1];
-  const sortedDayNumbers = Object.keys(photosMap)
-    .map(Number)
-    .sort((a, b) => a - b);
-  const latestDayNum = sortedDayNumbers.length > 0 ? sortedDayNumbers[sortedDayNumbers.length - 1] : null;
-  const latestPhoto = latestDayNum ? photosMap[latestDayNum] : null;
-
   const handleSlotPress = (dayNum: number) => {
     if (photosMap[dayNum]) {
       openDayDetail(dayNum);

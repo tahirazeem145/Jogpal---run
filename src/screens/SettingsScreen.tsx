@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { NeonCard } from '../components/NeonCard';
 import { NeonButton } from '../components/NeonButton';
@@ -39,7 +39,7 @@ export const SettingsScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { userProfile, updateProfile } = useApp();
-  const { theme, colors, setTheme, isOrange } = useTheme();
+  const { theme, colors, setTheme } = useTheme();
 
   // Edit Profile Modal State
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);

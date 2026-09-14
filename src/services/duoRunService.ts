@@ -3,11 +3,9 @@ import {
   doc,
   setDoc,
   updateDoc,
-  deleteDoc,
   onSnapshot,
   query,
   where,
-  getDoc,
 } from '@firebase/firestore';
 import { db } from '../config/firebase';
 import { DuoRunSession, DuoParticipantTelemetry, UserProfile, CrewMember } from '../types/data';

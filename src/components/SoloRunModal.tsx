@@ -42,9 +42,6 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     offlineConfig,
     activePartner,
     partnerRunner,
-    duoSessionId,
-    duoSession,
-    groupSessionId,
     groupSession,
     isDuoWaitingForPartner,
     isGroupWaitingForPartners,
@@ -146,7 +143,6 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     return { value: distKm.toFixed(2), unit: 'KILOMETERS' };
   };
 
-  const isCurrentRunOffline = offlineConfig?.isOfflineMode || selectedMode === 'OFFLINE';
   const effectivePartnerRunners = partnerRunners.length > 0 ? partnerRunners : (partnerRunner ? [partnerRunner] : []);
 
   return (

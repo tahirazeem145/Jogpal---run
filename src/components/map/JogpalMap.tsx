@@ -7,7 +7,7 @@ import {
   Platform,
 } from 'react-native';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { JogpalMapProps, JogpalCoordinate, CameraMode } from '../../types/map';
+import { JogpalMapProps, CameraMode } from '../../types/map';
 import { MAP_CONFIG } from '../../config/map';
 import { useTheme } from '../../context/ThemeContext';
 import { jogpalDarkMapStyle } from '../../theme/mapStyle';
@@ -38,7 +38,6 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   showStartFinishMarkers = false,
   fitRouteOnLoad = false,
   onMapLoaded,
-  onMapError,
 }) => {
   const { colors } = useTheme();
   const [cameraMode, setCameraMode] = useState<CameraMode>('FOLLOWING');
@@ -361,7 +360,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
               };
             }
           }}
-          onRegionChange={(region: any, details: any) => {
+          onRegionChange={(_region: any, details: any) => {
             // Recognize user pinch, drag, or double-tap gestures to pause follow mode
             if (details?.isGesture && cameraMode !== 'USER_CONTROLLED') {
               setCameraMode('USER_CONTROLLED');

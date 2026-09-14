@@ -6,7 +6,6 @@ import {
   signOut as fbSignOut,
   onAuthStateChanged,
   User,
-  signInAnonymously,
   GoogleAuthProvider,
   signInWithPopup,
   signInWithCredential,
@@ -31,7 +30,6 @@ if (Platform.OS !== 'web') {
   }
 }
 
-const PERSISTED_GOOGLE_USER_KEY = '@jogpal_persistent_google_auth';
 const SAVED_GOOGLE_ACCOUNTS_KEY = '@jogpal_saved_google_accounts_list';
 
 export interface SavedGoogleAccount {

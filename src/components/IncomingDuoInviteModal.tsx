@@ -7,8 +7,7 @@ import {
   TouchableOpacity,
   Image,
 } from 'react-native';
-import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { DuoRunSession } from '../types/data';
 import { useTheme } from '../context/ThemeContext';
 
@@ -23,7 +22,6 @@ export const IncomingDuoInviteModal: React.FC<IncomingDuoInviteModalProps> = ({
   onAccept,
   onDecline,
 }) => {
-  const insets = useSafeAreaInsets();
   const { colors } = useTheme();
 
   if (!session) return null;

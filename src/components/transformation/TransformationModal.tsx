@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { TransformationPhoto, TransformationMap } from '../../types/transformation';
 import { transformationService } from '../../services/transformationService';
@@ -36,7 +36,7 @@ export const TransformationModal: React.FC<TransformationModalProps> = ({
   visible,
   onClose,
   userId,
-  userName = 'Runner',
+  userName: _userName = 'Runner',
 }) => {
   const { colors } = useTheme();
 
@@ -76,14 +76,6 @@ export const TransformationModal: React.FC<TransformationModalProps> = ({
 
   const capturedCount = Object.keys(photosMap).length;
   const daysArray = Array.from({ length: 30 }, (_, i) => i + 1);
-
-  // Find Day 1 photo and Latest Day photo for Side-by-Side Transformation Comparison
-  const day1Photo = photosMap[1];
-  const sortedDayNumbers = Object.keys(photosMap)
-    .map(Number)
-    .sort((a, b) => a - b);
-  const latestDayNum = sortedDayNumbers.length > 0 ? sortedDayNumbers[sortedDayNumbers.length - 1] : null;
-  const latestPhoto = latestDayNum ? photosMap[latestDayNum] : null;
 
   const handleSlotPress = (dayNum: number) => {
     if (photosMap[dayNum]) {

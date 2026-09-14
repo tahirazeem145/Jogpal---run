@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, View, Text, StyleProp, ViewStyle } from 'react-native';
-import Svg, { Rect, Path, Circle, Line, Text as SvgText, Defs, LinearGradient, Stop, Filter, FeDropShadow } from 'react-native-svg';
+import Svg, { Rect, Circle, Line, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { OfflineRouteMode } from '../../types/soloRun';
 import { useTheme } from '../../context/ThemeContext';
 

@@ -1,4 +1,4 @@
-import { GPSPoint, LatLng } from '../../types/soloRun';
+import { GPSPoint } from '../../types/soloRun';
 import { MAP_CONFIG } from '../../config/map';
 import { gpsKalmanFilter } from './kalmanFilter';
 

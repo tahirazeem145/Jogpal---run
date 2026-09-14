@@ -2,10 +2,10 @@ import React, { createContext, useContext, useState, useEffect, useRef } from 'r
 import { AppState, AppStateStatus, BackHandler, Alert } from 'react-native';
 import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng, OfflineRouteMode, OfflineTargetConfig, RunSubtype } from '../types/soloRun';
 import { PartnerRunner } from '../types/map';
-import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm, calculateRollingPaceString, getAccuracyTier, smoothGPSPoint, resetFilter } from '../services/locationService';
+import { locationService, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm, calculateRollingPaceString, smoothGPSPoint, resetFilter } from '../services/locationService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { useApp } from './AppContext';
-import { CrewMember, DuoRunSession, DuoParticipantTelemetry, GroupRunSession, GroupParticipantTelemetry } from '../types/data';
+import { CrewMember, DuoRunSession, GroupRunSession } from '../types/data';
 import { duoRunService } from '../services/duoRunService';
 import { groupRunService } from '../services/groupRunService';
 
@@ -554,7 +554,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     stopLocationWatching();
     locationSubRef.current = locationService.watchLocation(
       (point) => handleIncomingGPSPoint(point),
-      (err) => {
+      (_err) => {
         setMetrics((prev) => ({ ...prev, gpsStatus: 'LOST' }));
       }
     );
@@ -893,7 +893,6 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // 9. Save Run (Idempotent: saves local first, syncs Firebase separately)
   const saveRun = async (overrideSummary?: PendingRun) => {
     const summaryToSave = overrideSummary || lastRunSummary;
-    const currentState = runStateRef.current;
     if (isSavedRef.current || !summaryToSave) return;
     isSavedRef.current = true;
     updateRunState('SAVING');

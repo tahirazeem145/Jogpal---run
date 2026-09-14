@@ -1,4 +1,4 @@
-import { validateGPSPoint, calculateHaversineDistanceKm, calculateRollingPaceString, getAccuracyTier } from '../src/services/locationService';
+import { validateGPSPoint, calculateHaversineDistanceKm, getAccuracyTier } from '../src/services/locationService';
 import { GPSPoint, LatLng } from '../src/types/soloRun';
 
 function assert(condition: boolean, message: string) {

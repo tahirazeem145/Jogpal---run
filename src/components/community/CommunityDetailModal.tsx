@@ -9,8 +9,8 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { Community, CommunityEvent } from '../../types/community';
+import { Feather, Ionicons } from '@expo/vector-icons';
+import { Community } from '../../types/community';
 import { communityService } from '../../services/communityService';
 import { CommunityThemeBanner } from './CommunityThemeBanner';
 import { HostEventModal } from './HostEventModal';

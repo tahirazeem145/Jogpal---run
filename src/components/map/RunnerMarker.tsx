@@ -19,7 +19,7 @@ interface RunnerMarkerProps {
 export const RunnerMarker: React.FC<RunnerMarkerProps> = React.memo(({
   coordinate,
   color,
-  glowColor,
+  glowColor: _glowColor,
 }) => {
   if (!ViewAnnotation || Platform.OS === 'web') return null;
 

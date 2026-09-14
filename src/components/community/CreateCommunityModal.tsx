@@ -10,7 +10,7 @@ import {
   Alert,
   Switch,
 } from 'react-native';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { CoverThemeId, Community } from '../../types/community';
 import { COVER_THEMES, communityService } from '../../services/communityService';
 import { CommunityThemeBanner } from './CommunityThemeBanner';

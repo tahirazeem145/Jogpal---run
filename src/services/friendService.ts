@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, onSnapshot, getDoc, deleteDoc } from '@firebase/firestore';
+import { collection, doc, setDoc, onSnapshot, deleteDoc } from '@firebase/firestore';
 import { db } from '../config/firebase';
 import { CrewMember } from '../types/data';
 

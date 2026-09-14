@@ -3,12 +3,8 @@ import {
   doc,
   setDoc,
   deleteDoc,
-  updateDoc,
   onSnapshot,
-  query,
-  where,
   getDoc,
-  getDocs,
 } from '@firebase/firestore';
 import { db } from '../config/firebase';
 import { CrewRequest, UserProfile, CrewMember } from '../types/data';

@@ -25,7 +25,7 @@ interface YourCrewSectionProps {
 export const YourCrewSection: React.FC<YourCrewSectionProps> = ({
   crew = [],
   currentUserId,
-  onViewAllPress,
+  onViewAllPress: _onViewAllPress,
   onMemberPress,
   onStartDuoRun,
   onStartGroupRun,

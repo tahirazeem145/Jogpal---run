@@ -9,7 +9,7 @@ import { SoloRunProvider } from './src/context/SoloRunContext';
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 
 const AppContent: React.FC = () => {
-  const { colors, isOrange } = useTheme();
+  const { colors } = useTheme();
 
   const customTheme = {
     ...DarkTheme,

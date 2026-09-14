@@ -39,7 +39,6 @@ export const YourFriendsSection: React.FC<YourFriendsSectionProps> = ({
   const { colors } = useTheme();
   const [selectedFriend, setSelectedFriend] = useState<CrewMember | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showAllFriendsModal, setShowAllFriendsModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [inputRunnerId, setInputRunnerId] = useState('');
   const [inputRunnerName, setInputRunnerName] = useState('');
@@ -195,9 +194,6 @@ export const YourFriendsSection: React.FC<YourFriendsSectionProps> = ({
           </View>
         ) : (
           visibleFriends.map((friend) => {
-            const displayId = friend.userId || friend.id;
-            const shortId = displayId.length > 8 ? `#${displayId.slice(0, 6)}` : `#${displayId}`;
-
             return (
               <TouchableOpacity
                 key={friend.id}

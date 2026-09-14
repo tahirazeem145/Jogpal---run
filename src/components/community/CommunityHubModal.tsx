@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   TextInput,
-  Image,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { Community } from '../../types/community';

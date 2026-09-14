@@ -9,7 +9,7 @@ import {
   TextInput,
   Alert,
 } from 'react-native';
-import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { CommunityEvent, WeatherData } from '../../types/community';
 import { communityService } from '../../services/communityService';
 import { useTheme } from '../../context/ThemeContext';

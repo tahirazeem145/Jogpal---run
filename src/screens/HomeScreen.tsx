@@ -26,14 +26,12 @@ export const HomeScreen: React.FC = () => {
     user,
     userProfile,
     weeklyKm,
-    crew,
     friends,
     otherRunners,
     sentRequestIds,
     personalBests,
     incomingRequests,
     unreadRequestCount,
-    logNewRun,
     addCrewMember,
     sendCrewRequest,
     acceptCrewRequest,
@@ -49,7 +47,7 @@ export const HomeScreen: React.FC = () => {
   const [incomingDuoInvite, setIncomingDuoInvite] = React.useState<DuoRunSession | null>(null);
   const [incomingGroupInvite, setIncomingGroupInvite] = React.useState<GroupRunSession | null>(null);
   const [preSelectedFriendForGroup, setPreSelectedFriendForGroup] = React.useState<CrewMember | null>(null);
-  const { startPreparation, startDuoPreparation, startGroupPreparation } = useSoloRun();
+  const { startPreparation } = useSoloRun();
 
   const activeUserId = userProfile?.id || user?.uid || '';
 
