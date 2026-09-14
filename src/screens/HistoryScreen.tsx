@@ -110,10 +110,12 @@ export const HistoryScreen: React.FC = () => {
               <Text style={styles.statBig}>{totalKm.toFixed(1)}</Text>
               <Text style={styles.statLabel}>KM</Text>
             </View>
+            <View style={styles.summaryDivider} />
             <View style={styles.statCol}>
               <Text style={styles.statBig}>{totalRuns}</Text>
               <Text style={styles.statLabel}>RUNS</Text>
             </View>
+            <View style={styles.summaryDivider} />
             <View style={styles.statCol}>
               <Text style={styles.statBig}>{formattedTime}</Text>
               <Text style={styles.statLabel}>TIME</Text>
@@ -143,33 +145,35 @@ export const HistoryScreen: React.FC = () => {
                 <Text style={[styles.sectionHeader, { color: colors.primary }]}>
                   {index === 0 ? 'LATEST RUN' : dateStr.toUpperCase()}
                 </Text>
-                <NeonCard style={styles.sessionCard} contentStyle={styles.sessionContent}>
-                  <View style={styles.sessionTopRow}>
-                    <Text style={styles.dateLabel}>{dateStr}</Text>
-                    {run.type && (
-                      <View style={styles.soloBadge}>
-                        <Text style={[styles.soloBadgeText, { color: colors.primary }]}>{run.type}</Text>
+                <View style={[styles.sessionCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                  <View style={styles.sessionContent}>
+                    <View style={styles.sessionTopRow}>
+                      <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>{dateStr}</Text>
+                      {run.type && (
+                        <View style={[styles.soloBadge, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
+                          <Text style={[styles.soloBadgeText, { color: colors.primary }]}>{run.type}</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <Text style={[styles.sessionTitle, { color: colors.textPrimary }]}>{run.title || 'RUN SESSION'}</Text>
+
+                    <View style={styles.statsRow}>
+                      <View style={styles.statCol}>
+                        <Text style={[styles.statMedium, { color: colors.primary }]}>{run.distanceKm.toFixed(2)}</Text>
+                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>KM</Text>
                       </View>
-                    )}
-                  </View>
-
-                  <Text style={styles.sessionTitle}>{run.title || 'RUN SESSION'}</Text>
-
-                  <View style={styles.statsRow}>
-                    <View style={styles.statCol}>
-                      <Text style={styles.statMedium}>{run.distanceKm.toFixed(2)}</Text>
-                      <Text style={styles.statLabel}>KM</Text>
-                    </View>
-                    <View style={styles.statCol}>
-                      <Text style={styles.statMedium}>{timeStr}</Text>
-                      <Text style={styles.statLabel}>TIME</Text>
-                    </View>
-                    <View style={styles.statCol}>
-                      <Text style={styles.statMedium}>{run.pace || '--:--'}</Text>
-                      <Text style={styles.statLabel}>PACE</Text>
+                      <View style={styles.statCol}>
+                        <Text style={[styles.statMedium, { color: colors.textPrimary }]}>{timeStr}</Text>
+                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>TIME</Text>
+                      </View>
+                      <View style={styles.statCol}>
+                        <Text style={[styles.statMedium, { color: colors.textPrimary }]}>{run.pace || '--:--'}</Text>
+                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>PACE</Text>
+                      </View>
                     </View>
                   </View>
-                </NeonCard>
+                </View>
               </TouchableOpacity>
             );
           })
@@ -180,10 +184,10 @@ export const HistoryScreen: React.FC = () => {
               Start a solo run or record your first session to see your running history.
             </Text>
             <TouchableOpacity
-              style={[styles.quickRecordButton, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}
+              style={[styles.quickRecordButton, { backgroundColor: colors.primary, borderColor: colors.primary }]}
               onPress={handleRecordFirstRun}
             >
-              <Text style={[styles.quickRecordText, { color: colors.primary }]}>+ Log 3.2 KM Run</Text>
+              <Text style={[styles.quickRecordText, { color: '#000000' }]}>+ Log 3.2 KM Run</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -219,37 +223,39 @@ export const HistoryScreen: React.FC = () => {
               />
 
               {/* Stats Grid */}
-              <NeonCard style={styles.detailsCard} contentStyle={styles.detailsCardContent}>
-                <View style={styles.detailsRow}>
-                  <View style={styles.detailsCol}>
-                    <Text style={[styles.detailsValue, { color: colors.primary }]}>
-                      {selectedRun.distanceKm.toFixed(2)}
-                    </Text>
-                    <Text style={styles.detailsLabel}>DISTANCE (KM)</Text>
+              <View style={[styles.detailsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <View style={styles.detailsCardContent}>
+                  <View style={styles.detailsRow}>
+                    <View style={styles.detailsCol}>
+                      <Text style={[styles.detailsValue, { color: colors.primary }]}>
+                        {selectedRun.distanceKm.toFixed(2)}
+                      </Text>
+                      <Text style={[styles.detailsLabel, { color: colors.textMuted }]}>DISTANCE (KM)</Text>
+                    </View>
+                    <View style={styles.detailsCol}>
+                      <Text style={[styles.detailsValue, { color: colors.textPrimary }]}>
+                        {formatDuration(selectedRun.durationSeconds)}
+                      </Text>
+                      <Text style={[styles.detailsLabel, { color: colors.textMuted }]}>DURATION</Text>
+                    </View>
                   </View>
-                  <View style={styles.detailsCol}>
-                    <Text style={styles.detailsValue}>
-                      {formatDuration(selectedRun.durationSeconds)}
-                    </Text>
-                    <Text style={styles.detailsLabel}>DURATION</Text>
+
+                  <View style={[styles.detailsDivider, { backgroundColor: colors.cardBorder }]} />
+
+                  <View style={styles.detailsRow}>
+                    <View style={styles.detailsCol}>
+                      <Text style={[styles.detailsValue, { color: colors.textPrimary }]}>{selectedRun.pace || '--:--'}</Text>
+                      <Text style={[styles.detailsLabel, { color: colors.textMuted }]}>AVG PACE</Text>
+                    </View>
+                    <View style={styles.detailsCol}>
+                      <Text style={[styles.detailsValue, { color: colors.textPrimary }]}>
+                        {selectedRun.calories || Math.round(selectedRun.distanceKm * 62)} kcal
+                      </Text>
+                      <Text style={[styles.detailsLabel, { color: colors.textMuted }]}>CALORIES</Text>
+                    </View>
                   </View>
                 </View>
-
-                <View style={styles.detailsDivider} />
-
-                <View style={styles.detailsRow}>
-                  <View style={styles.detailsCol}>
-                    <Text style={styles.detailsValue}>{selectedRun.pace || '--:--'}</Text>
-                    <Text style={styles.detailsLabel}>AVG PACE</Text>
-                  </View>
-                  <View style={styles.detailsCol}>
-                    <Text style={styles.detailsValue}>
-                      {selectedRun.calories || Math.round(selectedRun.distanceKm * 62)} kcal
-                    </Text>
-                    <Text style={styles.detailsLabel}>CALORIES</Text>
-                  </View>
-                </View>
-              </NeonCard>
+              </View>
 
               <NeonButton
                 title="CLOSE DETAILS"
@@ -294,7 +300,8 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
     letterSpacing: 1.5,
-    color: '#8E8E93',
+    color: '#000000',
+    opacity: 0.75,
     marginBottom: 12,
   },
   statsRow: {
@@ -306,22 +313,27 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  summaryDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: 'rgba(0, 0, 0, 0.12)',
+  },
   statBig: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#FFFFFF',
+    color: '#000000',
   },
   statMedium: {
     fontSize: 18,
     fontWeight: '900',
-    color: '#FFFFFF',
   },
   statLabel: {
     fontSize: 10,
-    fontWeight: '800',
-    color: '#8E8E93',
+    fontWeight: '900',
+    color: '#000000',
+    opacity: 0.7,
     marginTop: 2,
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
   section: {
     marginBottom: 16,
@@ -335,6 +347,7 @@ const styles = StyleSheet.create({
   },
   sessionCard: {
     borderRadius: 20,
+    borderWidth: 1,
   },
   sessionContent: {
     padding: 16,
@@ -348,13 +361,11 @@ const styles = StyleSheet.create({
   dateLabel: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#8E8E93',
   },
   soloBadge: {
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   soloBadgeText: {
     fontSize: 9,
@@ -364,7 +375,6 @@ const styles = StyleSheet.create({
   sessionTitle: {
     fontSize: 15,
     fontWeight: '900',
-    color: '#FFFFFF',
     marginBottom: 14,
   },
   emptyContainer: {
@@ -428,6 +438,7 @@ const styles = StyleSheet.create({
   },
   detailsCard: {
     borderRadius: 20,
+    borderWidth: 1,
     marginBottom: 20,
   },
   detailsCardContent: {
