@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NeonCard } from '../components/NeonCard';
+import { TransformationCard } from '../components/transformation/TransformationCard';
 import { useApp } from '../context/AppContext';
 import { runService } from '../services/runService';
 import { useTheme } from '../context/ThemeContext';
@@ -133,6 +134,12 @@ export const ProfileScreen: React.FC = () => {
             </View>
           </View>
         </NeonCard>
+
+        {/* 30-DAY TRANSFORMATION PROGRESS PHOTO CALENDAR */}
+        <TransformationCard
+          userId={userProfile?.id || 'guest_runner'}
+          userName={userProfile?.displayName}
+        />
 
         {/* 2. RUNNING STATS OVERVIEW SECTION */}
         <View style={styles.section}>

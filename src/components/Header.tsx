@@ -8,6 +8,7 @@ interface HeaderProps {
   avatarUrl?: string;
   unreadCount?: number;
   onNotificationPress?: () => void;
+  onCommunityPress?: () => void;
   onProfilePress?: () => void;
 }
 
@@ -16,6 +17,7 @@ export const Header: React.FC<HeaderProps> = ({
   avatarUrl,
   unreadCount = 0,
   onNotificationPress,
+  onCommunityPress,
   onProfilePress,
 }) => {
   const { colors } = useTheme();
@@ -28,6 +30,18 @@ export const Header: React.FC<HeaderProps> = ({
       </View>
 
       <View style={styles.rightContainer}>
+        {/* Community / Group Building Icon Button */}
+        <TouchableOpacity
+          style={[styles.iconButton, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}
+          onPress={onCommunityPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="people" size={20} color={colors.primary} />
+          <View style={[styles.badgeContainer, { backgroundColor: colors.primary }]}>
+            <Text style={styles.badgeText}>+</Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Notification Bell Button */}
         <TouchableOpacity
           style={[styles.iconButton, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
