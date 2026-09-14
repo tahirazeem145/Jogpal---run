@@ -71,6 +71,7 @@ export interface TrackingSession {
 }
 
 export type OfflineRouteMode = 'LOOP' | 'STRAIGHT';
+export type RunSubtype = 'SOLO' | 'DUO' | 'GROUP' | 'OFFLINE';
 
 export interface OfflineTargetConfig {
   isOfflineMode: boolean;
@@ -83,6 +84,8 @@ export interface PendingRun {
   userId: string;
   title: string;
   type: 'SOLO' | 'CREW';
+  subtype?: RunSubtype;
+  partnerNames?: string[];
   distanceKm: number;
   durationSeconds: number;
   pace: string;

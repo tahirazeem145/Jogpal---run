@@ -9,6 +9,8 @@ export const calculateHaversineDistanceKm = runTrackingService.calculateHaversin
 export const getAccuracyTier = runTrackingService.getAccuracyTier;
 export const validateGPSPoint = runTrackingService.validateGPSPoint.bind(runTrackingService);
 export const calculateRollingPaceString = runTrackingService.calculateRollingPaceString.bind(runTrackingService);
+export const smoothGPSPoint = runTrackingService.smoothGPSPoint.bind(runTrackingService);
+export const resetFilter = runTrackingService.resetFilter.bind(runTrackingService);
 
 export function isValidGPSPoint(point: GPSPoint, lastPoint?: GPSPoint | null): boolean {
   return runTrackingService.validateGPSPoint(point, lastPoint).isValid;
@@ -30,8 +32,13 @@ export function isValidMapLocation(point: GPSPoint): boolean {
 }
 
 const isWeb = Platform.OS === 'web';
+let cachedLastKnownLocation: GPSPoint | null = null;
 
 export const locationService = {
+  // Synchronous access to the most recent known valid GPS position
+  getCachedLocation(): GPSPoint | null {
+    return cachedLastKnownLocation;
+  },
   // Check if hardware GPS services are enabled on device
   async checkServicesEnabled(): Promise<boolean> {
     if (isWeb) {
@@ -102,6 +109,14 @@ export const locationService = {
       return new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
+            if (
+              isNaN(pos.coords.latitude) ||
+              isNaN(pos.coords.longitude) ||
+              (pos.coords.latitude === 0 && pos.coords.longitude === 0)
+            ) {
+              resolve(null);
+              return;
+            }
             resolve({
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
@@ -122,8 +137,20 @@ export const locationService = {
         maxAge: 30000,
         requiredAccuracy: 50,
       });
-      if (!loc) return null;
-      return {
+      if (
+        !loc ||
+        !loc.coords ||
+        isNaN(loc.coords.latitude) ||
+        isNaN(loc.coords.longitude) ||
+        (loc.coords.latitude === 0 && loc.coords.longitude === 0) ||
+        loc.coords.latitude < -90 ||
+        loc.coords.latitude > 90 ||
+        loc.coords.longitude < -180 ||
+        loc.coords.longitude > 180
+      ) {
+        return null;
+      }
+      const resultPoint: GPSPoint = {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
         accuracy: loc.coords.accuracy ?? null,
@@ -132,6 +159,8 @@ export const locationService = {
         heading: loc.coords.heading ?? null,
         altitude: loc.coords.altitude ?? null,
       };
+      cachedLastKnownLocation = resultPoint;
+      return resultPoint;
     } catch (e) {
       return null;
     }
@@ -143,7 +172,15 @@ export const locationService = {
       return new Promise((resolve) => {
         navigator.geolocation.getCurrentPosition(
           (pos) => {
-            resolve({
+            if (
+              isNaN(pos.coords.latitude) ||
+              isNaN(pos.coords.longitude) ||
+              (pos.coords.latitude === 0 && pos.coords.longitude === 0)
+            ) {
+              resolve(null);
+              return;
+            }
+            const pt: GPSPoint = {
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
               accuracy: pos.coords.accuracy ?? null,
@@ -151,7 +188,9 @@ export const locationService = {
               speed: pos.coords.speed ?? null,
               heading: pos.coords.heading ?? null,
               altitude: pos.coords.altitude ?? null,
-            });
+            };
+            cachedLastKnownLocation = pt;
+            resolve(pt);
           },
           () => resolve(null),
           { timeout: 3000, maximumAge: 10000, enableHighAccuracy: true }
@@ -166,8 +205,20 @@ export const locationService = {
         new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000)),
       ])) as Location.LocationObject | null;
 
-      if (!loc || !loc.coords) return null;
-      return {
+      if (
+        !loc ||
+        !loc.coords ||
+        isNaN(loc.coords.latitude) ||
+        isNaN(loc.coords.longitude) ||
+        (loc.coords.latitude === 0 && loc.coords.longitude === 0) ||
+        loc.coords.latitude < -90 ||
+        loc.coords.latitude > 90 ||
+        loc.coords.longitude < -180 ||
+        loc.coords.longitude > 180
+      ) {
+        return null;
+      }
+      const quickPt: GPSPoint = {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
         accuracy: loc.coords.accuracy ?? null,
@@ -176,6 +227,8 @@ export const locationService = {
         heading: loc.coords.heading ?? null,
         altitude: loc.coords.altitude ?? null,
       };
+      cachedLastKnownLocation = quickPt;
+      return quickPt;
     } catch (e) {
       return null;
     }
@@ -198,6 +251,7 @@ export const locationService = {
             heading: pos.coords.heading ?? null,
             altitude: pos.coords.altitude ?? null,
           };
+          cachedLastKnownLocation = point;
           onPoint(point);
         },
         (err) => {
@@ -237,7 +291,11 @@ export const locationService = {
           heading: loc.coords.heading ?? null,
           altitude: loc.coords.altitude ?? null,
         };
+        cachedLastKnownLocation = point;
         onPoint(point);
+      },
+      (err: any) => {
+        if (onError) onError(err);
       }
     )
       .then((sub: Location.LocationSubscription) => {

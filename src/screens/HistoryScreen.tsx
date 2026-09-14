@@ -19,6 +19,7 @@ import { offlineSyncService } from '../services/offlineSyncService';
 import { RunSession } from '../types/data';
 import { useTheme } from '../context/ThemeContext';
 import { JogpalMap } from '../components/map/JogpalMap';
+import { OfflineSyntheticMap } from '../components/map/OfflineSyntheticMap';
 import { LatLng } from '../types/soloRun';
 
 export const HistoryScreen: React.FC = () => {
@@ -314,13 +315,22 @@ export const HistoryScreen: React.FC = () => {
 
             <ScrollView contentContainerStyle={styles.modalScroll}>
               {/* Route Map */}
-              <JogpalMap
-                actualRoute={selectedRouteCoords}
-                style={styles.detailsMap}
-                interactive={true}
-                showStartFinishMarkers={true}
-                fitRouteOnLoad={true}
-              />
+              {selectedRouteCoords.length > 0 ? (
+                <JogpalMap
+                  actualRoute={selectedRouteCoords}
+                  style={styles.detailsMap}
+                  interactive={true}
+                  showStartFinishMarkers={true}
+                  fitRouteOnLoad={true}
+                />
+              ) : (
+                <OfflineSyntheticMap
+                  currentDistanceKm={selectedRun.distanceKm}
+                  targetDistanceKm={selectedRun.distanceKm || 1}
+                  routeMode="LOOP"
+                  style={styles.detailsMap}
+                />
+              )}
 
               {/* Stats Grid */}
               <View style={[styles.detailsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
