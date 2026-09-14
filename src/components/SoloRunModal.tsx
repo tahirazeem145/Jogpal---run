@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  ScrollView,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,7 +40,15 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     offlineConfig,
     activePartner,
     partnerRunner,
+    partnerRunners,
+    duoSessionId,
+    duoSession,
+    groupSessionId,
+    groupSession,
     isDuoWaitingForPartner,
+    isGroupWaitingForPartners,
+    groupAcceptedCount,
+    groupTotalInvitedCount,
     startPreparation,
     startOfflinePreparation,
     startCountdown,
@@ -118,6 +127,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
   };
 
   const isCurrentRunOffline = offlineConfig?.isOfflineMode || modeTab === 'OFFLINE';
+  const effectivePartnerRunners = partnerRunners.length > 0 ? partnerRunners : (partnerRunner ? [partnerRunner] : []);
 
   return (
     <Modal
@@ -152,8 +162,54 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
           </View>
         )}
 
+        {/* --- STATE: WAITING FOR SQUAD PARTICIPANTS --- */}
+        {isGroupWaitingForPartners && groupSession && (
+          <View style={styles.centeredContainer}>
+            <View style={[styles.glowContainer, { borderColor: colors.primary, backgroundColor: colors.crewAddBg }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+            <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>SQUAD INVITATIONS SENT</Text>
+            <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>
+              WAITING FOR SQUAD MEMBERS TO ACCEPT ({groupAcceptedCount}/{groupTotalInvitedCount} ACCEPTED)...
+            </Text>
+
+            {/* Invited friends status list */}
+            <View style={[styles.squadStatusContainer, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}>
+              {Object.values(groupSession.invitedFriends || {}).map((friend) => (
+                <View key={friend.userId} style={styles.squadFriendRow}>
+                  <Text style={[styles.squadFriendName, { color: colors.textPrimary }]} numberOfLines={1}>
+                    {friend.name}
+                  </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: friend.status === 'ACCEPTED' ? colors.accentSubtle : 'rgba(255,255,255,0.06)' }]}>
+                    <Text style={[styles.statusBadgeText, { color: friend.status === 'ACCEPTED' ? colors.primary : colors.textMuted }]}>
+                      {friend.status === 'ACCEPTED' ? 'ACCEPTED ⚡' : 'INVITED ⏳'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+
+            <Text style={[styles.statusLabel, { color: colors.primary }]}>
+              ⚡ LIVE GPS MAP WILL LAUNCH AUTOMATICALLY AS RUNNERS ACCEPT
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.forceStartBtn, { backgroundColor: colors.primary }]}
+              onPress={() => startCountdown()}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="flash" size={16} color="#000000" />
+              <Text style={styles.forceStartBtnText}>START RUN NOW</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cancelLink} onPress={handleClose}>
+              <Text style={[styles.cancelLinkText, { color: colors.textMuted }]}>CANCEL SQUAD SESSION</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* --- STATE: WAITING FOR DUO PARTNER --- */}
-        {isDuoWaitingForPartner && activePartner && (
+        {!isGroupWaitingForPartners && isDuoWaitingForPartner && activePartner && (
           <View style={styles.centeredContainer}>
             <View style={[styles.glowContainer, { borderColor: colors.primary, backgroundColor: colors.crewAddBg }]}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -172,7 +228,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         )}
 
         {/* --- STATE 2: PREPARING & GPS SEARCHING --- */}
-        {!isDuoWaitingForPartner && (runState === 'PREPARING' || runState === 'GPS_SEARCHING') && (
+        {!isGroupWaitingForPartners && !isDuoWaitingForPartner && (runState === 'PREPARING' || runState === 'GPS_SEARCHING') && (
           <View style={styles.centeredContainer}>
             <View style={[styles.glowContainer, { borderColor: colors.primary, backgroundColor: colors.crewAddBg }]}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -189,7 +245,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         )}
 
         {/* --- STATE 3: GPS READY / SETUP MODE --- */}
-        {!isDuoWaitingForPartner && runState === 'GPS_READY' && (
+        {!isGroupWaitingForPartners && !isDuoWaitingForPartner && runState === 'GPS_READY' && (
           <View style={styles.centeredContainer}>
             <View style={styles.readyBadge}>
               <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
@@ -283,7 +339,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                 currentLocation={currentLocation}
                 actualRoute={actualRoute}
                 plannedRoute={plannedRoute}
-                partnerRunners={partnerRunner ? [partnerRunner] : []}
+                partnerRunners={effectivePartnerRunners}
                 style={styles.previewMap}
                 interactive={false}
               />
@@ -318,8 +374,47 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               </Text>
             </View>
 
-            {/* Active Partner Pill Indicator */}
-            {activePartner && (
+            {/* Group Squad Live Leaderboard Bar */}
+            {groupSession && (
+              <View style={[styles.squadActiveBar, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                <View style={styles.squadActiveHeader}>
+                  <Ionicons name="people" size={13} color={colors.primary} />
+                  <Text style={[styles.squadActiveTitle, { color: colors.primary }]}>
+                    {groupSession.title?.toUpperCase() || 'SQUAD RUN'} • {effectivePartnerRunners.length + 1} RUNNERS
+                  </Text>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.squadScroll}>
+                  {/* Local Runner */}
+                  <View style={[styles.runnerPill, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
+                    <Text style={[styles.runnerPillName, { color: colors.primary }]}>YOU</Text>
+                    <Text style={[styles.runnerPillDist, { color: colors.textPrimary }]}>
+                      {metrics.distanceKm.toFixed(2)} km
+                    </Text>
+                    <Text style={[styles.runnerPillPace, { color: colors.textSecondary }]}>
+                      {metrics.currentPace}
+                    </Text>
+                  </View>
+
+                  {/* Other Squad Runners */}
+                  {effectivePartnerRunners.map((runner) => (
+                    <View key={runner.id} style={[styles.runnerPill, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+                      <Text style={[styles.runnerPillName, { color: colors.textPrimary }]} numberOfLines={1}>
+                        {runner.name.split(' ')[0]}
+                      </Text>
+                      <Text style={[styles.runnerPillDist, { color: colors.primary }]}>
+                        {runner.distanceMeters !== undefined ? `${(runner.distanceMeters / 1000).toFixed(2)} km` : '0.00 km'}
+                      </Text>
+                      <Text style={[styles.runnerPillPace, { color: colors.textSecondary }]}>
+                        {runner.pace || '--:--'}
+                      </Text>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
+            {/* Active Duo Partner Pill Indicator */}
+            {!groupSession && activePartner && (
               <View
                 style={[
                   styles.partnerActivePill,
@@ -352,7 +447,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                 currentLocation={currentLocation}
                 actualRoute={actualRoute}
                 plannedRoute={plannedRoute}
-                partnerRunners={partnerRunner ? [partnerRunner] : []}
+                partnerRunners={effectivePartnerRunners}
                 style={styles.liveMap}
                 interactive={true}
               />
@@ -425,6 +520,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                 currentLocation={currentLocation}
                 actualRoute={actualRoute}
                 plannedRoute={plannedRoute}
+                partnerRunners={effectivePartnerRunners}
                 style={styles.liveMap}
                 interactive={true}
               />
@@ -910,5 +1006,87 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.5,
+  },
+  squadStatusContainer: {
+    width: '100%',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 12,
+    marginVertical: 12,
+    gap: 8,
+  },
+  squadFriendRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+  },
+  squadFriendName: {
+    fontSize: 13,
+    fontWeight: '700',
+    flex: 1,
+  },
+  forceStartBtn: {
+    height: 48,
+    borderRadius: 24,
+    paddingHorizontal: 28,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 14,
+    marginBottom: 8,
+  },
+  forceStartBtnText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#000000',
+    letterSpacing: 1,
+  },
+  squadActiveBar: {
+    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 10,
+    marginTop: -8,
+    marginBottom: 10,
+  },
+  squadActiveHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  squadActiveTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  squadScroll: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingVertical: 2,
+  },
+  runnerPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    minWidth: 80,
+  },
+  runnerPillName: {
+    fontSize: 11,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  runnerPillDist: {
+    fontSize: 12,
+    fontWeight: '900',
+  },
+  runnerPillPace: {
+    fontSize: 9,
+    fontWeight: '600',
+    marginTop: 1,
   },
 });

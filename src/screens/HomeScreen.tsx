@@ -11,11 +11,14 @@ import { useApp } from '../context/AppContext';
 import { useSoloRun } from '../context/SoloRunContext';
 import { SoloRunModal } from '../components/SoloRunModal';
 import { DuoRunnerSelectModal } from '../components/DuoRunnerSelectModal';
+import { GroupRunnerSelectModal } from '../components/GroupRunnerSelectModal';
 import { IncomingDuoInviteModal } from '../components/IncomingDuoInviteModal';
+import { IncomingGroupInviteModal } from '../components/IncomingGroupInviteModal';
 import { NotificationsModal } from '../components/NotificationsModal';
 import { useTheme } from '../context/ThemeContext';
-import { CrewMember, DuoRunSession, CrewRequest } from '../types/data';
+import { CrewMember, DuoRunSession, GroupRunSession, CrewRequest } from '../types/data';
 import { duoRunService } from '../services/duoRunService';
+import { groupRunService } from '../services/groupRunService';
 
 export const HomeScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -40,9 +43,12 @@ export const HomeScreen: React.FC = () => {
 
   const [soloRunModalVisible, setSoloRunModalVisible] = React.useState(false);
   const [duoSelectModalVisible, setDuoSelectModalVisible] = React.useState(false);
+  const [groupSelectModalVisible, setGroupSelectModalVisible] = React.useState(false);
   const [communityHubVisible, setCommunityHubVisible] = React.useState(false);
   const [notificationsVisible, setNotificationsVisible] = React.useState(false);
   const [incomingDuoInvite, setIncomingDuoInvite] = React.useState<DuoRunSession | null>(null);
+  const [incomingGroupInvite, setIncomingGroupInvite] = React.useState<GroupRunSession | null>(null);
+  const [preSelectedFriendForGroup, setPreSelectedFriendForGroup] = React.useState<CrewMember | null>(null);
   const { startPreparation } = useSoloRun();
 
   const activeUserId = userProfile?.id || user?.uid || '';
@@ -56,6 +62,17 @@ export const HomeScreen: React.FC = () => {
     });
 
     return () => unsub();
+  }, [activeUserId]);
+
+  // Real-time listener for incoming Group Run invitations
+  React.useEffect(() => {
+    if (!activeUserId) return;
+
+    const unsubGroup = groupRunService.listenForIncomingGroupInvites(activeUserId, (session) => {
+      setIncomingGroupInvite(session);
+    });
+
+    return () => unsubGroup();
   }, [activeUserId]);
 
   const handleStartSoloRun = async () => {
@@ -75,6 +92,29 @@ export const HomeScreen: React.FC = () => {
       await startPreparation(`DUO RUN • ${partner.name.toUpperCase()}`, 'CREW', null, partner, session.id);
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Could not send Duo Run invitation');
+    }
+  };
+
+  const handleLaunchGroupRun = async (selectedFriends: CrewMember[]) => {
+    if (!userProfile) {
+      Alert.alert('Sign In Required', 'Please sign in to start a Group Squad Run.');
+      return;
+    }
+
+    try {
+      setSoloRunModalVisible(true);
+      const { session } = await groupRunService.createGroupSession(userProfile, selectedFriends);
+      await startPreparation(
+        `SQUAD RUN • ${selectedFriends.length + 1} RUNNERS`,
+        'CREW',
+        null,
+        selectedFriends[0] || null,
+        session.id,
+        selectedFriends,
+        true
+      );
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Could not send Group Run invitations');
     }
   };
 
@@ -104,23 +144,67 @@ export const HomeScreen: React.FC = () => {
     await duoRunService.declineDuoSession(session.id);
   };
 
+  const handleAcceptGroupInvite = async (session: GroupRunSession) => {
+    try {
+      setIncomingGroupInvite(null);
+      if (!userProfile) return;
+      await groupRunService.acceptGroupSession(session.id, userProfile);
+      setSoloRunModalVisible(true);
+      await startPreparation(
+        session.title || `SQUAD RUN • ${session.hostName.toUpperCase()}`,
+        'CREW',
+        null,
+        null,
+        session.id,
+        null,
+        true
+      );
+    } catch (err: any) {
+      Alert.alert('Error', err?.message || 'Failed to accept Group Run');
+    }
+  };
+
+  const handleDeclineGroupInvite = async (session: GroupRunSession) => {
+    setIncomingGroupInvite(null);
+    if (activeUserId) {
+      await groupRunService.declineGroupSession(session.id, activeUserId);
+    }
+  };
+
   const handleAcceptRequestFromNotifications = async (req: CrewRequest) => {
     if (req.type === 'RUN_INVITE' && req.sessionId) {
       setNotificationsVisible(false);
-      const hostPartner: CrewMember = {
-        id: req.fromUserId,
-        userId: req.fromUserId,
-        name: req.fromUserName,
-        initial: (req.fromUserName?.trim().charAt(0) || 'R').toUpperCase(),
-        avatarUrl: req.fromUserAvatar,
-        photoURL: req.fromUserAvatar,
-        status: 'ACTIVE',
-        isOnline: true,
-      };
-      await duoRunService.acceptDuoSession(req.sessionId);
-      await acceptCrewRequest(req);
-      setSoloRunModalVisible(true);
-      await startPreparation(`DUO RUN • ${req.fromUserName.toUpperCase()}`, 'CREW', null, hostPartner, req.sessionId);
+      if (req.sessionId.startsWith('group_')) {
+        if (userProfile) {
+          await groupRunService.acceptGroupSession(req.sessionId, userProfile);
+        }
+        await acceptCrewRequest(req);
+        setSoloRunModalVisible(true);
+        await startPreparation(
+          `SQUAD RUN • ${req.fromUserName.toUpperCase()}`,
+          'CREW',
+          null,
+          null,
+          req.sessionId,
+          null,
+          true
+        );
+      } else {
+        const hostPartner: CrewMember = {
+          id: req.fromUserId,
+          userId: req.fromUserId,
+          name: req.fromUserName,
+          initial: (req.fromUserName?.trim().charAt(0) || 'R').toUpperCase(),
+          avatarUrl: req.fromUserAvatar,
+          photoURL: req.fromUserAvatar,
+          status: 'ACTIVE',
+          isOnline: true,
+        };
+        await duoRunService.acceptDuoSession(req.sessionId);
+        await acceptCrewRequest(req);
+        setSoloRunModalVisible(true);
+        await startPreparation(`DUO RUN • ${req.fromUserName.toUpperCase()}`, 'CREW', null, hostPartner, req.sessionId);
+      }
     } else {
       await acceptCrewRequest(req);
     }
@@ -134,9 +218,9 @@ export const HomeScreen: React.FC = () => {
     }
   };
 
-  const handleStartGroupRunWithFriend = async (friend?: CrewMember) => {
-    setSoloRunModalVisible(true);
-    await startPreparation(friend ? `GROUP RUN • ${friend.name.toUpperCase()} & CREW` : 'GROUP SQUAD RUN', 'CREW');
+  const handleStartGroupRunWithFriend = (friend?: CrewMember) => {
+    setPreSelectedFriendForGroup(friend || null);
+    setGroupSelectModalVisible(true);
   };
 
   const handleGeneralDuoRun = () => {
@@ -212,7 +296,7 @@ export const HomeScreen: React.FC = () => {
         onClose={() => setSoloRunModalVisible(false)}
       />
 
-      {/* Duo Partner Picker Modal (Select from Friends List) */}
+      {/* Duo Partner Picker Modal (Select 1 Friend) */}
       <DuoRunnerSelectModal
         visible={duoSelectModalVisible}
         onClose={() => setDuoSelectModalVisible(false)}
@@ -220,11 +304,33 @@ export const HomeScreen: React.FC = () => {
         onSelectPartner={handleSelectDuoPartner}
       />
 
+      {/* Group Squad Picker Modal (Select 2+ Friends) */}
+      <GroupRunnerSelectModal
+        visible={groupSelectModalVisible}
+        onClose={() => {
+          setGroupSelectModalVisible(false);
+          setPreSelectedFriendForGroup(null);
+        }}
+        friends={friends}
+        initialSelectedFriend={preSelectedFriendForGroup}
+        onStartGroupRun={handleLaunchGroupRun}
+        onInviteFriendsPress={() => {
+          // Scroll or focus friends section
+        }}
+      />
+
       {/* Real-time Incoming Duo Run Invitation Pop-up Modal */}
       <IncomingDuoInviteModal
         session={incomingDuoInvite}
         onAccept={handleAcceptDuoInvite}
         onDecline={handleDeclineDuoInvite}
+      />
+
+      {/* Real-time Incoming Group Squad Run Invitation Pop-up Modal */}
+      <IncomingGroupInviteModal
+        session={incomingGroupInvite}
+        onAccept={handleAcceptGroupInvite}
+        onDecline={handleDeclineGroupInvite}
       />
 
       {/* Real-time Notifications & Crew Requests Modal */}

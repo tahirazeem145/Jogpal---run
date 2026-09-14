@@ -118,3 +118,42 @@ export interface DuoRunSession {
   };
 }
 
+export interface GroupParticipantTelemetry {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  initial?: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  pace: string;
+  speedKmH: number;
+  runState?: 'PREPARING' | 'GPS_READY' | 'COUNTDOWN' | 'ACTIVE' | 'PAUSED' | 'FINISHED';
+  status?: 'INVITED' | 'ACCEPTED' | 'DECLINED' | 'RUNNING' | string;
+  updatedAt: string;
+}
+
+export interface GroupInvitedFriend {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  initial?: string;
+  status: 'INVITED' | 'ACCEPTED' | 'DECLINED';
+}
+
+export interface GroupRunSession {
+  id: string;
+  hostUserId: string;
+  hostName: string;
+  hostAvatar?: string;
+  title?: string;
+  invitedUserIds: string[];
+  invitedFriends: {
+    [userId: string]: GroupInvitedFriend;
+  };
+  status: 'INVITED' | 'ACCEPTED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  createdAt: string;
+  participants?: {
+    [userId: string]: GroupParticipantTelemetry;
+  };
+}
