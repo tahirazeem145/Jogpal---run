@@ -13,6 +13,11 @@
     "android": {
       "package": "com.jogpal.app",
       "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCuiwXmBy9KfzOw03sxHTosmS5wMOdks6c"
+        }
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -31,6 +36,12 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "AIzaSyCuiwXmBy9KfzOw03sxHTosmS5wMOdks6c"
+        }
+      ],
       "@maplibre/maplibre-react-native",
       "expo-web-browser",
       "@react-native-google-signin/google-signin",

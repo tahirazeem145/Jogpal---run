@@ -18,12 +18,14 @@ import { locationService } from '../../services/locationService';
 let RNMapView: any = null;
 let RNPolyline: any = null;
 let RNMarker: any = null;
+let RNUrlTile: any = null;
 if (Platform.OS !== 'web') {
   try {
     const RNMaps = require('react-native-maps');
     RNMapView = RNMaps.default || RNMaps.MapView || RNMaps;
     RNPolyline = RNMaps.Polyline;
     RNMarker = RNMaps.Marker;
+    RNUrlTile = RNMaps.UrlTile;
   } catch (err) {}
 }
 
@@ -379,6 +381,15 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
             if (onMapLoaded) onMapLoaded();
           }}
         >
+          {/* Tile Layer: Guarantees street tiles always render on Android */}
+          {RNUrlTile && (
+            <RNUrlTile
+              urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+              maximumZ={19}
+              flipY={false}
+              shouldReplaceMapContent={false}
+            />
+          )}
           {/* Actual GPS Route Polyline */}
           {sanitizedActualRoute.length > 1 && RNPolyline && (
             <RNPolyline
@@ -542,6 +553,9 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
           <style>
             html, body, #map { width: 100%; height: 100%; margin: 0; padding: 0; background: #0E0F14; overflow: hidden; }
             .leaflet-container { background: #0E0F14 !important; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+            .leaflet-tile-pane {
+              filter: invert(100%) hue-rotate(180deg) brightness(88%) contrast(92%);
+            }
             .runner-halo {
               width: 28px; height: 28px; border-radius: 14px;
               background: ${colors.glow}; border: 2px solid ${colors.primary};
@@ -572,10 +586,9 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
             var isFollowing = true;
             var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([${lat}, ${lng}], 16);
             
-            // High contrast dark Carto raster tiles
+            // Fast, watermark-free dark OpenStreetMap tiles
             L.tileLayer('${MAP_CONFIG.darkRasterTileURL}', {
               maxZoom: 19,
-              subdomains: 'abcd',
               attribution: ''
             }).addTo(map);
 

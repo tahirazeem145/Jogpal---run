@@ -5,11 +5,10 @@
  */
 
 export const MAP_CONFIG = {
-  // Full Street-Level Vector Map Style (Carto Dark Matter GL / OpenFreeMap Dark)
-  // Provides high-contrast dark asphalt streets, roads, buildings, parks, and labels
+  // Full Street-Level Vector Map Style (OpenFreeMap Dark - 100% Free, No Watermark, No API Key Required)
   styleURL:
     process.env.EXPO_PUBLIC_MAP_STYLE_URL ||
-    'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    'https://tiles.openfreemap.org/styles/dark',
 
   apiKey: process.env.EXPO_PUBLIC_MAP_API_KEY || '',
 
@@ -22,8 +21,8 @@ export const MAP_CONFIG = {
   // Dynamic Camera Following Throttle (Prevents jittery continuous animations)
   cameraFollowThrottleMs: 1500,
 
-  // Fast Crisp Dark Raster Tiles for Web & Fallbacks
-  darkRasterTileURL: 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png',
+  // Fast Crisp Dark Raster Tiles for Web (Watermark-Free OpenStreetMap)
+  darkRasterTileURL: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 
   // Route & Polyline Styling Configuration
   routeStyling: {
