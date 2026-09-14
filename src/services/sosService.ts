@@ -195,20 +195,74 @@ export const sosService = {
       throw new Error('Invalid phone number provided for emergency call.');
     }
     const url = `tel:${cleaned}`;
-    const canOpen = await Linking.canOpenURL(url);
-    if (canOpen) {
-      await Linking.openURL(url);
-      return true;
-    } else {
-      // Fallback attempt directly
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
       try {
+        window.open(url, '_self');
+        return true;
+      } catch (e) {
+        window.location.href = url;
+        return true;
+      }
+    }
+
+    try {
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
         await Linking.openURL(url);
         return true;
-      } catch (err) {
-        console.warn('[sosService] Cannot open dialer URL:', url, err);
+      } else {
+        await Linking.openURL(url);
+        return true;
+      }
+    } catch (err) {
+      console.warn('[sosService] Cannot open dialer URL:', url, err);
+      return false;
+    }
+  },
+
+  /**
+   * Dispatches Emergency SOS via WhatsApp (works on both Web & Mobile)
+   */
+  async sendWhatsAppSOS(phoneNumber: string, message: string): Promise<boolean> {
+    const cleaned = phoneNumber.replace(/[^0-9]/g, '');
+    const encodedBody = encodeURIComponent(message);
+    const waUrl = cleaned
+      ? `https://api.whatsapp.com/send?phone=${cleaned}&text=${encodedBody}`
+      : `https://api.whatsapp.com/send?text=${encodedBody}`;
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(waUrl, '_blank');
+      return true;
+    }
+
+    try {
+      await Linking.openURL(waUrl);
+      return true;
+    } catch (e) {
+      try {
+        await Linking.openURL(`whatsapp://send?phone=${cleaned}&text=${encodedBody}`);
+        return true;
+      } catch (appErr) {
+        console.warn('[sosService] WhatsApp launch failed:', appErr);
         return false;
       }
     }
+  },
+
+  /**
+   * Copies distress message and GPS link to clipboard
+   */
+  async copyDistressMessage(message: string): Promise<boolean> {
+    if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(message);
+        return true;
+      } catch (e) {
+        console.warn('[sosService] Clipboard copy failed:', e);
+      }
+    }
+    return false;
   },
 
   /**
@@ -222,6 +276,17 @@ export const sosService = {
     const encodedBody = encodeURIComponent(message);
     const separator = Platform.OS === 'ios' ? '&' : '?';
     const smsUrl = cleaned ? `sms:${cleaned}${separator}body=${encodedBody}` : `sms:${separator}body=${encodedBody}`;
+
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        try {
+          window.open(smsUrl, '_self');
+        } catch (e) {}
+      }
+      // On web, always copy to clipboard so runner has instant access
+      await this.copyDistressMessage(message);
+      return true;
+    }
 
     try {
       const canOpen = await Linking.canOpenURL(smsUrl);

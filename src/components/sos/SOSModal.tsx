@@ -8,6 +8,7 @@ import {
   ScrollView,
   Alert,
   Animated,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { EmergencyContact, SOSLocationPayload, SOSSettings } from '../../types/sos';
@@ -38,6 +39,7 @@ export const SOSModal: React.FC<SOSModalProps> = ({
   const [isStrobeActive, setIsStrobeActive] = useState<boolean>(false);
   const [showContactsManager, setShowContactsManager] = useState<boolean>(false);
   const [settings, setSettings] = useState<SOSSettings | null>(null);
+  const [isCopied, setIsCopied] = useState<boolean>(false);
 
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const strobeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -180,6 +182,12 @@ export const SOSModal: React.FC<SOSModalProps> = ({
   const handleCallContact = async (contact: EmergencyContact) => {
     try {
       await sosService.callPhone(contact.phoneNumber);
+      if (Platform.OS === 'web') {
+        Alert.alert(
+          `Calling ${contact.name}`,
+          `Dialing ${contact.phoneNumber}.\n\nIf your computer does not have phone calling enabled, you can also use "WHATSAPP GPS SOS" below to notify ${contact.name} instantly!`
+        );
+      }
     } catch (e: any) {
       Alert.alert('Calling Failed', e.message || 'Could not place phone call.');
     }
@@ -188,10 +196,33 @@ export const SOSModal: React.FC<SOSModalProps> = ({
   const handleSendLocationSMS = async (contact: EmergencyContact) => {
     const loc = getLocationPayload();
     const message = sosService.buildEmergencyMessage(runnerName, loc);
-    const success = await sosService.sendEmergencySMS(contact.phoneNumber, message);
-    if (!success) {
-      Alert.alert('Dispatch Error', 'Could not dispatch SMS. Please try sharing directly.');
+    await sosService.sendEmergencySMS(contact.phoneNumber, message);
+    if (Platform.OS === 'web') {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 3000);
+      Alert.alert(
+        'SMS & GPS Prepared',
+        `SMS link opened and emergency message with live GPS has also been COPIED to your clipboard!\n\nYou can also use "WHATSAPP GPS SOS" for instant 1-click delivery.`
+      );
     }
+  };
+
+  const handleSendWhatsApp = async (contact: EmergencyContact) => {
+    const loc = getLocationPayload();
+    const message = sosService.buildEmergencyMessage(runnerName, loc);
+    const success = await sosService.sendWhatsAppSOS(contact.phoneNumber, message);
+    if (!success) {
+      Alert.alert('WhatsApp Launch Failed', 'Could not launch WhatsApp.');
+    }
+  };
+
+  const handleCopyMessage = async () => {
+    const loc = getLocationPayload();
+    const message = sosService.buildEmergencyMessage(runnerName, loc);
+    await sosService.copyDistressMessage(message);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 3000);
+    Alert.alert('Copied!', 'Emergency GPS distress message copied to clipboard.');
   };
 
   const handleCallEmergencyServices = async () => {
@@ -331,6 +362,33 @@ export const SOSModal: React.FC<SOSModalProps> = ({
                     >
                       <Ionicons name="paper-plane" size={18} color="#FFFFFF" />
                       <Text style={styles.smsContactText}>SEND GPS SMS</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* WhatsApp Direct SOS & Clipboard Copy */}
+                  <View style={styles.contactActionSecondaryRow}>
+                    <TouchableOpacity
+                      style={styles.whatsAppBtn}
+                      onPress={() => handleSendWhatsApp(primaryContact)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="logo-whatsapp" size={18} color="#000000" />
+                      <Text style={styles.whatsAppText}>WHATSAPP GPS SOS</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[styles.copyMessageBtn, isCopied && styles.copyMessageBtnSuccess]}
+                      onPress={handleCopyMessage}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={isCopied ? 'checkmark-circle' : 'copy-outline'}
+                        size={16}
+                        color={isCopied ? '#22C55E' : '#CCCCCC'}
+                      />
+                      <Text style={[styles.copyMessageText, isCopied && styles.copyMessageTextSuccess]}>
+                        {isCopied ? 'COPIED' : 'COPY GPS'}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -700,6 +758,52 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     fontSize: 12,
     letterSpacing: 0.5,
+  },
+  contactActionSecondaryRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 8,
+  },
+  whatsAppBtn: {
+    flex: 1.4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#25D366',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  whatsAppText: {
+    color: '#000000',
+    fontWeight: '900',
+    fontSize: 12,
+    letterSpacing: 0.5,
+  },
+  copyMessageBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#262626',
+    borderWidth: 1,
+    borderColor: '#3D3D3D',
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
+  },
+  copyMessageBtnSuccess: {
+    borderColor: '#22C55E',
+    backgroundColor: 'rgba(34, 197, 94, 0.15)',
+  },
+  copyMessageText: {
+    color: '#CCCCCC',
+    fontWeight: '800',
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
+  copyMessageTextSuccess: {
+    color: '#22C55E',
   },
   noContactCard: {
     backgroundColor: '#181818',
