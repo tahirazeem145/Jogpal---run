@@ -588,51 +588,58 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     setLastRunSummary(summary);
+
+    // Auto-save to Firebase and update local stats immediately
+    setTimeout(() => {
+      saveRun(summary);
+    }, 100);
   };
 
   // 9. Save Run (Idempotent: saves local first, syncs Firebase separately)
-  const saveRun = async () => {
+  const saveRun = async (overrideSummary?: PendingRun) => {
+    const summaryToSave = overrideSummary || lastRunSummary;
     const currentState = runStateRef.current;
-    if (isSavedRef.current || !lastRunSummary || currentState === 'SAVING' || currentState === 'SAVED') return;
+    if (isSavedRef.current || !summaryToSave) return;
     isSavedRef.current = true;
     updateRunState('SAVING');
 
     try {
       await logNewRun(
-        lastRunSummary.distanceKm,
-        lastRunSummary.durationSeconds,
-        lastRunSummary.pace,
-        lastRunSummary.title,
-        lastRunSummary.type,
+        summaryToSave.distanceKm,
+        summaryToSave.durationSeconds,
+        summaryToSave.pace,
+        summaryToSave.title,
+        summaryToSave.type,
         {
-          route: lastRunSummary.actualRoute,
-          avgSpeedKmH: lastRunSummary.avgSpeedKmH,
-          maxSpeedKmH: lastRunSummary.maxSpeedKmH,
-          calories: Math.round(lastRunSummary.distanceKm * 62),
+          route: summaryToSave.actualRoute,
+          avgSpeedKmH: summaryToSave.avgSpeedKmH,
+          maxSpeedKmH: summaryToSave.maxSpeedKmH,
+          calories: Math.round(summaryToSave.distanceKm * 62),
           startLocation:
-            lastRunSummary.actualRoute && lastRunSummary.actualRoute.length > 0
-              ? lastRunSummary.actualRoute[0]
+            summaryToSave.actualRoute && summaryToSave.actualRoute.length > 0
+              ? summaryToSave.actualRoute[0]
               : undefined,
           endLocation:
-            lastRunSummary.actualRoute && lastRunSummary.actualRoute.length > 1
-              ? lastRunSummary.actualRoute[lastRunSummary.actualRoute.length - 1]
+            summaryToSave.actualRoute && summaryToSave.actualRoute.length > 1
+              ? summaryToSave.actualRoute[summaryToSave.actualRoute.length - 1]
               : undefined,
         }
       );
       updateRunState('SAVED');
       offlineSyncService.syncPendingRuns(activeUserId).catch(() => {});
     } catch (err) {
+      console.warn('Firebase run logging failed, backing up to offline storage:', err);
       await offlineSyncService.savePendingRun({
-        userId: lastRunSummary.userId,
-        title: lastRunSummary.title,
-        type: lastRunSummary.type,
-        distanceKm: lastRunSummary.distanceKm,
-        durationSeconds: lastRunSummary.durationSeconds,
-        pace: lastRunSummary.pace,
-        createdAt: lastRunSummary.createdAt,
-        plannedRoute: lastRunSummary.plannedRoute,
-        actualRoute: lastRunSummary.actualRoute,
-        trackingIntegrityScore: lastRunSummary.trackingIntegrityScore,
+        userId: summaryToSave.userId,
+        title: summaryToSave.title,
+        type: summaryToSave.type,
+        distanceKm: summaryToSave.distanceKm,
+        durationSeconds: summaryToSave.durationSeconds,
+        pace: summaryToSave.pace,
+        createdAt: summaryToSave.createdAt,
+        plannedRoute: summaryToSave.plannedRoute,
+        actualRoute: summaryToSave.actualRoute,
+        trackingIntegrityScore: summaryToSave.trackingIntegrityScore,
       });
       updateRunState('SYNC_PENDING');
     }

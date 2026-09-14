@@ -243,27 +243,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     type: 'SOLO' | 'CREW' = 'SOLO',
     extra?: Partial<Omit<RunSession, 'id' | 'userId' | 'distanceKm' | 'durationSeconds' | 'pace' | 'title' | 'type'>>
   ) => {
+    if (!activeUserId) {
+      console.warn('Cannot log run: no active authenticated user');
+      return;
+    }
+
+    const roundedKm = Math.round(distanceKm * 100) / 100;
+    const calories = extra?.calories || Math.round(roundedKm * 62);
+
     const newRun: Omit<RunSession, 'id'> = {
       userId: activeUserId,
       title,
       type,
-      distanceKm,
+      distanceKm: roundedKm,
       durationSeconds: durationSec,
       pace,
+      calories,
       createdAt: new Date().toISOString(),
       ...(extra || {}),
     };
-    await runService.logRun(newRun);
 
-    // Update profile aggregates
-    if (userProfile) {
-      const newTotalKm = Math.round(((userProfile.totalDistanceKm || 0) + distanceKm) * 10) / 10;
-      const newJogs = (userProfile.totalJogs || 0) + 1;
-      await userService.saveUserProfile(activeUserId, {
-        totalDistanceKm: newTotalKm,
-        totalJogs: newJogs,
-      });
-    }
+    // 1. Save run document directly to Firebase Firestore 'runs' collection
+    const docRef = await runService.logRun(newRun);
+
+    // 2. Optimistically update local runs list so History and Profile update immediately
+    const loggedSession: RunSession = {
+      ...newRun,
+      id: docRef.id,
+    };
+    const updatedRuns = [loggedSession, ...runs.filter((r) => r.id !== docRef.id)];
+    setRuns(updatedRuns);
+
+    // 3. Recalculate and update weekly momentum and personal bests
+    const weekly = runService.calculateWeeklyDistance(updatedRuns);
+    setWeeklyKm(weekly);
+    const pbs = runService.calculatePersonalBests(updatedRuns);
+    setPersonalBests(pbs);
+
+    // 4. Calculate updated profile aggregates & progression
+    const currentTotalKm = userProfile?.totalDistanceKm || 0;
+    const newTotalKm = Math.round((currentTotalKm + roundedKm) * 10) / 10;
+    const newJogs = (userProfile?.totalJogs || 0) + 1;
+    const newLevel = Math.max(1, Math.floor(newTotalKm / 10) + 1);
+    const newStreak = (userProfile?.streakDays || 0) + 1;
+    const unlockedPBs = pbs.filter((pb) => pb.unlocked).length;
+
+    const profileUpdates: Partial<UserProfile> = {
+      totalDistanceKm: newTotalKm,
+      totalJogs: newJogs,
+      level: newLevel,
+      streakDays: newStreak,
+      recordsCount: unlockedPBs,
+      passportUnlockedCount: Math.min(30, Math.max(userProfile?.passportUnlockedCount || 0, unlockedPBs + 1)),
+    };
+
+    // 5. Update Firestore user profile and local state
+    await userService.saveUserProfile(activeUserId, profileUpdates);
+    setUserProfile((prev) => (prev ? { ...prev, ...profileUpdates } : null));
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {
