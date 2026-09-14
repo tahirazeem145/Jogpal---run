@@ -5,7 +5,8 @@ import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation,
 import { offlineSyncService } from '../services/offlineSyncService';
 import { useApp } from './AppContext';
 import { PartnerRunner } from '../types/map';
-import { CrewMember } from '../types/data';
+import { CrewMember, DuoRunSession, DuoParticipantTelemetry } from '../types/data';
+import { duoRunService } from '../services/duoRunService';
 
 interface SoloRunContextType {
   runState: RunState;
@@ -22,11 +23,15 @@ interface SoloRunContextType {
   offlineConfig: OfflineTargetConfig | null;
   activePartner: CrewMember | null;
   partnerRunner: PartnerRunner | null;
+  duoSessionId: string | null;
+  duoSession: DuoRunSession | null;
+  isDuoWaitingForPartner: boolean;
   startPreparation: (
     title?: string,
     type?: 'SOLO' | 'CREW',
     offlineTargetConfig?: OfflineTargetConfig | null,
-    partner?: CrewMember | null
+    partner?: CrewMember | null,
+    sessionId?: string | null
   ) => Promise<void>;
   startOfflinePreparation: (targetKm: number, routeMode: OfflineRouteMode) => Promise<void>;
   startCountdown: () => void;
@@ -85,7 +90,13 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [offlineConfig, setOfflineConfig] = useState<OfflineTargetConfig | null>(null);
   const [activePartner, setActivePartner] = useState<CrewMember | null>(null);
   const [partnerRunner, setPartnerRunner] = useState<PartnerRunner | null>(null);
+  const [duoSessionId, setDuoSessionId] = useState<string | null>(null);
+  const [duoSession, setDuoSession] = useState<DuoRunSession | null>(null);
+  const [isDuoWaitingForPartner, setIsDuoWaitingForPartner] = useState<boolean>(false);
   const activePartnerRef = useRef<CrewMember | null>(null);
+  const duoSessionIdRef = useRef<string | null>(null);
+  const duoSessionSubRef = useRef<(() => void) | null>(null);
+  const lastTelemetryBroadcastRef = useRef<number>(0);
 
   const startOfflinePreparation = async (targetKm: number, routeMode: OfflineRouteMode) => {
     const config: OfflineTargetConfig = {
@@ -94,7 +105,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       routeMode,
     };
     setOfflineConfig(config);
-    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO', config, null);
+    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO', config, null, null);
   };
 
   // Telemetry & Timing Refs
@@ -192,7 +203,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     title = 'SOLO RUN',
     type: 'SOLO' | 'CREW' = 'SOLO',
     offlineTargetConfig: OfflineTargetConfig | null = null,
-    partner: CrewMember | null = null
+    partner: CrewMember | null = null,
+    sessionId: string | null = null
   ) => {
     const prepStart = Date.now();
     prepStartTimeRef.current = prepStart;
@@ -205,6 +217,52 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     setActiveRunTitle(title);
     setActiveRunType(type);
+
+    // Clean up previous duo session listener if any
+    if (duoSessionSubRef.current) {
+      duoSessionSubRef.current();
+      duoSessionSubRef.current = null;
+    }
+
+    setDuoSessionId(sessionId);
+    duoSessionIdRef.current = sessionId;
+
+    if (sessionId) {
+      // Subscribe to real-time Duo session
+      const unsub = duoRunService.subscribeToDuoSession(sessionId, (session) => {
+        if (!session) return;
+        setDuoSession(session);
+
+        if (session.status === 'INVITED' && session.hostUserId === activeUserId) {
+          setIsDuoWaitingForPartner(true);
+        } else if (session.status === 'ACCEPTED' || session.status === 'ACTIVE') {
+          setIsDuoWaitingForPartner(false);
+        }
+
+        // Live Partner Telemetry from partner's real phone
+        if (session.participants) {
+          const partnerUserId = Object.keys(session.participants).find((uid) => uid !== activeUserId);
+          if (partnerUserId) {
+            const partnerData = session.participants[partnerUserId];
+            if (partnerData && partnerData.latitude && partnerData.longitude) {
+              setPartnerRunner({
+                id: partnerData.userId,
+                name: partnerData.name || activePartnerRef.current?.name || 'Partner',
+                avatarUrl: partnerData.avatarUrl || activePartnerRef.current?.avatarUrl || activePartnerRef.current?.photoURL,
+                latitude: partnerData.latitude,
+                longitude: partnerData.longitude,
+                distanceMeters: Math.round((partnerData.distanceKm || 0) * 1000),
+                pace: partnerData.pace || '--:--',
+              });
+            }
+          }
+        }
+      });
+      duoSessionSubRef.current = unsub;
+    } else {
+      setDuoSession(null);
+      setIsDuoWaitingForPartner(false);
+    }
 
     console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title}`);
     setOfflineConfig(offlineTargetConfig);
@@ -252,7 +310,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.log(`[TELEMETRY] FIRST_LOCATION_RECEIVED (Latency: ${latency}ms)`);
         setCurrentLocation(stage1Point);
 
-        if (activePartnerRef.current) {
+        if (activePartnerRef.current && !sessionId) {
           setPartnerRunner({
             id: activePartnerRef.current.id || activePartnerRef.current.userId || 'partner_1',
             name: activePartnerRef.current.name || 'Partner',
@@ -293,7 +351,24 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // MAP LOCATION: Update current location for map centering & runner marker display
     if (isValidMapLocation(point)) {
       setCurrentLocation(point);
-      if (activePartnerRef.current) {
+
+      // Real-time broadcast to partner in live Duo Run session
+      if (duoSessionIdRef.current) {
+        const now = Date.now();
+        if (now - lastTelemetryBroadcastRef.current >= 1200) {
+          lastTelemetryBroadcastRef.current = now;
+          duoRunService.updateParticipantTelemetry(duoSessionIdRef.current, activeUserId, {
+            name: userProfile?.displayName || 'Runner',
+            avatarUrl: userProfile?.photoURL,
+            latitude: point.latitude,
+            longitude: point.longitude,
+            distanceKm: accumulatedDistanceKmRef.current,
+            pace: calculatePaceString(accumulatedDistanceKmRef.current, accumulatedDurationRef.current),
+            speedKmH: point.speed ? Math.round(point.speed * 3.6 * 10) / 10 : 0,
+            runState: runStateRef.current as any,
+          }).catch(() => {});
+        }
+      } else if (activePartnerRef.current) {
         setPartnerRunner((prev) => ({
           id: activePartnerRef.current?.id || activePartnerRef.current?.userId || 'partner_1',
           name: activePartnerRef.current?.name || 'Partner',
@@ -593,6 +668,17 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     prepStartTimeRef.current = null;
     titleRef.current = 'SOLO RUN';
     typeRef.current = 'SOLO';
+    if (duoSessionSubRef.current) {
+      duoSessionSubRef.current();
+      duoSessionSubRef.current = null;
+    }
+    if (duoSessionIdRef.current) {
+      duoRunService.endDuoSession(duoSessionIdRef.current).catch(() => {});
+    }
+    setDuoSessionId(null);
+    duoSessionIdRef.current = null;
+    setDuoSession(null);
+    setIsDuoWaitingForPartner(false);
     activePartnerRef.current = null;
     setActivePartner(null);
     setPartnerRunner(null);
@@ -618,6 +704,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         offlineConfig,
         activePartner,
         partnerRunner,
+        duoSessionId,
+        duoSession,
+        isDuoWaitingForPartner,
         startPreparation,
         startOfflinePreparation,
         startCountdown,

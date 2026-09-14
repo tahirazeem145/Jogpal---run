@@ -87,5 +87,34 @@ export interface CrewRequest {
   status: 'PENDING' | 'ACCEPTED' | 'REJECTED';
   createdAt: string; // ISO string
   type: 'CREW_INVITE' | 'RUN_INVITE';
+  sessionId?: string;
+}
+
+export interface DuoParticipantTelemetry {
+  userId: string;
+  name: string;
+  avatarUrl?: string;
+  latitude: number;
+  longitude: number;
+  distanceKm: number;
+  pace: string;
+  speedKmH: number;
+  runState?: 'PREPARING' | 'GPS_READY' | 'COUNTDOWN' | 'ACTIVE' | 'PAUSED' | 'FINISHED';
+  updatedAt: string;
+}
+
+export interface DuoRunSession {
+  id: string;
+  hostUserId: string;
+  hostName: string;
+  hostAvatar?: string;
+  guestUserId: string;
+  guestName: string;
+  guestAvatar?: string;
+  status: 'INVITED' | 'ACCEPTED' | 'ACTIVE' | 'COMPLETED' | 'CANCELLED';
+  createdAt: string;
+  participants?: {
+    [userId: string]: DuoParticipantTelemetry;
+  };
 }
 

@@ -228,8 +228,10 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                         <Text style={[styles.userIdText, { color: colors.textSecondary }]}>
                           {shortId} {req.fromUserEmail ? `• ${req.fromUserEmail}` : ''}
                         </Text>
-                        <Text style={[styles.inviteTypeText, { color: colors.primary }]}>
-                          Wants to add you as a Crew Running Partner 🏃‍♂️
+                        <Text style={[styles.inviteTypeText, { color: req.type === 'RUN_INVITE' ? '#FFD700' : colors.primary }]}>
+                          {req.type === 'RUN_INVITE'
+                            ? '⚡ Invites you to a live synchronized Duo Run! 🏃‍♂️'
+                            : 'Wants to add you as a Crew Running Partner 🏃‍♂️'}
                         </Text>
                       </View>
 
@@ -274,8 +276,14 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                           <ActivityIndicator size="small" color="#000000" />
                         ) : (
                           <>
-                            <Ionicons name="checkmark-sharp" size={18} color="#000000" />
-                            <Text style={styles.acceptBtnText}>ACCEPT</Text>
+                            <Ionicons
+                              name={req.type === 'RUN_INVITE' ? 'flash' : 'checkmark-sharp'}
+                              size={16}
+                              color="#000000"
+                            />
+                            <Text style={styles.acceptBtnText}>
+                              {req.type === 'RUN_INVITE' ? 'ACCEPT & RUN' : 'ACCEPT'}
+                            </Text>
                           </>
                         )}
                       </TouchableOpacity>

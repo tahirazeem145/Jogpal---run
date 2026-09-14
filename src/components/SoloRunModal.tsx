@@ -39,6 +39,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     offlineConfig,
     activePartner,
     partnerRunner,
+    isDuoWaitingForPartner,
     startPreparation,
     startOfflinePreparation,
     startCountdown,
@@ -151,8 +152,27 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
           </View>
         )}
 
+        {/* --- STATE: WAITING FOR DUO PARTNER --- */}
+        {isDuoWaitingForPartner && activePartner && (
+          <View style={styles.centeredContainer}>
+            <View style={[styles.glowContainer, { borderColor: colors.primary, backgroundColor: colors.crewAddBg }]}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+            <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>INVITATION SENT</Text>
+            <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>
+              WAITING FOR <Text style={{ color: colors.primary, fontWeight: '800' }}>{activePartner.name.toUpperCase()}</Text> TO ACCEPT ON THEIR PHONE...
+            </Text>
+            <Text style={[styles.statusLabel, { color: colors.primary }]}>
+              ⚡ LIVE GPS MAP WILL LAUNCH AUTOMATICALLY
+            </Text>
+            <TouchableOpacity style={styles.cancelLink} onPress={handleClose}>
+              <Text style={[styles.cancelLinkText, { color: colors.textMuted }]}>CANCEL INVITATION</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* --- STATE 2: PREPARING & GPS SEARCHING --- */}
-        {(runState === 'PREPARING' || runState === 'GPS_SEARCHING') && (
+        {!isDuoWaitingForPartner && (runState === 'PREPARING' || runState === 'GPS_SEARCHING') && (
           <View style={styles.centeredContainer}>
             <View style={[styles.glowContainer, { borderColor: colors.primary, backgroundColor: colors.crewAddBg }]}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -169,7 +189,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         )}
 
         {/* --- STATE 3: GPS READY / SETUP MODE --- */}
-        {runState === 'GPS_READY' && (
+        {!isDuoWaitingForPartner && runState === 'GPS_READY' && (
           <View style={styles.centeredContainer}>
             <View style={styles.readyBadge}>
               <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
