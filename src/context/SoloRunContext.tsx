@@ -565,8 +565,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     stopTimer();
     stopLocationWatching();
 
-    const finalDistance = Math.round(accumulatedDistanceKmRef.current * 100) / 100;
-    const finalDuration = accumulatedDurationRef.current;
+    const effectiveDistance = Math.max(accumulatedDistanceKmRef.current, metrics.distanceKm);
+    const finalDistance = Math.round(effectiveDistance * 100) / 100;
+    const finalDuration = Math.max(1, accumulatedDurationRef.current || metrics.durationSeconds);
     const finalPace = calculatePaceString(finalDistance, finalDuration);
     const finalRoute = actualRouteRef.current.length > 0 ? [...actualRouteRef.current] : actualRoute;
 
