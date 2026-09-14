@@ -20,7 +20,7 @@ export const friendService = {
     onUpdate: (friends: CrewMember[]) => void,
     onError?: (error: Error) => void
   ) {
-    if (!userId || userId === 'guest_runner') {
+    if (!userId) {
       onUpdate([]);
       return () => {};
     }

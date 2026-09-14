@@ -310,18 +310,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
     }
   };
 
-  const handleGuestSignIn = async () => {
-    setLoading(true);
-    setErrorMessage('');
-    try {
-      await authService.signInGuest();
-      if (onLoginSuccess) onLoginSuccess();
-    } catch (err: any) {
-      if (onLoginSuccess) onLoginSuccess();
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <KeyboardAvoidingView
@@ -482,16 +470,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
             <Text style={styles.googleButtonText}>CONTINUE WITH GOOGLE</Text>
           </TouchableOpacity>
 
-          {/* Guest Sign In Button */}
-          <TouchableOpacity
-            style={[styles.guestButton, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}
-            onPress={handleGuestSignIn}
-            activeOpacity={0.8}
-            disabled={loading}
-          >
-            <Ionicons name="flash-outline" size={18} color={colors.primary} />
-            <Text style={[styles.guestButtonText, { color: colors.primary }]}>CONTINUE AS GUEST</Text>
-          </TouchableOpacity>
         </View>
 
         {/* Security Footer */}
@@ -886,21 +864,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.8,
-  },
-  guestButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-    borderRadius: 26,
-    borderWidth: 1.5,
-    gap: 8,
-  },
-  guestButtonText: {
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
   },
   footer: {
     flexDirection: 'row',

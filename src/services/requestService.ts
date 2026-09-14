@@ -29,37 +29,26 @@ export const requestService = {
   // Check if a friend connection or pending request already exists
   async checkRequestStatus(
     fromUserId: string,
-    toUserId: string
+    toUserId: string,
+    type: 'CREW_INVITE' | 'RUN_INVITE' = 'CREW_INVITE'
   ): Promise<{ canSend: boolean; reason?: string }> {
     if (!toUserId || toUserId === fromUserId) {
       return { canSend: false, reason: 'You cannot send a request to yourself.' };
     }
 
     try {
-      // 1. Check if already in user's friends
-      const friendDoc = await getDoc(doc(db, 'users', fromUserId, 'friends', toUserId));
-      if (friendDoc.exists()) {
-        return { canSend: false, reason: 'This runner is already in your friends list!' };
+      if (type === 'CREW_INVITE') {
+        // 1. Check if already in user's friends
+        const friendDoc = await getDoc(doc(db, 'users', fromUserId, 'friends', toUserId));
+        if (friendDoc.exists()) {
+          return { canSend: false, reason: 'This runner is already in your friends list!' };
+        }
       }
 
       // 2. Check if outgoing request already sent and pending
       const sentDoc = await getDoc(doc(db, 'users', fromUserId, 'sent_requests', toUserId));
-      if (sentDoc.exists()) {
+      if (sentDoc.exists() && type === 'CREW_INVITE') {
         return { canSend: false, reason: 'You have already sent a request to this runner. Waiting for their response.' };
-      }
-
-      // 3. Check if target user has already sent an incoming request to current user
-      const incomingQuery = query(
-        collection(db, 'users', fromUserId, 'requests'),
-        where('fromUserId', '==', toUserId),
-        where('status', '==', 'PENDING')
-      );
-      const incomingSnap = await getDocs(incomingQuery);
-      if (!incomingSnap.empty) {
-        return {
-          canSend: false,
-          reason: 'This runner has already sent you a request! Check your notifications to accept.',
-        };
       }
 
       return { canSend: true };
@@ -69,18 +58,19 @@ export const requestService = {
     }
   },
 
-  // Send a friend request to a target user
+  // Send a friend request or live duo run invite to a target user
   async sendCrewRequest(
     fromProfile: UserProfile,
     toUserId: string,
-    type: 'CREW_INVITE' | 'RUN_INVITE' = 'CREW_INVITE'
-  ): Promise<{ success: boolean; message: string }> {
+    type: 'CREW_INVITE' | 'RUN_INVITE' = 'CREW_INVITE',
+    sessionId?: string
+  ): Promise<{ success: boolean; message: string; requestId?: string }> {
     if (!toUserId || toUserId === fromProfile.id) {
       return { success: false, message: 'Invalid recipient ID' };
     }
 
     // Run duplicate check
-    const check = await this.checkRequestStatus(fromProfile.id, toUserId);
+    const check = await this.checkRequestStatus(fromProfile.id, toUserId, type);
     if (!check.canSend) {
       return { success: false, message: check.reason || 'Cannot send request at this time.' };
     }
@@ -101,6 +91,7 @@ export const requestService = {
         status: 'PENDING',
         createdAt: new Date().toISOString(),
         type,
+        sessionId,
       };
 
       // Write incoming request to recipient
@@ -114,12 +105,18 @@ export const requestService = {
           toUserId,
           createdAt: new Date().toISOString(),
           status: 'PENDING',
+          type,
+          sessionId,
         })
       );
 
-      return { success: true, message: 'Friend request sent successfully!' };
+      return {
+        success: true,
+        message: type === 'RUN_INVITE' ? 'Duo Run invitation sent!' : 'Friend request sent successfully!',
+        requestId,
+      };
     } catch (err: any) {
-      console.warn('Error sending friend request:', err);
+      console.warn('Error sending request:', err);
       return { success: false, message: err?.message || 'Failed to send request' };
     }
   },
@@ -130,7 +127,7 @@ export const requestService = {
     onUpdate: (requests: CrewRequest[]) => void,
     onError?: (error: Error) => void
   ) {
-    if (!userId || userId === 'guest_runner') {
+    if (!userId) {
       onUpdate([]);
       return () => {};
     }
@@ -170,7 +167,7 @@ export const requestService = {
     onUpdate: (sentToUserIds: string[]) => void,
     onError?: (error: Error) => void
   ) {
-    if (!userId || userId === 'guest_runner') {
+    if (!userId) {
       onUpdate([]);
       return () => {};
     }

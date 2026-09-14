@@ -58,8 +58,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const unreadRequestCount = incomingRequests.length;
 
-  // Fallback default user ID if not logged in yet
-  const activeUserId = user?.uid || 'guest_runner';
+  // Authenticated user ID
+  const activeUserId = user?.uid || '';
 
   // 1. Listen for Auth Changes
   useEffect(() => {
@@ -71,6 +71,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 2. Subscribe to Firestore collections for active user
   useEffect(() => {
+    if (!activeUserId) {
+      setUserProfile(null);
+      setRuns([]);
+      setWeeklyKm(0);
+      setPersonalBests([]);
+      setAllRegisteredRunners([]);
+      setCrew([]);
+      setFriends([]);
+      setSentRequestIds([]);
+      setUpcomingSession(null);
+      setIncomingRequests([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
 
     // Subscribe to User Profile
@@ -83,7 +98,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // Initialize and save profile in Firestore so other users can see this ID
           const defaultProfile: UserProfile = {
             id: activeUserId,
-            displayName: user?.displayName || user?.email?.split('@')[0] || (user?.isAnonymous ? `Runner_${activeUserId.slice(0, 5)}` : 'Runner'),
+            displayName: user?.displayName || user?.email?.split('@')[0] || 'Runner',
             email: user?.email || '',
             level: 1,
             streakDays: 0,
@@ -98,9 +113,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             defaultProfile.photoURL = user.photoURL;
           }
           setUserProfile(defaultProfile);
-          if (activeUserId && activeUserId !== 'guest_runner') {
-            userService.saveUserProfile(activeUserId, defaultProfile).catch(() => {});
-          }
+          userService.saveUserProfile(activeUserId, defaultProfile).catch(() => {});
         }
       },
       () => {
@@ -142,7 +155,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activeUserId,
       (registeredUsers) => {
         const filtered = registeredUsers.filter(
-          (u) => u.id !== activeUserId
+          (u) =>
+            u.id !== activeUserId &&
+            !u.id.toLowerCase().startsWith('guest') &&
+            !u.email?.toLowerCase().startsWith('guest') &&
+            !u.displayName?.toLowerCase().startsWith('guest')
         );
         setAllRegisteredRunners(filtered);
       },
@@ -226,27 +243,63 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     type: 'SOLO' | 'CREW' = 'SOLO',
     extra?: Partial<Omit<RunSession, 'id' | 'userId' | 'distanceKm' | 'durationSeconds' | 'pace' | 'title' | 'type'>>
   ) => {
+    if (!activeUserId) {
+      console.warn('Cannot log run: no active authenticated user');
+      return;
+    }
+
+    const roundedKm = Math.round(distanceKm * 100) / 100;
+    const calories = extra?.calories || Math.round(roundedKm * 62);
+
     const newRun: Omit<RunSession, 'id'> = {
       userId: activeUserId,
       title,
       type,
-      distanceKm,
+      distanceKm: roundedKm,
       durationSeconds: durationSec,
       pace,
+      calories,
       createdAt: new Date().toISOString(),
       ...(extra || {}),
     };
-    await runService.logRun(newRun);
 
-    // Update profile aggregates
-    if (userProfile) {
-      const newTotalKm = Math.round(((userProfile.totalDistanceKm || 0) + distanceKm) * 10) / 10;
-      const newJogs = (userProfile.totalJogs || 0) + 1;
-      await userService.saveUserProfile(activeUserId, {
-        totalDistanceKm: newTotalKm,
-        totalJogs: newJogs,
-      });
-    }
+    // 1. Save run document directly to Firebase Firestore 'runs' collection
+    const docRef = await runService.logRun(newRun);
+
+    // 2. Optimistically update local runs list so History and Profile update immediately
+    const loggedSession: RunSession = {
+      ...newRun,
+      id: docRef.id,
+    };
+    const updatedRuns = [loggedSession, ...runs.filter((r) => r.id !== docRef.id)];
+    setRuns(updatedRuns);
+
+    // 3. Recalculate and update weekly momentum and personal bests
+    const weekly = runService.calculateWeeklyDistance(updatedRuns);
+    setWeeklyKm(weekly);
+    const pbs = runService.calculatePersonalBests(updatedRuns);
+    setPersonalBests(pbs);
+
+    // 4. Calculate updated profile aggregates & progression
+    const currentTotalKm = userProfile?.totalDistanceKm || 0;
+    const newTotalKm = Math.round((currentTotalKm + roundedKm) * 10) / 10;
+    const newJogs = (userProfile?.totalJogs || 0) + 1;
+    const newLevel = Math.max(1, Math.floor(newTotalKm / 10) + 1);
+    const newStreak = (userProfile?.streakDays || 0) + 1;
+    const unlockedPBs = pbs.filter((pb) => pb.unlocked).length;
+
+    const profileUpdates: Partial<UserProfile> = {
+      totalDistanceKm: newTotalKm,
+      totalJogs: newJogs,
+      level: newLevel,
+      streakDays: newStreak,
+      recordsCount: unlockedPBs,
+      passportUnlockedCount: Math.min(30, Math.max(userProfile?.passportUnlockedCount || 0, unlockedPBs + 1)),
+    };
+
+    // 5. Update Firestore user profile and local state
+    await userService.saveUserProfile(activeUserId, profileUpdates);
+    setUserProfile((prev) => (prev ? { ...prev, ...profileUpdates } : null));
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {

@@ -5,6 +5,9 @@ import { PartnerRunner } from '../types/map';
 import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm, calculateRollingPaceString, getAccuracyTier, smoothGPSPoint, resetFilter } from '../services/locationService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { useApp } from './AppContext';
+import { CrewMember, DuoRunSession, DuoParticipantTelemetry, GroupRunSession, GroupParticipantTelemetry } from '../types/data';
+import { duoRunService } from '../services/duoRunService';
+import { groupRunService } from '../services/groupRunService';
 
 interface SoloRunContextType {
   runState: RunState;
@@ -21,12 +24,27 @@ interface SoloRunContextType {
   activeRunType: 'SOLO' | 'CREW';
   activeRunSubtype: RunSubtype;
   offlineConfig: OfflineTargetConfig | null;
+  activePartner: CrewMember | null;
+  activeCrewMembers?: CrewMember[] | null;
+  partnerRunner: PartnerRunner | null;
+  duoSessionId: string | null;
+  duoSession: DuoRunSession | null;
+  groupSessionId: string | null;
+  groupSession: GroupRunSession | null;
+  isDuoWaitingForPartner: boolean;
+  isGroupWaitingForPartners: boolean;
+  groupAcceptedCount: number;
+  groupTotalInvitedCount: number;
   startPreparation: (
     title?: string,
     type?: 'SOLO' | 'CREW',
+    offlineTargetConfig?: OfflineTargetConfig | null,
+    partner?: CrewMember | null,
+    sessionId?: string | null,
+    crewMembers?: CrewMember[] | null,
+    isGroupSession?: boolean,
     subtype?: RunSubtype,
-    partnerNames?: string[],
-    offlineTargetConfig?: OfflineTargetConfig | null
+    partnerNames?: string[]
   ) => Promise<void>;
   startDuoPreparation: (friendName?: string) => Promise<void>;
   startGroupPreparation: (groupTitle?: string, crewNames?: string[]) => Promise<void>;
@@ -35,7 +53,7 @@ interface SoloRunContextType {
   pauseRun: () => void;
   resumeRun: () => void;
   finishRun: () => Promise<void>;
-  saveRun: () => Promise<void>;
+  saveRun: (overrideSummary?: PendingRun) => Promise<void>;
   cancelRun: () => void;
   resetState: () => void;
 }
@@ -62,7 +80,7 @@ const SoloRunContext = createContext<SoloRunContextType | undefined>(undefined);
 
 export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, userProfile, logNewRun } = useApp();
-  const activeUserId = user?.uid || userProfile?.id || 'guest_runner';
+  const activeUserId = user?.uid || userProfile?.id || '';
 
   const [runState, setRunState] = useState<RunState>('IDLE');
   const runStateRef = useRef<RunState>('IDLE');
@@ -87,6 +105,21 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [activeRunType, setActiveRunType] = useState<'SOLO' | 'CREW'>('SOLO');
   const [activeRunSubtype, setActiveRunSubtype] = useState<RunSubtype>('SOLO');
   const [offlineConfig, setOfflineConfig] = useState<OfflineTargetConfig | null>(null);
+  const [activePartner, setActivePartner] = useState<CrewMember | null>(null);
+  const [activeCrewMembers, setActiveCrewMembers] = useState<CrewMember[] | null>(null);
+  const [partnerRunner, setPartnerRunner] = useState<PartnerRunner | null>(null);
+  const [duoSessionId, setDuoSessionId] = useState<string | null>(null);
+  const [duoSession, setDuoSession] = useState<DuoRunSession | null>(null);
+  const [groupSessionId, setGroupSessionId] = useState<string | null>(null);
+  const [groupSession, setGroupSession] = useState<GroupRunSession | null>(null);
+  const [isDuoWaitingForPartner, setIsDuoWaitingForPartner] = useState<boolean>(false);
+  const [isGroupWaitingForPartners, setIsGroupWaitingForPartners] = useState<boolean>(false);
+  const activePartnerRef = useRef<CrewMember | null>(null);
+  const duoSessionIdRef = useRef<string | null>(null);
+  const groupSessionIdRef = useRef<string | null>(null);
+  const duoSessionSubRef = useRef<(() => void) | null>(null);
+  const groupSessionSubRef = useRef<(() => void) | null>(null);
+  const lastTelemetryBroadcastRef = useRef<number>(0);
 
   // Helper to generate dynamic partner positions relative to the runner
   const generatePartnerRunners = (
@@ -130,14 +163,14 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const startDuoPreparation = async (friendName: string = 'Alex') => {
-    await startPreparation(`DUO RUN • ${friendName.toUpperCase()}`, 'CREW', 'DUO', [friendName], null);
+    await startPreparation(`DUO RUN • ${friendName.toUpperCase()}`, 'CREW', null, null, null, null, false, 'DUO', [friendName]);
   };
 
   const startGroupPreparation = async (
     groupTitle: string = 'GROUP SQUAD RUN',
     crewNames: string[] = ['Alex', 'Sam', 'Jordan']
   ) => {
-    await startPreparation(groupTitle, 'CREW', 'GROUP', crewNames, null);
+    await startPreparation(groupTitle, 'CREW', null, null, null, null, true, 'GROUP', crewNames);
   };
 
   const startOfflinePreparation = async (targetKm: number, routeMode: OfflineRouteMode) => {
@@ -147,7 +180,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       routeMode,
     };
     setOfflineConfig(config);
-    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO', 'OFFLINE', [], config);
+    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO', config, null, null, null, false, 'OFFLINE', []);
   };
 
   // Telemetry & Timing Refs
@@ -266,26 +299,179 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Helper: Group invites helper counts
+  const groupInvitedList = Object.values(groupSession?.invitedFriends || {});
+  const groupAcceptedCount = groupInvitedList.filter((f) => f.status === 'ACCEPTED').length;
+  const groupTotalInvitedCount = groupInvitedList.length;
+
   // 3. TWO-STAGE PARALLEL LOCATION ACQUISITION
   const startPreparation = async (
     title = 'SOLO RUN',
     type: 'SOLO' | 'CREW' = 'SOLO',
-    subtype: RunSubtype = 'SOLO',
-    partnerNames: string[] = [],
-    offlineTargetConfig: OfflineTargetConfig | null = null
+    offlineTargetConfig: OfflineTargetConfig | null = null,
+    partner: CrewMember | null = null,
+    sessionId: string | null = null,
+    crewMembers: CrewMember[] | null = null,
+    isGroupSession: boolean = false,
+    subtype?: RunSubtype,
+    partnerNames: string[] = []
   ) => {
     const prepStart = Date.now();
     prepStartTimeRef.current = prepStart;
     titleRef.current = title;
     typeRef.current = type;
-    activeRunSubtypeRef.current = subtype;
-    partnerNamesRef.current = partnerNames;
+    const determinedSubtype: RunSubtype =
+      subtype
+        ? subtype
+        : offlineTargetConfig?.isOfflineMode
+        ? 'OFFLINE'
+        : isGroupSession || (sessionId && sessionId.startsWith('group_'))
+        ? 'GROUP'
+        : partner || sessionId
+        ? 'DUO'
+        : 'SOLO';
+    activeRunSubtypeRef.current = determinedSubtype;
+    partnerNamesRef.current =
+      partnerNames.length > 0
+        ? partnerNames
+        : partner
+        ? [partner.name]
+        : crewMembers
+        ? crewMembers.map((c) => c.name)
+        : [];
+    activePartnerRef.current = partner;
+    setActivePartner(partner);
+    setActiveCrewMembers(crewMembers);
+    if (!partner && (!crewMembers || crewMembers.length === 0)) {
+      setPartnerRunner(null);
+      setPartnerRunners([]);
+    }
     setActiveRunTitle(title);
     setActiveRunType(type);
-    setActiveRunSubtype(subtype);
+    setActiveRunSubtype(determinedSubtype);
     setPartnerRunners([]);
 
-    console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title} (${subtype})`);
+    console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title} (${determinedSubtype})`);
+
+    // Clean up previous listeners
+    if (duoSessionSubRef.current) {
+      duoSessionSubRef.current();
+      duoSessionSubRef.current = null;
+    }
+    if (groupSessionSubRef.current) {
+      groupSessionSubRef.current();
+      groupSessionSubRef.current = null;
+    }
+
+    const isGroup = isGroupSession || (sessionId ? sessionId.startsWith('group_') : false);
+
+    if (isGroup && sessionId) {
+      setGroupSessionId(sessionId);
+      groupSessionIdRef.current = sessionId;
+      setDuoSessionId(null);
+      duoSessionIdRef.current = null;
+      setDuoSession(null);
+      setIsDuoWaitingForPartner(false);
+
+      const unsubGroup = groupRunService.subscribeToGroupSession(sessionId, (session) => {
+        if (!session) return;
+        setGroupSession(session);
+
+        const invitedList = Object.values(session.invitedFriends || {});
+        const acceptedList = invitedList.filter((f) => f.status === 'ACCEPTED');
+
+        if (session.hostUserId === activeUserId) {
+          // Host: if no friends have accepted yet, show waiting state
+          if (acceptedList.length === 0 && session.status === 'INVITED') {
+            setIsGroupWaitingForPartners(true);
+          } else {
+            setIsGroupWaitingForPartners(false);
+          }
+        } else {
+          // Guest runner who joined
+          setIsGroupWaitingForPartners(false);
+        }
+
+        // Map all other participants (other squad runners)
+        const otherRunners: PartnerRunner[] = [];
+        if (session.participants) {
+          Object.keys(session.participants).forEach((uid) => {
+            if (uid !== activeUserId) {
+              const pData = session.participants![uid];
+              if (pData && (pData.latitude || pData.longitude)) {
+                otherRunners.push({
+                  id: pData.userId,
+                  name: pData.name || 'Squad Runner',
+                  avatarUrl: pData.avatarUrl,
+                  latitude: pData.latitude,
+                  longitude: pData.longitude,
+                  distanceMeters: Math.round((pData.distanceKm || 0) * 1000),
+                  pace: pData.pace || '--:--',
+                });
+              }
+            }
+          });
+        }
+        setPartnerRunners(otherRunners);
+        if (otherRunners.length > 0) {
+          setPartnerRunner(otherRunners[0]);
+        }
+      });
+      groupSessionSubRef.current = unsubGroup;
+    } else if (sessionId) {
+      setGroupSessionId(null);
+      groupSessionIdRef.current = null;
+      setGroupSession(null);
+      setIsGroupWaitingForPartners(false);
+      setDuoSessionId(sessionId);
+      duoSessionIdRef.current = sessionId;
+
+      // Subscribe to real-time Duo session
+      const unsub = duoRunService.subscribeToDuoSession(sessionId, (session) => {
+        if (!session) return;
+        setDuoSession(session);
+
+        if (session.status === 'INVITED' && session.hostUserId === activeUserId) {
+          setIsDuoWaitingForPartner(true);
+        } else if (session.status === 'ACCEPTED' || session.status === 'ACTIVE') {
+          setIsDuoWaitingForPartner(false);
+        }
+
+        // Live Partner Telemetry from partner's real phone
+        if (session.participants) {
+          const partnerUserId = Object.keys(session.participants).find((uid) => uid !== activeUserId);
+          if (partnerUserId) {
+            const partnerData = session.participants[partnerUserId];
+            if (partnerData && partnerData.latitude && partnerData.longitude) {
+              const pRunner: PartnerRunner = {
+                id: partnerData.userId,
+                name: partnerData.name || activePartnerRef.current?.name || 'Partner',
+                avatarUrl: partnerData.avatarUrl || activePartnerRef.current?.avatarUrl || activePartnerRef.current?.photoURL,
+                latitude: partnerData.latitude,
+                longitude: partnerData.longitude,
+                distanceMeters: Math.round((partnerData.distanceKm || 0) * 1000),
+                pace: partnerData.pace || '--:--',
+              };
+              setPartnerRunner(pRunner);
+              setPartnerRunners([pRunner]);
+            }
+          }
+        }
+      });
+      duoSessionSubRef.current = unsub;
+    } else {
+      setDuoSession(null);
+      setGroupSession(null);
+      setDuoSessionId(null);
+      setGroupSessionId(null);
+      duoSessionIdRef.current = null;
+      groupSessionIdRef.current = null;
+      setIsDuoWaitingForPartner(false);
+      setIsGroupWaitingForPartners(false);
+      setPartnerRunners([]);
+    }
+
+    console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title}`);
     setOfflineConfig(offlineTargetConfig);
     updateRunState('PREPARING');
     setErrorMessage(null);
@@ -332,16 +518,24 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.log(`[TELEMETRY] FIRST_LOCATION_RECEIVED (Latency: ${latency}ms)`);
         setCurrentLocation(stage1Point);
 
-        if (activeRunSubtypeRef.current === 'DUO' || activeRunSubtypeRef.current === 'GROUP') {
-          setPartnerRunners(
-            generatePartnerRunners(
-              stage1Point.latitude,
-              stage1Point.longitude,
-              activeRunSubtypeRef.current,
-              partnerNamesRef.current,
-              '--:--'
-            )
+        if (activeRunSubtypeRef.current === 'DUO' || activeRunSubtypeRef.current === 'GROUP' || activePartnerRef.current) {
+          const names =
+            partnerNamesRef.current.length > 0
+              ? partnerNamesRef.current
+              : activePartnerRef.current
+              ? [activePartnerRef.current.name]
+              : ['Alex'];
+          const partners = generatePartnerRunners(
+            stage1Point.latitude,
+            stage1Point.longitude,
+            activeRunSubtypeRef.current === 'GROUP' ? 'GROUP' : 'DUO',
+            names,
+            '--:--'
           );
+          setPartnerRunners(partners);
+          if (partners.length > 0) {
+            setPartnerRunner(partners[0]);
+          }
         }
 
         setMetrics((prev) => ({
@@ -377,16 +571,57 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (isValidMapLocation(point)) {
       setCurrentLocation(point);
 
-      if (activeRunSubtypeRef.current === 'DUO' || activeRunSubtypeRef.current === 'GROUP') {
-        setPartnerRunners(
-          generatePartnerRunners(
-            point.latitude,
-            point.longitude,
-            activeRunSubtypeRef.current,
-            partnerNamesRef.current,
-            calculateRollingPaceString(routePointsRef.current)
-          )
+      // Real-time broadcast in Group Run session
+      if (groupSessionIdRef.current) {
+        const now = Date.now();
+        if (now - lastTelemetryBroadcastRef.current >= 1200) {
+          lastTelemetryBroadcastRef.current = now;
+          groupRunService.updateParticipantTelemetry(groupSessionIdRef.current, activeUserId, {
+            name: userProfile?.displayName || 'Runner',
+            avatarUrl: userProfile?.photoURL,
+            initial: (userProfile?.displayName?.trim().charAt(0) || 'R').toUpperCase(),
+            latitude: point.latitude,
+            longitude: point.longitude,
+            distanceKm: accumulatedDistanceKmRef.current,
+            pace: calculatePaceString(accumulatedDistanceKmRef.current, accumulatedDurationRef.current),
+            speedKmH: point.speed ? Math.round(point.speed * 3.6 * 10) / 10 : 0,
+            runState: runStateRef.current as any,
+          }).catch(() => {});
+        }
+      } else if (duoSessionIdRef.current) {
+        // Real-time broadcast to partner in live Duo Run session
+        const now = Date.now();
+        if (now - lastTelemetryBroadcastRef.current >= 1200) {
+          lastTelemetryBroadcastRef.current = now;
+          duoRunService.updateParticipantTelemetry(duoSessionIdRef.current, activeUserId, {
+            name: userProfile?.displayName || 'Runner',
+            avatarUrl: userProfile?.photoURL,
+            latitude: point.latitude,
+            longitude: point.longitude,
+            distanceKm: accumulatedDistanceKmRef.current,
+            pace: calculatePaceString(accumulatedDistanceKmRef.current, accumulatedDurationRef.current),
+            speedKmH: point.speed ? Math.round(point.speed * 3.6 * 10) / 10 : 0,
+            runState: runStateRef.current as any,
+          }).catch(() => {});
+        }
+      } else if (activeRunSubtypeRef.current === 'DUO' || activeRunSubtypeRef.current === 'GROUP' || activePartnerRef.current) {
+        const names =
+          partnerNamesRef.current.length > 0
+            ? partnerNamesRef.current
+            : activePartnerRef.current
+            ? [activePartnerRef.current.name]
+            : ['Alex'];
+        const partners = generatePartnerRunners(
+          point.latitude,
+          point.longitude,
+          activeRunSubtypeRef.current === 'GROUP' ? 'GROUP' : 'DUO',
+          names,
+          calculateRollingPaceString(routePointsRef.current)
         );
+        setPartnerRunners(partners);
+        if (partners.length > 0) {
+          setPartnerRunner(partners[0]);
+        }
       }
     }
 
@@ -621,8 +856,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     stopTimer();
     stopLocationWatching();
 
-    const finalDistance = Math.round(accumulatedDistanceKmRef.current * 100) / 100;
-    const finalDuration = getElapsedDurationSeconds();
+    const effectiveDistance = Math.max(accumulatedDistanceKmRef.current, metrics.distanceKm);
+    const finalDistance = Math.round(effectiveDistance * 100) / 100;
+    const finalDuration = Math.max(1, getElapsedDurationSeconds() || accumulatedDurationRef.current || metrics.durationSeconds);
     accumulatedDurationRef.current = finalDuration;
     const finalPace = calculatePaceString(finalDistance, finalDuration);
     const finalRoute = actualRouteRef.current.length > 0 ? [...actualRouteRef.current] : actualRoute;
@@ -647,53 +883,60 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     setLastRunSummary(summary);
+
+    // Auto-save to Firebase and update local stats immediately
+    setTimeout(() => {
+      saveRun(summary);
+    }, 100);
   };
 
   // 9. Save Run (Idempotent: saves local first, syncs Firebase separately)
-  const saveRun = async () => {
+  const saveRun = async (overrideSummary?: PendingRun) => {
+    const summaryToSave = overrideSummary || lastRunSummary;
     const currentState = runStateRef.current;
-    if (isSavedRef.current || !lastRunSummary || currentState === 'SAVING' || currentState === 'SAVED') return;
+    if (isSavedRef.current || !summaryToSave) return;
     isSavedRef.current = true;
     updateRunState('SAVING');
 
     try {
       await logNewRun(
-        lastRunSummary.distanceKm,
-        lastRunSummary.durationSeconds,
-        lastRunSummary.pace,
-        lastRunSummary.title,
-        lastRunSummary.type,
+        summaryToSave.distanceKm,
+        summaryToSave.durationSeconds,
+        summaryToSave.pace,
+        summaryToSave.title,
+        summaryToSave.type,
         {
-          route: lastRunSummary.actualRoute,
-          avgSpeedKmH: lastRunSummary.avgSpeedKmH,
-          maxSpeedKmH: lastRunSummary.maxSpeedKmH,
-          calories: Math.round(lastRunSummary.distanceKm * 62),
+          route: summaryToSave.actualRoute,
+          avgSpeedKmH: summaryToSave.avgSpeedKmH,
+          maxSpeedKmH: summaryToSave.maxSpeedKmH,
+          calories: Math.round(summaryToSave.distanceKm * 62),
           startLocation:
-            lastRunSummary.actualRoute && lastRunSummary.actualRoute.length > 0
-              ? lastRunSummary.actualRoute[0]
+            summaryToSave.actualRoute && summaryToSave.actualRoute.length > 0
+              ? summaryToSave.actualRoute[0]
               : undefined,
           endLocation:
-            lastRunSummary.actualRoute && lastRunSummary.actualRoute.length > 1
-              ? lastRunSummary.actualRoute[lastRunSummary.actualRoute.length - 1]
+            summaryToSave.actualRoute && summaryToSave.actualRoute.length > 1
+              ? summaryToSave.actualRoute[summaryToSave.actualRoute.length - 1]
               : undefined,
         }
       );
       updateRunState('SAVED');
       offlineSyncService.syncPendingRuns(activeUserId).catch(() => {});
     } catch (err) {
+      console.warn('Firebase run logging failed, backing up to offline storage:', err);
       await offlineSyncService.savePendingRun({
-        userId: lastRunSummary.userId,
-        title: lastRunSummary.title,
-        type: lastRunSummary.type,
-        subtype: lastRunSummary.subtype,
-        partnerNames: lastRunSummary.partnerNames,
-        distanceKm: lastRunSummary.distanceKm,
-        durationSeconds: lastRunSummary.durationSeconds,
-        pace: lastRunSummary.pace,
-        createdAt: lastRunSummary.createdAt,
-        plannedRoute: lastRunSummary.plannedRoute,
-        actualRoute: lastRunSummary.actualRoute,
-        trackingIntegrityScore: lastRunSummary.trackingIntegrityScore,
+        userId: summaryToSave.userId,
+        title: summaryToSave.title,
+        type: summaryToSave.type,
+        subtype: summaryToSave.subtype,
+        partnerNames: summaryToSave.partnerNames,
+        distanceKm: summaryToSave.distanceKm,
+        durationSeconds: summaryToSave.durationSeconds,
+        pace: summaryToSave.pace,
+        createdAt: summaryToSave.createdAt,
+        plannedRoute: summaryToSave.plannedRoute,
+        actualRoute: summaryToSave.actualRoute,
+        trackingIntegrityScore: summaryToSave.trackingIntegrityScore,
       });
       updateRunState('SYNC_PENDING');
     }
@@ -734,6 +977,32 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     typeRef.current = 'SOLO';
     activeRunSubtypeRef.current = 'SOLO';
     partnerNamesRef.current = [];
+    if (duoSessionSubRef.current) {
+      duoSessionSubRef.current();
+      duoSessionSubRef.current = null;
+    }
+    if (groupSessionSubRef.current) {
+      groupSessionSubRef.current();
+      groupSessionSubRef.current = null;
+    }
+    if (duoSessionIdRef.current) {
+      duoRunService.endDuoSession(duoSessionIdRef.current).catch(() => {});
+    }
+    if (groupSessionIdRef.current) {
+      groupRunService.endGroupSession(groupSessionIdRef.current).catch(() => {});
+    }
+    setDuoSessionId(null);
+    duoSessionIdRef.current = null;
+    setGroupSessionId(null);
+    groupSessionIdRef.current = null;
+    setDuoSession(null);
+    setGroupSession(null);
+    setIsDuoWaitingForPartner(false);
+    setIsGroupWaitingForPartners(false);
+    activePartnerRef.current = null;
+    setActivePartner(null);
+    setActiveCrewMembers(null);
+    setPartnerRunner(null);
     setActiveRunTitle('SOLO RUN');
     setActiveRunType('SOLO');
     setActiveRunSubtype('SOLO');
@@ -759,6 +1028,17 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         activeRunType,
         activeRunSubtype,
         offlineConfig,
+        activePartner,
+        activeCrewMembers,
+        partnerRunner,
+        duoSessionId,
+        duoSession,
+        groupSessionId,
+        groupSession,
+        isDuoWaitingForPartner,
+        isGroupWaitingForPartners,
+        groupAcceptedCount,
+        groupTotalInvitedCount,
         startPreparation,
         startDuoPreparation,
         startGroupPreparation,
