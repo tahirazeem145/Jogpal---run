@@ -49,6 +49,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   const iframeRef = useRef<any>(null);
   const isLeafletReadyRef = useRef<boolean>(false);
   const lastCameraUpdateRef = useRef<number>(0);
+  const hasInitiallyCenteredRef = useRef<boolean>(false);
   const regionDeltaRef = useRef<{ latitudeDelta: number; longitudeDelta: number }>({
     latitudeDelta: 0.005,
     longitudeDelta: 0.005,
@@ -147,6 +148,30 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   }, [sanitizedActualRoute, currentLocation]);
 
   // 2. Throttled, Stable Native Camera Follow
+  // Immediate camera centering on first GPS position lock on Android
+  useEffect(() => {
+    if (
+      Platform.OS !== 'web' &&
+      RNMapView &&
+      mapRef.current &&
+      currentLocation &&
+      !hasInitiallyCenteredRef.current
+    ) {
+      hasInitiallyCenteredRef.current = true;
+      try {
+        mapRef.current.animateToRegion(
+          {
+            latitude: currentLocation.latitude,
+            longitude: currentLocation.longitude,
+            latitudeDelta: 0.005,
+            longitudeDelta: 0.005,
+          },
+          400
+        );
+      } catch (e) {}
+    }
+  }, [currentLocation]);
+
   useEffect(() => {
     if (
       Platform.OS !== 'web' &&
@@ -346,9 +371,13 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
           ref={mapRef}
           style={styles.map}
           initialRegion={computedInitialRegion}
-          showsUserLocation={false}
+          showsUserLocation={true}
           showsCompass={false}
           showsMyLocationButton={false}
+          toolbarEnabled={false}
+          loadingEnabled={true}
+          loadingIndicatorColor={colors.primary}
+          loadingBackgroundColor="#14151B"
           customMapStyle={jogpalDarkMapStyle}
           scrollEnabled={interactive}
           zoomEnabled={interactive}
@@ -790,7 +819,13 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   map: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
   },
   markerAnchor: {
     width: 32,
