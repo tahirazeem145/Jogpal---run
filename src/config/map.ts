@@ -19,8 +19,11 @@ export const MAP_CONFIG = {
   maxZoom: 19,
   defaultCenterCoordinate: [-122.4324, 37.78825] as [number, number], // [longitude, latitude]
 
-  // Dynamic Camera Following Throttle
-  cameraFollowThrottleMs: 800,
+  // Dynamic Camera Following Throttle (Prevents jittery continuous animations)
+  cameraFollowThrottleMs: 1500,
+
+  // Fast Crisp Dark Raster Tiles for Web & Fallbacks
+  darkRasterTileURL: 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png',
 
   // Route & Polyline Styling Configuration
   routeStyling: {
@@ -38,10 +41,11 @@ export const MAP_CONFIG = {
   // GPS Location Tracking Profile for Jogpal
   locationSettings: {
     timeInterval: 1000, // 1 second interval
-    distanceInterval: 1, // 1 meter update sensitivity
-    maxAccuracyThresholdMeters: 500, // Allow GPS points up to 500m for web/mobile location fixes
-    maxMapAccuracyThresholdMeters: 1000, // GPS points for map centering
-    stationaryJitterThresholdMeters: 0.3, // 0.3m movement threshold to accumulate running distance
-    maxReasonableSpeedMs: 15.0, // 15 m/s (~54 km/h) max reasonable running/sprinting speed
+    distanceInterval: 2, // 2 meters update sensitivity (filters device micro-noise)
+    maxAccuracyThresholdMeters: 30, // Strict 30m accuracy threshold for distance calculation & route logging
+    maxMapAccuracyThresholdMeters: 65, // Max 65m accuracy for runner marker display
+    stationaryJitterThresholdMeters: 3.5, // 3.5m physical displacement required to count as active movement
+    maxReasonableSpeedMs: 11.5, // 11.5 m/s (~41.4 km/h) max reasonable sprinting speed
+    maxSingleStepJumpMeters: 25, // 25 meters in a single second = teleport jump rejection
   },
 };

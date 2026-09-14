@@ -16,7 +16,7 @@ import { OfflineSyntheticMap } from './map/OfflineSyntheticMap';
 import { NeonButton } from './NeonButton';
 import { NeonCard } from './NeonCard';
 import { useTheme } from '../context/ThemeContext';
-import { OfflineRouteMode } from '../types/soloRun';
+import { OfflineRouteMode, RunSubtype } from '../types/soloRun';
 
 interface SoloRunModalProps {
   visible: boolean;
@@ -32,12 +32,16 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     currentLocation,
     actualRoute,
     plannedRoute,
+    partnerRunners,
     countdownValue,
     lastRunSummary,
     activeRunTitle,
+    activeRunSubtype,
     errorMessage,
     offlineConfig,
     startPreparation,
+    startDuoPreparation,
+    startGroupPreparation,
     startOfflinePreparation,
     startCountdown,
     pauseRun,
@@ -48,12 +52,31 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     resetState,
   } = useSoloRun();
 
-  // Setup options for Offline Target Mode
-  const [modeTab, setModeTab] = useState<'ONLINE' | 'OFFLINE'>('ONLINE');
+  // Unified Run Modes (SOLO, DUO, GROUP, OFFLINE)
+  const [selectedMode, setSelectedMode] = useState<RunSubtype>(activeRunSubtype || 'SOLO');
   const [selectedTargetKm, setSelectedTargetKm] = useState<number>(5);
   const [selectedRouteMode, setSelectedRouteMode] = useState<OfflineRouteMode>('LOOP');
 
+  React.useEffect(() => {
+    if (activeRunSubtype) {
+      setSelectedMode(activeRunSubtype);
+    }
+  }, [activeRunSubtype]);
+
   if (!visible) return null;
+
+  const handleSelectMode = async (mode: RunSubtype) => {
+    setSelectedMode(mode);
+    if (mode === 'SOLO') {
+      await startPreparation('SOLO RUN', 'SOLO', 'SOLO');
+    } else if (mode === 'DUO') {
+      await startDuoPreparation('Alex');
+    } else if (mode === 'GROUP') {
+      await startGroupPreparation('GROUP SQUAD RUN', ['Alex', 'Sam', 'Jordan']);
+    } else if (mode === 'OFFLINE') {
+      await startOfflinePreparation(selectedTargetKm, selectedRouteMode);
+    }
+  };
 
   const handleClose = () => {
     if (runState === 'ACTIVE' || runState === 'PAUSED' || runState === 'COUNTDOWN') {
@@ -79,12 +102,10 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
   };
 
   const handleStartRunPress = async () => {
-    if (modeTab === 'OFFLINE') {
+    if (selectedMode === 'OFFLINE') {
       await startOfflinePreparation(selectedTargetKm, selectedRouteMode);
-      startCountdown();
-    } else {
-      startCountdown();
     }
+    startCountdown();
   };
 
   const handleSaveAndDone = async () => {
@@ -114,7 +135,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
     return { value: distKm.toFixed(2), unit: 'KILOMETERS' };
   };
 
-  const isCurrentRunOffline = offlineConfig?.isOfflineMode || modeTab === 'OFFLINE';
+  const isCurrentRunOffline = offlineConfig?.isOfflineMode || selectedMode === 'OFFLINE';
 
   return (
     <Modal
@@ -174,31 +195,76 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </View>
             <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>TRACKING READY</Text>
 
-            {/* Run Mode Selector: ONLINE MAP vs OFFLINE TARGET */}
-            <View style={styles.tabContainer}>
-              <TouchableOpacity
-                style={[styles.tabBtn, modeTab === 'ONLINE' && { backgroundColor: colors.primary }]}
-                onPress={() => setModeTab('ONLINE')}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.tabBtnText, { color: modeTab === 'ONLINE' ? '#000000' : colors.textSecondary }]}>
-                  ONLINE MAP
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.tabBtn, modeTab === 'OFFLINE' && { backgroundColor: colors.primary }]}
-                onPress={() => setModeTab('OFFLINE')}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.tabBtnText, { color: modeTab === 'OFFLINE' ? '#000000' : colors.textSecondary }]}>
-                  OFFLINE TARGET
-                </Text>
-              </TouchableOpacity>
+            {/* Unified 4-Mode Selector Chips */}
+            <View style={styles.modeChipsRow}>
+              {(
+                [
+                  { key: 'SOLO', label: 'SOLO', icon: 'flash' },
+                  { key: 'DUO', label: 'DUO', icon: 'people' },
+                  { key: 'GROUP', label: 'SQUAD', icon: 'globe-outline' },
+                  { key: 'OFFLINE', label: 'OFFLINE', icon: 'flag' },
+                ] as const
+              ).map((tab) => {
+                const isActive = selectedMode === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    style={[
+                      styles.modeChip,
+                      { borderColor: colors.cardBorder },
+                      isActive && { backgroundColor: colors.primary, borderColor: colors.primary },
+                    ]}
+                    onPress={() => handleSelectMode(tab.key)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name={tab.icon as any}
+                      size={13}
+                      color={isActive ? '#000000' : colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.modeChipText,
+                        { color: isActive ? '#000000' : colors.textSecondary },
+                      ]}
+                    >
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
 
+            {/* Mode-Specific Information Banner */}
+            {selectedMode === 'SOLO' && (
+              <View style={[styles.modeInfoPill, { borderColor: colors.cardBorder }]}>
+                <Ionicons name="flash" size={12} color={colors.primary} />
+                <Text style={[styles.modeInfoText, { color: colors.textSecondary }]}>
+                  SOLO TRACKING • 2D Kalman Precision Active
+                </Text>
+              </View>
+            )}
+
+            {selectedMode === 'DUO' && (
+              <View style={[styles.modeInfoPill, { borderColor: colors.primary }]}>
+                <Ionicons name="people" size={13} color={colors.primary} />
+                <Text style={[styles.modeInfoText, { color: colors.textPrimary }]}>
+                  DUO SYNC: Pacing with <Text style={{ color: colors.primary, fontWeight: '800' }}>Alex</Text> (~8m sync)
+                </Text>
+              </View>
+            )}
+
+            {selectedMode === 'GROUP' && (
+              <View style={[styles.modeInfoPill, { borderColor: colors.primary }]}>
+                <Ionicons name="globe-outline" size={13} color={colors.primary} />
+                <Text style={[styles.modeInfoText, { color: colors.textPrimary }]}>
+                  SQUAD CREW: <Text style={{ color: colors.primary, fontWeight: '800' }}>Alex, Sam, Jordan</Text> (Formation Sync)
+                </Text>
+              </View>
+            )}
+
             {/* OFFLINE SETUP CONTROLS */}
-            {modeTab === 'OFFLINE' && (
+            {selectedMode === 'OFFLINE' && (
               <View style={styles.offlineSetupContainer}>
                 {/* Distance Selector */}
                 <Text style={[styles.setupLabel, { color: colors.textSecondary }]}>TARGET DISTANCE:</Text>
@@ -255,12 +321,13 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               </View>
             )}
 
-            {/* ONLINE MAP PREVIEW */}
-            {modeTab === 'ONLINE' && (
+            {/* LIVE SATELLITE MAP PREVIEW FOR ONLINE MODES */}
+            {selectedMode !== 'OFFLINE' && (
               <JogpalMap
                 currentLocation={currentLocation}
                 actualRoute={actualRoute}
                 plannedRoute={plannedRoute}
+                partnerRunners={partnerRunners}
                 style={styles.previewMap}
                 interactive={false}
               />
@@ -268,23 +335,54 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
 
             <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleStartRunPress} activeOpacity={0.85}>
               <Text style={styles.startRunText}>
-                {modeTab === 'OFFLINE' ? `START ${selectedTargetKm}KM ${selectedRouteMode} RUN` : 'START RUN'}
+                {selectedMode === 'OFFLINE'
+                  ? `START ${selectedTargetKm}KM ${selectedRouteMode} RUN`
+                  : selectedMode === 'DUO'
+                  ? 'START DUO RUN'
+                  : selectedMode === 'GROUP'
+                  ? 'START SQUAD RUN'
+                  : 'START SOLO RUN'}
               </Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* --- STATE 4: COUNTDOWN --- */}
-        {runState === 'COUNTDOWN' && (
-          <View style={styles.centeredContainer}>
-            <Text style={[styles.countdownTitle, { color: colors.textSecondary }]}>GET READY</Text>
-            <Text style={[styles.countdownNumber, { color: colors.primary }]}>{countdownValue}</Text>
-          </View>
-        )}
-
-        {/* --- STATE 5: ACTIVE LIVE RUN --- */}
-        {runState === 'ACTIVE' && (
+        {/* --- UNIFIED LIVE RUN SESSION (COUNTDOWN, ACTIVE, PAUSED) --- */}
+        {(runState === 'COUNTDOWN' || runState === 'ACTIVE' || runState === 'PAUSED') && (
           <View style={styles.activeContainer}>
+            {/* Paused Badge */}
+            {runState === 'PAUSED' && (
+              <View style={styles.pausedBadge}>
+                <Text style={styles.pausedBadgeText}>RUN PAUSED</Text>
+              </View>
+            )}
+
+            {/* Active Mode HUD Banner */}
+            <View style={[styles.modeHudBanner, { borderColor: colors.primary }]}>
+              <Ionicons
+                name={
+                  activeRunSubtype === 'DUO'
+                    ? 'people'
+                    : activeRunSubtype === 'GROUP'
+                    ? 'globe-outline'
+                    : activeRunSubtype === 'OFFLINE'
+                    ? 'flag'
+                    : 'flash'
+                }
+                size={14}
+                color={colors.primary}
+              />
+              <Text style={[styles.modeHudText, { color: colors.primary }]}>
+                {activeRunSubtype === 'DUO'
+                  ? 'DUO SYNC • 2 RUNNERS PACING'
+                  : activeRunSubtype === 'GROUP'
+                  ? 'SQUAD FORMATION • 4 RUNNERS PACING'
+                  : activeRunSubtype === 'OFFLINE'
+                  ? `OFFLINE TARGET • ${offlineConfig?.targetDistanceKm || 5}KM (${offlineConfig?.routeMode || 'LOOP'})`
+                  : 'SOLO RUN • LIVE SATELLITE GPS'}
+              </Text>
+            </View>
+
             {/* Top Stat: Distance */}
             <View style={styles.distanceBlock}>
               <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>
@@ -293,24 +391,73 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               <Text style={[styles.distanceUnit, { color: colors.primary }]}>
                 {formatDistanceDisplay(metrics.distanceKm).unit}
               </Text>
+
+              {/* OFFLINE Target Progress & Completion Badge */}
+              {offlineConfig?.isOfflineMode && offlineConfig.targetDistanceKm && (
+                <View
+                  style={[
+                    styles.targetBadge,
+                    metrics.distanceKm >= offlineConfig.targetDistanceKm && styles.targetBadgeAchieved,
+                  ]}
+                >
+                  <Text style={styles.targetBadgeText}>
+                    {metrics.distanceKm >= offlineConfig.targetDistanceKm
+                      ? `🎉 TARGET COMPLETED (${metrics.distanceKm.toFixed(2)} / ${offlineConfig.targetDistanceKm} KM)`
+                      : `TARGET: ${metrics.distanceKm.toFixed(2)} / ${offlineConfig.targetDistanceKm} KM (${Math.min(
+                          100,
+                          Math.round((metrics.distanceKm / (offlineConfig.targetDistanceKm || 1)) * 100)
+                        )}%)`}
+                  </Text>
+                </View>
+              )}
             </View>
 
-            {/* Map Component (Offline Synthetic Map OR Live Street Map) */}
-            {offlineConfig?.isOfflineMode ? (
-              <OfflineSyntheticMap
-                currentDistanceKm={metrics.distanceKm}
-                targetDistanceKm={offlineConfig.targetDistanceKm}
-                routeMode={offlineConfig.routeMode}
-                style={styles.liveMap}
-              />
-            ) : (
-              <JogpalMap
-                currentLocation={currentLocation}
-                actualRoute={actualRoute}
-                plannedRoute={plannedRoute}
-                style={styles.liveMap}
-                interactive={true}
-              />
+            {/* Persistent Live Map Component with Countdown Overlay */}
+            <View style={styles.mapWrapper}>
+              {offlineConfig?.isOfflineMode ? (
+                <OfflineSyntheticMap
+                  currentDistanceKm={metrics.distanceKm}
+                  targetDistanceKm={offlineConfig.targetDistanceKm}
+                  routeMode={offlineConfig.routeMode}
+                  style={styles.liveMapFill}
+                />
+              ) : (
+                <JogpalMap
+                  currentLocation={currentLocation}
+                  actualRoute={actualRoute}
+                  plannedRoute={plannedRoute}
+                  partnerRunners={partnerRunners}
+                  style={styles.liveMapFill}
+                  interactive={runState !== 'COUNTDOWN'}
+                />
+              )}
+
+              {/* Seamless Countdown Overlay on Top of Initialized Map */}
+              {runState === 'COUNTDOWN' && (
+                <View style={styles.countdownOverlay}>
+                  <Text style={[styles.countdownTitle, { color: colors.textSecondary }]}>GET READY</Text>
+                  <Text style={[styles.countdownNumber, { color: colors.primary }]}>{countdownValue}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Partner Pacing Mini-Card for DUO & GROUP */}
+            {activeRunSubtype === 'DUO' && partnerRunners.length > 0 && (
+              <View style={[styles.partnerPacingBar, { borderColor: colors.cardBorder }]}>
+                <Ionicons name="people" size={13} color={colors.primary} />
+                <Text style={[styles.partnerPacingText, { color: colors.textSecondary }]}>
+                  Partner <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{partnerRunners[0].name}</Text> • {partnerRunners[0].distanceMeters}m away • {partnerRunners[0].pace}
+                </Text>
+              </View>
+            )}
+
+            {activeRunSubtype === 'GROUP' && partnerRunners.length > 0 && (
+              <View style={[styles.partnerPacingBar, { borderColor: colors.cardBorder }]}>
+                <Ionicons name="globe-outline" size={13} color={colors.primary} />
+                <Text style={[styles.partnerPacingText, { color: colors.textSecondary }]}>
+                  Squad Crew: <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{partnerRunners.map((p) => p.name).join(', ')}</Text> • Synced
+                </Text>
+              </View>
             )}
 
             {/* Telemetry Grid Card */}
@@ -322,8 +469,12 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                 </View>
                 <View style={styles.telemetryDivider} />
                 <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>{metrics.currentPace}</Text>
-                  <Text style={styles.telemetryLabel}>PACE</Text>
+                  <Text style={styles.telemetryValue}>
+                    {runState === 'PAUSED' ? metrics.avgPace : metrics.currentPace}
+                  </Text>
+                  <Text style={styles.telemetryLabel}>
+                    {runState === 'PAUSED' ? 'AVG PACE' : 'PACE'}
+                  </Text>
                 </View>
               </View>
 
@@ -344,72 +495,45 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               </View>
             </NeonCard>
 
-            {/* Control Button: Pause */}
-            <TouchableOpacity style={[styles.pauseButton, { backgroundColor: colors.primary }]} onPress={pauseRun} activeOpacity={0.85}>
-              <Ionicons name="pause" size={24} color="#000000" />
-              <Text style={styles.pauseButtonText}>PAUSE RUN</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* --- STATE 6: PAUSED RUN --- */}
-        {runState === 'PAUSED' && (
-          <View style={styles.activeContainer}>
-            <View style={styles.pausedBadge}>
-              <Text style={styles.pausedBadgeText}>RUN PAUSED</Text>
-            </View>
-
-            <View style={styles.distanceBlock}>
-              <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>
-                {formatDistanceDisplay(metrics.distanceKm).value}
-              </Text>
-              <Text style={[styles.distanceUnit, { color: colors.primary }]}>
-                {formatDistanceDisplay(metrics.distanceKm).unit}
-              </Text>
-            </View>
-
-            {offlineConfig?.isOfflineMode ? (
-              <OfflineSyntheticMap
-                currentDistanceKm={metrics.distanceKm}
-                targetDistanceKm={offlineConfig.targetDistanceKm}
-                routeMode={offlineConfig.routeMode}
-                style={styles.liveMap}
-              />
-            ) : (
-              <JogpalMap
-                currentLocation={currentLocation}
-                actualRoute={actualRoute}
-                plannedRoute={plannedRoute}
-                style={styles.liveMap}
-                interactive={true}
-              />
+            {/* Dynamic Controls based on runState */}
+            {runState === 'ACTIVE' && (
+              <TouchableOpacity
+                style={[styles.pauseButton, { backgroundColor: colors.primary }]}
+                onPress={pauseRun}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="pause" size={24} color="#000000" />
+                <Text style={styles.pauseButtonText}>PAUSE RUN</Text>
+              </TouchableOpacity>
             )}
 
-            <NeonCard style={styles.telemetryCard} contentStyle={styles.telemetryContent}>
-              <View style={styles.telemetryRow}>
-                <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>{formatDuration(metrics.durationSeconds)}</Text>
-                  <Text style={styles.telemetryLabel}>TIME</Text>
-                </View>
-                <View style={styles.telemetryDivider} />
-                <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>{metrics.avgPace}</Text>
-                  <Text style={styles.telemetryLabel}>AVG PACE</Text>
-                </View>
+            {runState === 'PAUSED' && (
+              <View style={styles.pausedControlsRow}>
+                <TouchableOpacity
+                  style={[styles.resumeBtn, { backgroundColor: colors.primary }]}
+                  onPress={resumeRun}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="play" size={20} color="#000000" />
+                  <Text style={styles.resumeBtnText}>RESUME</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.finishBtn}
+                  onPress={finishRun}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="stop" size={20} color="#FFFFFF" />
+                  <Text style={styles.finishBtnText}>FINISH</Text>
+                </TouchableOpacity>
               </View>
-            </NeonCard>
+            )}
 
-            <View style={styles.pausedControlsRow}>
-              <TouchableOpacity style={[styles.resumeBtn, { backgroundColor: colors.primary }]} onPress={resumeRun} activeOpacity={0.85}>
-                <Ionicons name="play" size={20} color="#000000" />
-                <Text style={styles.resumeBtnText}>RESUME</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.finishBtn} onPress={finishRun} activeOpacity={0.85}>
-                <Ionicons name="stop" size={20} color="#FFFFFF" />
-                <Text style={styles.finishBtnText}>FINISH</Text>
-              </TouchableOpacity>
-            </View>
+            {runState === 'COUNTDOWN' && (
+              <View style={[styles.pauseButton, { backgroundColor: '#1A1A22', opacity: 0.7 }]}>
+                <Text style={[styles.pauseButtonText, { color: colors.textSecondary }]}>STARTING SESSION...</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -417,20 +541,29 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         {(runState === 'COMPLETING' || runState === 'SAVING' || runState === 'SAVED' || runState === 'SYNC_PENDING') && lastRunSummary && (
           <View style={styles.activeContainer}>
             <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>RUN SUMMARY</Text>
-            <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>GREAT WORK! SESSION COMPLETED</Text>
+            <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>
+              {lastRunSummary.subtype === 'DUO'
+                ? 'DUO RUN SESSION COMPLETED WITH PARTNER'
+                : lastRunSummary.subtype === 'GROUP'
+                ? 'SQUAD RUN SESSION COMPLETED WITH CREW'
+                : lastRunSummary.subtype === 'OFFLINE'
+                ? 'OFFLINE TARGET COMPLETED'
+                : 'SOLO RUN SESSION COMPLETED'}
+            </Text>
 
             {/* Completed Route Map View */}
-            {offlineConfig?.isOfflineMode ? (
+            {offlineConfig?.isOfflineMode || (!lastRunSummary.actualRoute?.length && !actualRoute.length) ? (
               <OfflineSyntheticMap
                 currentDistanceKm={lastRunSummary.distanceKm}
-                targetDistanceKm={offlineConfig.targetDistanceKm}
-                routeMode={offlineConfig.routeMode}
+                targetDistanceKm={offlineConfig?.targetDistanceKm || lastRunSummary.distanceKm || 1}
+                routeMode={offlineConfig?.routeMode || 'LOOP'}
                 style={styles.summaryMap}
               />
             ) : (
               <JogpalMap
                 actualRoute={lastRunSummary.actualRoute || actualRoute}
                 plannedRoute={lastRunSummary.plannedRoute || plannedRoute}
+                partnerRunners={partnerRunners}
                 style={styles.summaryMap}
                 interactive={true}
                 showStartFinishMarkers={true}
@@ -440,9 +573,20 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
 
             <NeonCard style={styles.summaryCard} contentStyle={styles.summaryContent}>
               <View style={styles.summaryTopRow}>
-                <Text style={styles.summaryTitle}>
-                  {offlineConfig?.isOfflineMode ? `OFFLINE ${offlineConfig.targetDistanceKm}KM RUN` : 'SOLO RUN'}
-                </Text>
+                <View>
+                  <Text style={styles.summaryTitle}>
+                    {lastRunSummary.title || (offlineConfig?.isOfflineMode ? `OFFLINE ${offlineConfig.targetDistanceKm}KM RUN` : 'SOLO RUN')}
+                  </Text>
+                  <Text style={[styles.summarySubtype, { color: colors.primary }]}>
+                    {lastRunSummary.subtype === 'DUO'
+                      ? 'DUO SYNC RUN'
+                      : lastRunSummary.subtype === 'GROUP'
+                      ? 'SQUAD CREW RUN'
+                      : lastRunSummary.subtype === 'OFFLINE'
+                      ? 'OFFLINE TARGET RUN'
+                      : 'SOLO RUN'}
+                  </Text>
+                </View>
                 <View style={styles.statusBadge}>
                   <Text style={[styles.statusBadgeText, { color: colors.primary }]}>
                     {runState === 'SAVED' ? 'SYNCED TO FIREBASE' : runState === 'SYNC_PENDING' ? 'SAVED LOCALLY' : 'COMPLETE'}
@@ -535,24 +679,44 @@ const styles = StyleSheet.create({
   readyBadge: {
     marginBottom: 8,
   },
-  tabContainer: {
+  modeChipsRow: {
     flexDirection: 'row',
-    backgroundColor: '#16161D',
-    borderRadius: 20,
-    padding: 3,
-    marginVertical: 10,
+    gap: 6,
     width: '100%',
+    marginVertical: 10,
   },
-  tabBtn: {
+  modeChip: {
     flex: 1,
-    paddingVertical: 8,
-    borderRadius: 17,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 4,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: 1,
+    backgroundColor: '#16161D',
   },
-  tabBtnText: {
-    fontSize: 11,
+  modeChipText: {
+    fontSize: 10,
     fontWeight: '900',
     letterSpacing: 0.8,
+  },
+  modeInfoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 6,
+    width: '100%',
+  },
+  modeInfoText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   offlineSetupContainer: {
     width: '100%',
@@ -601,6 +765,27 @@ const styles = StyleSheet.create({
     height: 260,
     width: '100%',
     marginVertical: 10,
+  },
+  mapWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: 260,
+    marginVertical: 10,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  liveMapFill: {
+    width: '100%',
+    height: '100%',
+    marginVertical: 0,
+  },
+  countdownOverlay: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(10, 10, 14, 0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 30,
+    borderRadius: 22,
   },
   summaryMap: {
     height: 160,
@@ -752,6 +937,59 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 1,
   },
+  modeHudBanner: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(20, 20, 26, 0.95)',
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    borderRadius: 14,
+    marginBottom: 4,
+  },
+  modeHudText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  targetBadge: {
+    alignSelf: 'center',
+    backgroundColor: '#1E1E26',
+    borderWidth: 1,
+    borderColor: '#333344',
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 10,
+    marginTop: 6,
+  },
+  targetBadgeAchieved: {
+    backgroundColor: '#0A331A',
+    borderColor: '#00FF66',
+  },
+  targetBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#00FF66',
+    letterSpacing: 0.8,
+  },
+  partnerPacingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    backgroundColor: 'rgba(18, 18, 24, 0.9)',
+    marginBottom: 6,
+  },
+  partnerPacingText: {
+    fontSize: 11,
+    letterSpacing: 0.5,
+  },
   pausedControlsRow: {
     flexDirection: 'row',
     gap: 12,
@@ -806,6 +1044,12 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#000000',
     letterSpacing: 1,
+  },
+  summarySubtype: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginTop: 2,
   },
   statusBadge: {
     backgroundColor: '#050505',

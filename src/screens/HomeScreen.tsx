@@ -39,26 +39,29 @@ export const HomeScreen: React.FC = () => {
 
   const [soloRunModalVisible, setSoloRunModalVisible] = React.useState(false);
   const [notificationsVisible, setNotificationsVisible] = React.useState(false);
-  const { startPreparation } = useSoloRun();
+  const { startPreparation, startDuoPreparation, startGroupPreparation } = useSoloRun();
 
   const handleStartSoloRun = async () => {
     setSoloRunModalVisible(true);
-    await startPreparation('SOLO RUN', 'SOLO');
+    await startPreparation('SOLO RUN', 'SOLO', 'SOLO');
   };
 
   const handleStartDuoRunWithFriend = async (friend?: CrewMember) => {
     setSoloRunModalVisible(true);
-    await startPreparation(friend ? `DUO RUN • ${friend.name.toUpperCase()}` : 'DUO RUN', 'CREW');
+    await startDuoPreparation(friend?.name || 'Alex');
   };
 
   const handleStartGroupRunWithFriend = async (friend?: CrewMember) => {
     setSoloRunModalVisible(true);
-    await startPreparation(friend ? `GROUP RUN • ${friend.name.toUpperCase()} & CREW` : 'GROUP SQUAD RUN', 'CREW');
+    await startGroupPreparation(
+      friend ? `GROUP RUN • ${friend.name.toUpperCase()} & CREW` : 'GROUP SQUAD RUN',
+      friend ? [friend.name, 'Alex', 'Sam'] : ['Alex', 'Sam', 'Jordan']
+    );
   };
 
   const handleGeneralDuoRun = async () => {
     setSoloRunModalVisible(true);
-    await startPreparation('DUO RUN', 'CREW');
+    await startDuoPreparation('Alex');
   };
 
   const handleNotificationPress = () => {

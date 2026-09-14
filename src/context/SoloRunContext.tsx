@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { AppState, AppStateStatus, BackHandler, Alert } from 'react-native';
-import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng, OfflineRouteMode, OfflineTargetConfig } from '../types/soloRun';
-import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm, calculateRollingPaceString, getAccuracyTier } from '../services/locationService';
+import { RunState, GPSPoint, SoloRunMetrics, PendingRun, LatLng, OfflineRouteMode, OfflineTargetConfig, RunSubtype } from '../types/soloRun';
+import { PartnerRunner } from '../types/map';
+import { locationService, isValidGPSPoint, validateGPSPoint, isValidMapLocation, calculateHaversineDistanceKm, calculateRollingPaceString, getAccuracyTier, smoothGPSPoint, resetFilter } from '../services/locationService';
 import { offlineSyncService } from '../services/offlineSyncService';
 import { useApp } from './AppContext';
 
@@ -12,13 +13,23 @@ interface SoloRunContextType {
   currentLocation: GPSPoint | null;
   actualRoute: LatLng[];
   plannedRoute: LatLng[];
+  partnerRunners: PartnerRunner[];
   countdownValue: number;
   lastRunSummary: PendingRun | null;
   errorMessage: string | null;
   activeRunTitle: string;
   activeRunType: 'SOLO' | 'CREW';
+  activeRunSubtype: RunSubtype;
   offlineConfig: OfflineTargetConfig | null;
-  startPreparation: (title?: string, type?: 'SOLO' | 'CREW') => Promise<void>;
+  startPreparation: (
+    title?: string,
+    type?: 'SOLO' | 'CREW',
+    subtype?: RunSubtype,
+    partnerNames?: string[],
+    offlineTargetConfig?: OfflineTargetConfig | null
+  ) => Promise<void>;
+  startDuoPreparation: (friendName?: string) => Promise<void>;
+  startGroupPreparation: (groupTitle?: string, crewNames?: string[]) => Promise<void>;
   startOfflinePreparation: (targetKm: number, routeMode: OfflineRouteMode) => Promise<void>;
   startCountdown: () => void;
   pauseRun: () => void;
@@ -68,12 +79,66 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [currentLocation, setCurrentLocation] = useState<GPSPoint | null>(null);
   const [actualRoute, setActualRoute] = useState<LatLng[]>([]);
   const [plannedRoute, setPlannedRoute] = useState<LatLng[]>([]);
+  const [partnerRunners, setPartnerRunners] = useState<PartnerRunner[]>([]);
   const [countdownValue, setCountdownValue] = useState<number>(3);
   const [lastRunSummary, setLastRunSummary] = useState<PendingRun | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeRunTitle, setActiveRunTitle] = useState<string>('SOLO RUN');
   const [activeRunType, setActiveRunType] = useState<'SOLO' | 'CREW'>('SOLO');
+  const [activeRunSubtype, setActiveRunSubtype] = useState<RunSubtype>('SOLO');
   const [offlineConfig, setOfflineConfig] = useState<OfflineTargetConfig | null>(null);
+
+  // Helper to generate dynamic partner positions relative to the runner
+  const generatePartnerRunners = (
+    centerLat: number,
+    centerLng: number,
+    subtype: RunSubtype,
+    names: string[],
+    runnerPaceStr: string
+  ): PartnerRunner[] => {
+    if (subtype === 'DUO') {
+      const partnerName = names[0] || 'Alex';
+      return [
+        {
+          id: 'partner-duo-1',
+          name: partnerName,
+          latitude: centerLat + 0.00007,
+          longitude: centerLng + 0.00006,
+          distanceMeters: 8,
+          pace: runnerPaceStr !== '--:--' ? runnerPaceStr : '5:24 /km',
+        },
+      ];
+    }
+    if (subtype === 'GROUP') {
+      const defaultNames = ['Alex', 'Sam', 'Jordan'];
+      const crew = names.length > 0 ? names : defaultNames;
+      const offsets = [
+        { dLat: 0.00008, dLng: 0.00006, dist: 9 },
+        { dLat: -0.00007, dLng: -0.00007, dist: 12 },
+        { dLat: 0.00003, dLng: -0.00009, dist: 10 },
+      ];
+      return crew.slice(0, 3).map((name, idx) => ({
+        id: `partner-crew-${idx + 1}`,
+        name,
+        latitude: centerLat + (offsets[idx]?.dLat || 0.00005 * (idx + 1)),
+        longitude: centerLng + (offsets[idx]?.dLng || 0.00005 * (idx + 1)),
+        distanceMeters: offsets[idx]?.dist || 10,
+        pace: runnerPaceStr !== '--:--' ? runnerPaceStr : '5:18 /km',
+      }));
+    }
+    return [];
+  };
+
+  const startDuoPreparation = async (friendName: string = 'Alex') => {
+    await startPreparation(`DUO RUN • ${friendName.toUpperCase()}`, 'CREW', 'DUO', [friendName], null);
+  };
+
+  const startGroupPreparation = async (
+    groupTitle: string = 'GROUP SQUAD RUN',
+    crewNames: string[] = ['Alex', 'Sam', 'Jordan']
+  ) => {
+    await startPreparation(groupTitle, 'CREW', 'GROUP', crewNames, null);
+  };
 
   const startOfflinePreparation = async (targetKm: number, routeMode: OfflineRouteMode) => {
     const config: OfflineTargetConfig = {
@@ -82,7 +147,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       routeMode,
     };
     setOfflineConfig(config);
-    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO', config);
+    await startPreparation(`OFFLINE ${targetKm}KM TARGET (${routeMode})`, 'SOLO', 'OFFLINE', [], config);
   };
 
   // Telemetry & Timing Refs
@@ -94,26 +159,46 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const accumulatedDistanceKmRef = useRef<number>(0);
   const startTimeRef = useRef<number | null>(null);
   const prepStartTimeRef = useRef<number | null>(null);
+  const pausedAtRef = useRef<number | null>(null);
+  const totalPausedMsRef = useRef<number>(0);
   const accumulatedDurationRef = useRef<number>(0);
   const isPausedRef = useRef<boolean>(false);
-  const backgroundTimeRef = useRef<number | null>(null);
   const totalPointCountRef = useRef<number>(0);
   const acceptedPointCountRef = useRef<number>(0);
   const trackingReadyRef = useRef<boolean>(false);
   const titleRef = useRef<string>('SOLO RUN');
   const typeRef = useRef<'SOLO' | 'CREW'>('SOLO');
+  const activeRunSubtypeRef = useRef<RunSubtype>('SOLO');
+  const partnerNamesRef = useRef<string[]>([]);
+
+  // Exact wall-clock active duration calculator (immune to sleep / background throttling)
+  const getElapsedDurationSeconds = (): number => {
+    if (!startTimeRef.current) return 0;
+    const now = isPausedRef.current && pausedAtRef.current ? pausedAtRef.current : Date.now();
+    const elapsedMs = now - startTimeRef.current - totalPausedMsRef.current;
+    return Math.max(0, Math.floor(elapsedMs / 1000));
+  };
 
   // 1. App Lifecycle (Background / Foreground Timer Integrity)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (runState === 'ACTIVE') {
-        if (nextAppState === 'background' || nextAppState === 'inactive') {
-          backgroundTimeRef.current = Date.now();
-        } else if (nextAppState === 'active' && backgroundTimeRef.current) {
-          const deltaSec = Math.floor((Date.now() - backgroundTimeRef.current) / 1000);
-          accumulatedDurationRef.current += Math.max(0, deltaSec);
-          backgroundTimeRef.current = null;
-        }
+      if (runState === 'ACTIVE' && nextAppState === 'active') {
+        // Immediate wall-clock duration sync when waking from background / lock screen
+        const currentSecs = getElapsedDurationSeconds();
+        setMetrics((prev) => {
+          const pace = calculatePaceString(prev.distanceKm, currentSecs);
+          const avgSpeed =
+            prev.distanceKm > 0 && currentSecs > 0
+              ? Math.round((prev.distanceKm / (currentSecs / 3600)) * 10) / 10
+              : null;
+          return {
+            ...prev,
+            durationSeconds: currentSecs,
+            currentPace: prev.currentPace !== '--:--' ? prev.currentPace : pace,
+            avgPace: pace,
+            avgSpeedKmH: avgSpeed,
+          };
+        });
       }
     });
 
@@ -155,9 +240,15 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const calculatePaceString = (distanceKm: number, durationSeconds: number): string => {
     if (distanceKm < 0.05 || durationSeconds < 3) return '--:--';
     const paceDecimalMinutes = durationSeconds / 60 / distanceKm;
-    if (!isFinite(paceDecimalMinutes) || paceDecimalMinutes > 30) return '--:--';
-    const mins = Math.floor(paceDecimalMinutes);
-    const secs = Math.round((paceDecimalMinutes - mins) * 60);
+    if (!isFinite(paceDecimalMinutes) || paceDecimalMinutes > 30 || paceDecimalMinutes < 2.25) {
+      return '--:--';
+    }
+    let mins = Math.floor(paceDecimalMinutes);
+    let secs = Math.round((paceDecimalMinutes - mins) * 60);
+    if (secs >= 60) {
+      mins += 1;
+      secs = 0;
+    }
     return `${mins}:${secs.toString().padStart(2, '0')} /km`;
   };
 
@@ -179,16 +270,22 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const startPreparation = async (
     title = 'SOLO RUN',
     type: 'SOLO' | 'CREW' = 'SOLO',
+    subtype: RunSubtype = 'SOLO',
+    partnerNames: string[] = [],
     offlineTargetConfig: OfflineTargetConfig | null = null
   ) => {
     const prepStart = Date.now();
     prepStartTimeRef.current = prepStart;
     titleRef.current = title;
     typeRef.current = type;
+    activeRunSubtypeRef.current = subtype;
+    partnerNamesRef.current = partnerNames;
     setActiveRunTitle(title);
     setActiveRunType(type);
+    setActiveRunSubtype(subtype);
+    setPartnerRunners([]);
 
-    console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title}`);
+    console.log(`[TELEMETRY] LOCATION_REQUEST_STARTED for ${title} (${subtype})`);
     setOfflineConfig(offlineTargetConfig);
     updateRunState('PREPARING');
     setErrorMessage(null);
@@ -205,6 +302,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     totalPointCountRef.current = 0;
     acceptedPointCountRef.current = 0;
     trackingReadyRef.current = false;
+    resetFilter();
 
     // Check permissions & location services
     const granted = await locationService.requestPermissions();
@@ -234,6 +332,18 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.log(`[TELEMETRY] FIRST_LOCATION_RECEIVED (Latency: ${latency}ms)`);
         setCurrentLocation(stage1Point);
 
+        if (activeRunSubtypeRef.current === 'DUO' || activeRunSubtypeRef.current === 'GROUP') {
+          setPartnerRunners(
+            generatePartnerRunners(
+              stage1Point.latitude,
+              stage1Point.longitude,
+              activeRunSubtypeRef.current,
+              partnerNamesRef.current,
+              '--:--'
+            )
+          );
+        }
+
         setMetrics((prev) => ({
           ...prev,
           stage1Ready: true,
@@ -257,16 +367,31 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // 4. GPS PROCESSING & READINESS PIPELINE
-  const handleIncomingGPSPoint = (point: GPSPoint) => {
+  const handleIncomingGPSPoint = (rawPoint: GPSPoint) => {
     totalPointCountRef.current += 1;
+
+    // Apply 2D GPS Kalman Filter smoothing to eliminate raw sensor noise & multipath jitter
+    const point = smoothGPSPoint(rawPoint);
 
     // MAP LOCATION: Update current location for map centering & runner marker display
     if (isValidMapLocation(point)) {
       setCurrentLocation(point);
+
+      if (activeRunSubtypeRef.current === 'DUO' || activeRunSubtypeRef.current === 'GROUP') {
+        setPartnerRunners(
+          generatePartnerRunners(
+            point.latitude,
+            point.longitude,
+            activeRunSubtypeRef.current,
+            partnerNamesRef.current,
+            calculateRollingPaceString(routePointsRef.current)
+          )
+        );
+      }
     }
 
     const accuracy = point.accuracy;
-    const isTrackingQuality = accuracy !== null && accuracy <= 35;
+    const isTrackingQuality = accuracy !== null && accuracy <= 30;
 
     // First time receiving tracking-quality point
     if (isTrackingQuality && !metrics.stage2Ready) {
@@ -283,33 +408,53 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     // Advance runState to GPS_READY if currently PREPARING or SEARCHING
     const currentRunState = runStateRef.current;
-    if ((currentRunState === 'GPS_SEARCHING' || currentRunState === 'PREPARING') && (accuracy === null || accuracy <= 500)) {
+    if ((currentRunState === 'GPS_SEARCHING' || currentRunState === 'PREPARING') && (accuracy === null || accuracy <= 50)) {
       updateRunState('GPS_READY');
     }
 
     setMetrics((prev) => {
       let gpsStatus: SoloRunMetrics['gpsStatus'] = 'SEARCHING';
       if (accuracy !== null) {
-        if (accuracy <= 25) gpsStatus = 'READY';
-        else if (accuracy <= 100) gpsStatus = 'GOOD';
-        else if (accuracy <= 500) gpsStatus = 'POOR';
+        if (accuracy <= 15) gpsStatus = 'READY';
+        else if (accuracy <= 30) gpsStatus = 'GOOD';
+        else if (accuracy <= 65) gpsStatus = 'POOR';
         else gpsStatus = 'LOST';
       }
+
+      const liveSpeed = point.speed !== null && point.speed >= 0 ? Math.round(point.speed * 3.6 * 10) / 10 : prev.currentSpeedKmH;
 
       return {
         ...prev,
         gpsAccuracy: accuracy,
         gpsStatus,
-        currentSpeedKmH: point.speed !== null && point.speed > 0 ? Math.round(point.speed * 3.6 * 10) / 10 : prev.currentSpeedKmH,
+        currentSpeedKmH: liveSpeed,
       };
     });
 
-    // If ACTIVE or COUNTDOWN and NOT PAUSED
+    // Tracking only accumulates points and distance during ACTIVE state
     const activeState = runStateRef.current;
-    if (!isPausedRef.current && (activeState === 'ACTIVE' || activeState === 'COUNTDOWN')) {
-      const validation = validateGPSPoint(point, lastAcceptedPointRef.current, acceptedPointCountRef.current);
+    if (!isPausedRef.current && activeState === 'ACTIVE') {
+      const validation = validateGPSPoint(point, lastAcceptedPointRef.current, totalPointCountRef.current);
       if (!validation.isValid) {
-        console.log(`[GPS_REJECTED] Reason: ${validation.reason || 'UNKNOWN'} | Acc: ${point.accuracy}m | Speed: ${point.speed} | Lat: ${point.latitude.toFixed(5)}, Lng: ${point.longitude.toFixed(5)}`);
+        console.log(`[GPS_REJECTED] Reason: ${validation.reason || 'UNKNOWN'} | Acc: ${point.accuracy}m | Lat: ${point.latitude.toFixed(5)}, Lng: ${point.longitude.toFixed(5)}`);
+        return;
+      }
+
+      // Re-anchoring (e.g. after tunnel, signal recovery, or initial fix)
+      // Update the reference point WITHOUT accumulating phantom jump distance
+      if (validation.isReanchor) {
+        console.log(`[GPS_REANCHOR] Re-anchoring GPS to Lat: ${point.latitude.toFixed(6)}, Lng: ${point.longitude.toFixed(6)}`);
+        lastAcceptedPointRef.current = point;
+        const newCoord: LatLng = { latitude: point.latitude, longitude: point.longitude };
+        if (actualRouteRef.current.length <= 1) {
+          actualRouteRef.current = [newCoord];
+          routePointsRef.current = [point];
+        } else {
+          actualRouteRef.current.push(newCoord);
+          routePointsRef.current.push(point);
+        }
+        setActualRoute([...actualRouteRef.current]);
+        setRoutePoints([...routePointsRef.current]);
         return;
       }
 
@@ -324,15 +469,14 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       acceptedPointCountRef.current += 1;
       const integrity = Math.min(100, Math.max(0, Math.round((acceptedPointCountRef.current / totalPointCountRef.current) * 100)));
-
       const newCoord: LatLng = { latitude: point.latitude, longitude: point.longitude };
-      routePointsRef.current.push(point);
-      setRoutePoints([...routePointsRef.current]);
 
       if (!lastAcceptedPointRef.current) {
         lastAcceptedPointRef.current = point;
         actualRouteRef.current = [newCoord];
         setActualRoute([newCoord]);
+        routePointsRef.current = [point];
+        setRoutePoints([point]);
       } else {
         const segKm = calculateHaversineDistanceKm(
           lastAcceptedPointRef.current.latitude,
@@ -341,28 +485,31 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
           point.longitude
         );
 
-        // Accumulate distance whenever displacement >= 0.3 meters (0.0003 km)
-        if (segKm >= 0.0003) {
+        // Accumulate distance whenever displacement >= 0.8 meters (0.0008 km)
+        // Since validateGPSPoint already checked that speed >= 0.9m/s or displacement exceeds noise radius,
+        // this records full-fidelity continuous running steps and smooth street curves.
+        if (segKm >= 0.0008) {
           lastAcceptedPointRef.current = point;
           actualRouteRef.current.push(newCoord);
           setActualRoute([...actualRouteRef.current]);
+          routePointsRef.current.push(point);
+          setRoutePoints([...routePointsRef.current]);
 
-          // Only accumulate distance during ACTIVE state (not during countdown)
-          if (activeState === 'ACTIVE') {
-            accumulatedDistanceKmRef.current += segKm;
-          }
+          accumulatedDistanceKmRef.current += segKm;
           const currentTotalDistance = Math.round(accumulatedDistanceKmRef.current * 1000) / 1000;
+          const currentDuration = getElapsedDurationSeconds();
 
           const recentSlice = routePointsRef.current.slice(-8);
           const rollingPace = calculateRollingPaceString(recentSlice);
-          const overallPace = calculatePaceString(currentTotalDistance, accumulatedDurationRef.current);
-          const speedKmH = point.speed !== null && point.speed > 0 ? Math.round(point.speed * 3.6 * 10) / 10 : null;
+          const overallPace = calculatePaceString(currentTotalDistance, currentDuration);
+          const speedKmH = point.speed !== null && point.speed >= 0 ? Math.round(point.speed * 3.6 * 10) / 10 : null;
 
           setMetrics((prev) => {
             const maxSpeed = Math.max(prev.maxSpeedKmH || 0, speedKmH || 0);
             return {
               ...prev,
               distanceKm: currentTotalDistance,
+              durationSeconds: currentDuration,
               currentPace: rollingPace !== '--:--' ? rollingPace : overallPace,
               avgPace: overallPace,
               currentSpeedKmH: speedKmH,
@@ -397,13 +544,31 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     updateRunState('ACTIVE');
     isPausedRef.current = false;
     startTimeRef.current = Date.now();
+    pausedAtRef.current = null;
+    totalPausedMsRef.current = 0;
+
+    // Reset reference points clean at start of active run
+    if (currentLocation) {
+      lastAcceptedPointRef.current = currentLocation;
+      const initialCoord: LatLng = { latitude: currentLocation.latitude, longitude: currentLocation.longitude };
+      actualRouteRef.current = [initialCoord];
+      setActualRoute([initialCoord]);
+      routePointsRef.current = [currentLocation];
+      setRoutePoints([currentLocation]);
+    } else {
+      lastAcceptedPointRef.current = null;
+      actualRouteRef.current = [];
+      setActualRoute([]);
+      routePointsRef.current = [];
+      setRoutePoints([]);
+    }
 
     stopTimer();
     // User elapsed active timer starts immediately
     timerRef.current = setInterval(() => {
       if (!isPausedRef.current) {
-        accumulatedDurationRef.current += 1;
-        const currentSecs = accumulatedDurationRef.current;
+        const currentSecs = getElapsedDurationSeconds();
+        accumulatedDurationRef.current = currentSecs;
 
         setMetrics((prev) => {
           const pace = calculatePaceString(prev.distanceKm, currentSecs);
@@ -411,7 +576,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
           return {
             ...prev,
             durationSeconds: currentSecs,
-            currentPace: pace,
+            currentPace: prev.currentPace !== '--:--' ? prev.currentPace : pace,
             avgPace: pace,
             avgSpeedKmH: avgSpeed,
           };
@@ -425,6 +590,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (runStateRef.current !== 'ACTIVE') return;
     updateRunState('PAUSED');
     isPausedRef.current = true;
+    pausedAtRef.current = Date.now();
+    resetFilter();
   };
 
   // 7. Resume Run
@@ -432,6 +599,11 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (runStateRef.current !== 'PAUSED') return;
     updateRunState('ACTIVE');
     isPausedRef.current = false;
+    if (pausedAtRef.current) {
+      totalPausedMsRef.current += (Date.now() - pausedAtRef.current);
+      pausedAtRef.current = null;
+    }
+    resetFilter();
     // Reset reference point on resume so paused physical movement is NOT counted
     lastAcceptedPointRef.current = null;
   };
@@ -450,7 +622,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     stopLocationWatching();
 
     const finalDistance = Math.round(accumulatedDistanceKmRef.current * 100) / 100;
-    const finalDuration = accumulatedDurationRef.current;
+    const finalDuration = getElapsedDurationSeconds();
+    accumulatedDurationRef.current = finalDuration;
     const finalPace = calculatePaceString(finalDistance, finalDuration);
     const finalRoute = actualRouteRef.current.length > 0 ? [...actualRouteRef.current] : actualRoute;
 
@@ -459,6 +632,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
       userId: activeUserId,
       title: titleRef.current || 'SOLO RUN',
       type: typeRef.current || 'SOLO',
+      subtype: activeRunSubtypeRef.current,
+      partnerNames: partnerNamesRef.current.length > 0 ? partnerNamesRef.current : undefined,
       distanceKm: finalDistance,
       durationSeconds: finalDuration,
       pace: finalPace,
@@ -510,6 +685,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         userId: lastRunSummary.userId,
         title: lastRunSummary.title,
         type: lastRunSummary.type,
+        subtype: lastRunSummary.subtype,
+        partnerNames: lastRunSummary.partnerNames,
         distanceKm: lastRunSummary.distanceKm,
         durationSeconds: lastRunSummary.durationSeconds,
         pace: lastRunSummary.pace,
@@ -540,6 +717,9 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setErrorMessage(null);
     accumulatedDistanceKmRef.current = 0;
     accumulatedDurationRef.current = 0;
+    startTimeRef.current = null;
+    pausedAtRef.current = null;
+    totalPausedMsRef.current = 0;
     routePointsRef.current = [];
     actualRouteRef.current = [];
     lastAcceptedPointRef.current = null;
@@ -552,9 +732,14 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     prepStartTimeRef.current = null;
     titleRef.current = 'SOLO RUN';
     typeRef.current = 'SOLO';
+    activeRunSubtypeRef.current = 'SOLO';
+    partnerNamesRef.current = [];
     setActiveRunTitle('SOLO RUN');
     setActiveRunType('SOLO');
+    setActiveRunSubtype('SOLO');
+    setPartnerRunners([]);
     setOfflineConfig(null);
+    resetFilter();
   };
 
   return (
@@ -566,13 +751,17 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentLocation,
         actualRoute,
         plannedRoute,
+        partnerRunners,
         countdownValue,
         lastRunSummary,
         errorMessage,
         activeRunTitle,
         activeRunType,
+        activeRunSubtype,
         offlineConfig,
         startPreparation,
+        startDuoPreparation,
+        startGroupPreparation,
         startOfflinePreparation,
         startCountdown,
         pauseRun,
