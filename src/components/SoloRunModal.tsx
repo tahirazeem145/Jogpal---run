@@ -18,6 +18,8 @@ import { NeonButton } from './NeonButton';
 import { NeonCard } from './NeonCard';
 import { useTheme } from '../context/ThemeContext';
 import { OfflineRouteMode, RunSubtype } from '../types/soloRun';
+import { SOSButton } from './sos/SOSButton';
+import { SOSModal } from './sos/SOSModal';
 
 interface SoloRunModalProps {
   visible: boolean;
@@ -64,6 +66,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
   const [selectedMode, setSelectedMode] = useState<RunSubtype>(activeRunSubtype || 'SOLO');
   const [selectedTargetKm, setSelectedTargetKm] = useState<number>(5);
   const [selectedRouteMode, setSelectedRouteMode] = useState<OfflineRouteMode>('LOOP');
+  const [isSOSModalVisible, setIsSOSModalVisible] = useState(false);
 
   React.useEffect(() => {
     if (activeRunSubtype) {
@@ -431,30 +434,34 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               </View>
             ) : null}
 
-            {/* Active Mode HUD Banner */}
-            <View style={[styles.modeHudBanner, { borderColor: colors.primary }]}>
-              <Ionicons
-                name={
-                  activeRunSubtype === 'DUO'
-                    ? 'people'
+            {/* Active Mode HUD Banner & Real SOS Button */}
+            <View style={styles.hudTopRow}>
+              <View style={[styles.modeHudBanner, { borderColor: colors.primary }]}>
+                <Ionicons
+                  name={
+                    activeRunSubtype === 'DUO'
+                      ? 'people'
+                      : activeRunSubtype === 'GROUP'
+                      ? 'globe-outline'
+                      : activeRunSubtype === 'OFFLINE'
+                      ? 'flag'
+                      : 'flash'
+                  }
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text style={[styles.modeHudText, { color: colors.primary }]} numberOfLines={1}>
+                  {activeRunSubtype === 'DUO'
+                    ? 'DUO SYNC • 2 RUNNERS'
                     : activeRunSubtype === 'GROUP'
-                    ? 'globe-outline'
+                    ? 'SQUAD PACING • 4 RUNNERS'
                     : activeRunSubtype === 'OFFLINE'
-                    ? 'flag'
-                    : 'flash'
-                }
-                size={14}
-                color={colors.primary}
-              />
-              <Text style={[styles.modeHudText, { color: colors.primary }]}>
-                {activeRunSubtype === 'DUO'
-                  ? 'DUO SYNC • 2 RUNNERS PACING'
-                  : activeRunSubtype === 'GROUP'
-                  ? 'SQUAD FORMATION • 4 RUNNERS PACING'
-                  : activeRunSubtype === 'OFFLINE'
-                  ? `OFFLINE TARGET • ${offlineConfig?.targetDistanceKm || 5}KM (${offlineConfig?.routeMode || 'LOOP'})`
-                  : 'SOLO RUN • LIVE SATELLITE GPS'}
-              </Text>
+                    ? `OFFLINE • ${offlineConfig?.targetDistanceKm || 5}KM`
+                    : 'SOLO RUN • LIVE GPS'}
+                </Text>
+              </View>
+
+              <SOSButton onPress={() => setIsSOSModalVisible(true)} />
             </View>
 
             {/* Top Stat: Distance */}
@@ -767,6 +774,16 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             ) : null}
           </View>
         ) : null}
+
+        {/* SOS Emergency Modal */}
+        <SOSModal
+          visible={isSOSModalVisible}
+          onClose={() => setIsSOSModalVisible(false)}
+          currentLocation={currentLocation}
+          runnerName="Jogpal Runner"
+          sessionId={(activePartner as any)?.sessionId || groupSession?.id}
+          runMode={activeRunSubtype}
+        />
       </View>
     </Modal>
   );
@@ -1326,5 +1343,13 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
     marginTop: 1,
+  },
+  hudTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginBottom: 6,
+    gap: 8,
   },
 });

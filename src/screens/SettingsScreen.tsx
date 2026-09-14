@@ -22,6 +22,10 @@ import { useApp } from '../context/AppContext';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
 import { useTheme } from '../context/ThemeContext';
+import { EmergencyContactsModal } from '../components/sos/EmergencyContactsModal';
+import { SOSModal } from '../components/sos/SOSModal';
+import { sosService } from '../services/sosService';
+import { EmergencyContact } from '../types/sos';
 
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -46,6 +50,15 @@ export const SettingsScreen: React.FC = () => {
   const [editName, setEditName] = useState('');
   const [editPhotoURL, setEditPhotoURL] = useState<string | undefined>(undefined);
   const [isSaving, setIsSaving] = useState(false);
+
+  // SOS Safety State
+  const [isSOSContactsModalVisible, setIsSOSContactsModalVisible] = useState(false);
+  const [isTestSOSModalVisible, setIsTestSOSModalVisible] = useState(false);
+  const [sosContacts, setSosContacts] = useState<EmergencyContact[]>([]);
+
+  React.useEffect(() => {
+    sosService.getEmergencyContacts().then(setSosContacts);
+  }, []);
 
   const handleBack = () => {
     navigation.goBack();
@@ -325,7 +338,53 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* 3. ACCOUNT SECTION */}
+        {/* 3. SAFETY & EMERGENCY (SOS) SECTION */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <Ionicons name="shield-checkmark-outline" size={15} color="#EF4444" />
+            <Text style={[styles.sectionHeader, { color: '#EF4444' }]}>SAFETY & EMERGENCY (SOS)</Text>
+          </View>
+
+          <NeonCard style={styles.card} contentStyle={styles.cardContent}>
+            {/* Manage Contacts */}
+            <TouchableOpacity
+              style={styles.itemRow}
+              onPress={() => setIsSOSContactsModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.iconBox, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                <Ionicons name="people" size={18} color="#EF4444" />
+              </View>
+              <View style={styles.itemTextContainer}>
+                <Text style={styles.itemTitle}>Emergency Contacts</Text>
+                <Text style={styles.itemSubtitle}>
+                  {sosContacts.length > 0
+                    ? `${sosContacts.length} contact${sosContacts.length > 1 ? 's' : ''} • Primary: ${sosContacts.find((c) => c.isPrimary)?.name || sosContacts[0]?.name}`
+                    : 'Add trusted contacts for 1-tap live GPS SMS'}
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
+
+            {/* Test SOS Alert System */}
+            <TouchableOpacity
+              style={styles.itemRow}
+              onPress={() => setIsTestSOSModalVisible(true)}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.iconBox, { backgroundColor: 'rgba(239, 68, 68, 0.15)' }]}>
+                <Ionicons name="warning" size={18} color="#EF4444" />
+              </View>
+              <View style={styles.itemTextContainer}>
+                <Text style={styles.itemTitle}>Test SOS Emergency Trigger</Text>
+                <Text style={styles.itemSubtitle}>Preview 3s safety countdown & beacon</Text>
+              </View>
+              <Feather name="chevron-right" size={20} color={colors.textPrimary} />
+            </TouchableOpacity>
+          </NeonCard>
+        </View>
+
+        {/* 4. ACCOUNT SECTION */}
         <View style={styles.section}>
           <Text style={[styles.sectionHeader, { color: colors.primary }]}>ACCOUNT</Text>
           <NeonCard style={styles.card} contentStyle={styles.cardContent}>
@@ -526,6 +585,23 @@ export const SettingsScreen: React.FC = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* SOS Emergency Contacts Modal */}
+      <EmergencyContactsModal
+        visible={isSOSContactsModalVisible}
+        onClose={() => {
+          setIsSOSContactsModalVisible(false);
+          sosService.getEmergencyContacts().then(setSosContacts);
+        }}
+        onContactsUpdated={setSosContacts}
+      />
+
+      {/* SOS Emergency Alert Test Modal */}
+      <SOSModal
+        visible={isTestSOSModalVisible}
+        onClose={() => setIsTestSOSModalVisible(false)}
+        runnerName={userProfile?.displayName || 'Runner'}
+      />
     </View>
   );
 };
