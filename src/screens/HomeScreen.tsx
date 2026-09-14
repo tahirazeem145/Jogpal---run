@@ -4,7 +4,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../components/Header';
 import { WeeklyMomentumCard } from '../components/WeeklyMomentumCard';
 import { YourFriendsSection } from '../components/YourFriendsSection';
-import { UpcomingSessionCard } from '../components/UpcomingSessionCard';
 import { PersonalBestsSection } from '../components/PersonalBestsSection';
 import { FloatingSparkleButton } from '../components/FloatingSparkleButton';
 import { useApp } from '../context/AppContext';
@@ -24,13 +23,11 @@ export const HomeScreen: React.FC = () => {
     friends,
     otherRunners,
     sentRequestIds,
-    upcomingSession,
     personalBests,
     incomingRequests,
     unreadRequestCount,
     logNewRun,
     addCrewMember,
-    scheduleSession,
     sendCrewRequest,
     acceptCrewRequest,
     rejectCrewRequest,
@@ -73,18 +70,6 @@ export const HomeScreen: React.FC = () => {
     await addCrewMember(name || userId, undefined, userId);
   };
 
-  const handleSchedulePress = () => {
-    Alert.alert('Schedule Session', 'Schedule a new group run session?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Schedule Morning Loop',
-        onPress: async () => {
-          await scheduleSession('morning city loop', 'Tomorrow @ 07:00', '10.00 KM');
-        },
-      },
-    ]);
-  };
-
   return (
     <View style={[styles.rootContainer, { paddingTop: insets.top, backgroundColor: colors.background }]}>
       <StatusBar barStyle="light-content" backgroundColor={colors.background} />
@@ -121,13 +106,6 @@ export const HomeScreen: React.FC = () => {
           onStartGroupRun={handleStartGroupRunWithFriend}
           onSendRequest={sendCrewRequest}
           onInviteById={handleAddFriend}
-        />
-
-        {/* Upcoming Session Card */}
-        <UpcomingSessionCard
-          session={upcomingSession}
-          onSchedulePress={handleSchedulePress}
-          onPress={handleSchedulePress}
         />
 
         {/* Personal Bests Section */}
