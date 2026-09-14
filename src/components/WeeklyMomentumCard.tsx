@@ -95,6 +95,7 @@ export const WeeklyMomentumCard: React.FC<WeeklyMomentumCardProps> = ({
 const styles = StyleSheet.create({
   cardContainer: {
     marginHorizontal: 16,
+    marginBottom: 18,
     borderRadius: 30,
     overflow: 'hidden',
     position: 'relative',

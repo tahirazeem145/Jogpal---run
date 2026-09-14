@@ -29,6 +29,7 @@ export const CommunityThemeBanner: React.FC<CommunityThemeBannerProps> = ({
   height = 160,
 }) => {
   const theme = COVER_THEMES[themeId] || COVER_THEMES.CYBER_NEON;
+  const isCompact = height <= 135;
 
   return (
     <View style={[styles.container, { height }, style]}>
@@ -51,47 +52,76 @@ export const CommunityThemeBanner: React.FC<CommunityThemeBannerProps> = ({
       </View>
 
       {/* Banner Content */}
-      <View style={styles.bannerContent}>
+      <View style={[styles.bannerContent, isCompact && styles.bannerContentCompact]}>
         {/* Top Badge Row */}
         <View style={styles.topBadgeRow}>
           {categoryName ? (
-            <View style={[styles.categoryBadge, { backgroundColor: 'rgba(0, 0, 0, 0.6)', borderColor: theme.primaryColor }]}>
-              <Ionicons name="sparkles" size={12} color={theme.primaryColor} />
-              <Text style={[styles.categoryText, { color: theme.primaryColor }]}>
+            <View
+              style={[
+                styles.categoryBadge,
+                isCompact && styles.categoryBadgeCompact,
+                { backgroundColor: 'rgba(0, 0, 0, 0.65)', borderColor: theme.primaryColor },
+              ]}
+            >
+              <Ionicons name="sparkles" size={isCompact ? 10 : 12} color={theme.primaryColor} />
+              <Text
+                style={[
+                  styles.categoryText,
+                  isCompact && styles.categoryTextCompact,
+                  { color: theme.primaryColor },
+                ]}
+                numberOfLines={1}
+              >
                 {categoryName.replace('_', ' ')}
               </Text>
             </View>
-          ) : null}
+          ) : <View />}
 
           {membersCount !== undefined ? (
-            <View style={styles.membersBadge}>
-              <Feather name="users" size={12} color="#FFFFFF" />
-              <Text style={styles.membersText}>{membersCount} RUNNERS</Text>
+            <View style={[styles.membersBadge, isCompact && styles.membersBadgeCompact]}>
+              <Feather name="users" size={isCompact ? 10 : 12} color="#FFFFFF" />
+              <Text style={[styles.membersText, isCompact && styles.membersTextCompact]}>
+                {membersCount} {isCompact ? 'R' : 'RUNNERS'}
+              </Text>
             </View>
           ) : null}
         </View>
 
-        {/* Title & Tagline */}
-        <View style={styles.titleWrapper}>
-          <Text style={[styles.titleText, { color: theme.textColor }]} numberOfLines={2}>
+        {/* Bottom Section: Title, Tagline & Location */}
+        <View style={styles.bottomSection}>
+          <Text
+            style={[
+              styles.titleText,
+              isCompact && styles.titleTextCompact,
+              { color: theme.textColor },
+            ]}
+            numberOfLines={isCompact ? 1 : 2}
+          >
             {title}
           </Text>
-          {tagline ? (
+
+          {!isCompact && tagline ? (
             <Text style={styles.taglineText} numberOfLines={1}>
               {tagline}
             </Text>
           ) : null}
-        </View>
 
-        {/* Location Row */}
-        {location ? (
-          <View style={styles.locationRow}>
-            <Ionicons name="location-outline" size={13} color={theme.accentColor} />
-            <Text style={[styles.locationText, { color: theme.accentColor }]} numberOfLines={1}>
-              {location}
-            </Text>
-          </View>
-        ) : null}
+          {location ? (
+            <View style={[styles.locationRow, isCompact && styles.locationRowCompact]}>
+              <Ionicons name="location-outline" size={isCompact ? 11 : 13} color={theme.accentColor} />
+              <Text
+                style={[
+                  styles.locationText,
+                  isCompact && styles.locationTextCompact,
+                  { color: theme.accentColor },
+                ]}
+                numberOfLines={1}
+              >
+                {location}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </View>
   );
@@ -114,26 +144,26 @@ const styles = StyleSheet.create({
   },
   glowingDot: {
     position: 'absolute',
-    top: 16,
-    right: 20,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    shadowColor: '#00FF88',
-    shadowRadius: 10,
-    shadowOpacity: 1,
+    top: 12,
+    right: 14,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   cyberBar: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 3,
+    height: 2.5,
   },
   bannerContent: {
     flex: 1,
-    padding: 16,
+    padding: 14,
     justifyContent: 'space-between',
+  },
+  bannerContentCompact: {
+    padding: 10,
   },
   topBadgeRow: {
     flexDirection: 'row',
@@ -143,57 +173,85 @@ const styles = StyleSheet.create({
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
     borderWidth: 1,
-    gap: 5,
+    gap: 4,
+    maxWidth: '65%',
+  },
+  categoryBadgeCompact: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   categoryText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
+  },
+  categoryTextCompact: {
+    fontSize: 8,
   },
   membersBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.65)',
     paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingVertical: 3,
     borderRadius: 8,
     gap: 4,
   },
+  membersBadgeCompact: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
   membersText: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
-  titleWrapper: {
-    marginTop: 6,
+  membersTextCompact: {
+    fontSize: 8,
+  },
+  bottomSection: {
+    gap: 2,
   },
   titleText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '900',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
+    lineHeight: 22,
+  },
+  titleTextCompact: {
+    fontSize: 14,
+    lineHeight: 18,
   },
   taglineText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.85)',
-    marginTop: 2,
+    marginTop: 1,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4,
+    marginTop: 2,
+  },
+  locationRowCompact: {
+    marginTop: 1,
   },
   locationText: {
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  locationTextCompact: {
+    fontSize: 9.5,
   },
 });

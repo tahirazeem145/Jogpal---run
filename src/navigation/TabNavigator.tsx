@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { HomeScreen } from '../screens/HomeScreen';
 import { TransformationScreen } from '../screens/TransformationScreen';
@@ -14,6 +15,8 @@ const Tab = createBottomTabNavigator<RootTabParamList>();
 
 export const TabNavigator: React.FC = () => {
   const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(10, insets.bottom);
 
   return (
     <Tab.Navigator
@@ -25,6 +28,8 @@ export const TabNavigator: React.FC = () => {
           {
             backgroundColor: colors.tabBarBg,
             borderTopColor: colors.tabBarBorder,
+            height: 56 + bottomInset,
+            paddingBottom: bottomInset,
           },
         ],
         tabBarActiveTintColor: colors.tabActive,
@@ -50,7 +55,7 @@ export const TabNavigator: React.FC = () => {
         }}
       />
 
-      {/* 30-Day Transformation Camera Tab (Replaces Rank) */}
+      {/* 30-Day Transformation Camera Tab */}
       <Tab.Screen
         name="Transformation"
         component={TransformationScreen}
@@ -115,14 +120,12 @@ export const TabNavigator: React.FC = () => {
 
 const styles = StyleSheet.create({
   tabBar: {
-    height: 68,
-    paddingTop: 8,
-    paddingBottom: 10,
+    paddingTop: 6,
     borderTopWidth: 1,
     elevation: 0,
   },
   tabBarLabel: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '900',
     letterSpacing: 0.8,
     marginTop: 2,
@@ -131,6 +134,6 @@ const styles = StyleSheet.create({
   iconWrapper: {
     justifyContent: 'center',
     alignItems: 'center',
-    height: 26,
+    height: 24,
   },
 });

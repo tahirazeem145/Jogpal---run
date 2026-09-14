@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
 } from 'react-native';
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { Community } from '../../types/community';
@@ -54,7 +53,7 @@ export const CommunitySectionCard: React.FC<CommunitySectionCardProps> = ({
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.titleWithBadge} onPress={handleOpenHub} activeOpacity={0.8}>
           <View style={[styles.iconBox, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
-            <Ionicons name="people" size={18} color={colors.primary} />
+            <Ionicons name="people" size={16} color={colors.primary} />
           </View>
           <Text style={[styles.titleText, { color: colors.textPrimary }]}>COMMUNITY & EVENTS</Text>
           <View style={[styles.countBadge, { backgroundColor: colors.accentSubtle, borderColor: colors.crewAddBorder }]}>
@@ -63,7 +62,7 @@ export const CommunitySectionCard: React.FC<CommunitySectionCardProps> = ({
         </TouchableOpacity>
 
         <TouchableOpacity onPress={handleOpenHub} activeOpacity={0.7} style={styles.viewAllBtn}>
-          <Text style={[styles.viewAllText, { color: colors.primary }]}>COMMUNITY HUB</Text>
+          <Text style={[styles.viewAllText, { color: colors.primary }]}>VIEW HUB</Text>
           <Feather name="chevron-right" size={14} color={colors.primary} />
         </TouchableOpacity>
       </View>
@@ -76,37 +75,39 @@ export const CommunitySectionCard: React.FC<CommunitySectionCardProps> = ({
       >
         <View style={styles.bannerLeft}>
           <View style={[styles.sparkleCircle, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
-            <Ionicons name="sparkles" size={16} color={colors.primary} />
+            <Ionicons name="sparkles" size={15} color={colors.primary} />
           </View>
-          <View>
+          <View style={styles.bannerTextCol}>
             <Text style={[styles.bannerTitle, { color: colors.textPrimary }]}>CREATE A COMMUNITY</Text>
-            <Text style={[styles.bannerSub, { color: colors.textSecondary }]}>
-              Questions guide, cover themes & live weather events
+            <Text style={[styles.bannerSub, { color: colors.textSecondary }]} numberOfLines={1}>
+              Cover themes, questions guide & live weather events
             </Text>
           </View>
         </View>
 
         <View style={[styles.hostBtn, { backgroundColor: colors.primary }]}>
-          <Feather name="plus" size={14} color="#000000" />
+          <Feather name="plus" size={13} color="#000000" />
           <Text style={styles.hostBtnText}>HOST</Text>
         </View>
       </TouchableOpacity>
 
       {/* Horizontal Cards Scroll */}
       {communities.length === 0 ? (
-        <TouchableOpacity
-          style={[styles.emptySectionCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
-          onPress={() => setCreateVisible(true)}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="people-outline" size={24} color={colors.primary} />
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.emptySectionTitle, { color: colors.textPrimary }]}>NO COMMUNITIES CREATED YET</Text>
-            <Text style={[styles.emptySectionSub, { color: colors.textSecondary }]}>
-              Tap HOST above to create the very first community & host live events!
-            </Text>
-          </View>
-        </TouchableOpacity>
+        <View style={styles.emptyWrap}>
+          <TouchableOpacity
+            style={[styles.emptySectionCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}
+            onPress={() => setCreateVisible(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="people-outline" size={24} color={colors.primary} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.emptySectionTitle, { color: colors.textPrimary }]}>NO COMMUNITIES CREATED YET</Text>
+              <Text style={[styles.emptySectionSub, { color: colors.textSecondary }]}>
+                Tap HOST above to create the very first community & host live events!
+              </Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       ) : (
         <ScrollView
           horizontal
@@ -131,22 +132,28 @@ export const CommunitySectionCard: React.FC<CommunitySectionCardProps> = ({
                   location={comm.location}
                   membersCount={comm.membersCount}
                   imageUrl={comm.coverImageUrl}
-                  height={110}
+                  height={115}
                 />
 
                 <View style={styles.cardFooter}>
                   <View style={styles.hostRow}>
                     <Text style={[styles.hostText, { color: colors.textSecondary }]} numberOfLines={1}>
-                      By {comm.hostName}
+                      By <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{comm.hostName}</Text>
                     </Text>
                     {isHost ? (
-                      <Text style={[styles.statusText, { color: colors.primary }]}>HOST</Text>
+                      <View style={[styles.badgePill, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
+                        <Text style={[styles.statusText, { color: colors.primary }]}>HOST</Text>
+                      </View>
                     ) : isMember ? (
-                      <Text style={[styles.statusText, { color: colors.primary }]}>MEMBER</Text>
+                      <View style={[styles.badgePill, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
+                        <Text style={[styles.statusText, { color: colors.primary }]}>MEMBER</Text>
+                      </View>
                     ) : (
-                      <Text style={[styles.statusText, { color: colors.textSecondary }]}>
-                        {comm.isPublic ? 'PUBLIC' : 'APPROVAL REQ'}
-                      </Text>
+                      <View style={[styles.badgePill, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}>
+                        <Text style={[styles.statusText, { color: colors.textSecondary }]}>
+                          {comm.isPublic ? 'PUBLIC' : 'APPROVAL'}
+                        </Text>
+                      </View>
                     )}
                   </View>
                 </View>
@@ -190,33 +197,14 @@ export const CommunitySectionCard: React.FC<CommunitySectionCardProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    marginTop: 18,
-    marginBottom: 6,
-  },
-  emptySectionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 12,
-  },
-  emptySectionTitle: {
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-  },
-  emptySectionSub: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 2,
+    marginBottom: 20,
   },
   headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   titleWithBadge: {
     flexDirection: 'row',
@@ -243,7 +231,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   countText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '900',
   },
   viewAllBtn: {
@@ -260,15 +248,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginHorizontal: 16,
     padding: 12,
-    borderRadius: 16,
+    borderRadius: 18,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   bannerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+    flex: 1,
+    marginRight: 10,
+  },
+  bannerTextCol: {
     flex: 1,
   },
   sparkleCircle: {
@@ -293,7 +286,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 10,
     gap: 4,
   },
@@ -303,18 +296,40 @@ const styles = StyleSheet.create({
     color: '#000000',
     letterSpacing: 0.5,
   },
+  emptyWrap: {
+    paddingHorizontal: 16,
+  },
+  emptySectionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 18,
+    borderWidth: 1,
+    gap: 12,
+  },
+  emptySectionTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  emptySectionSub: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
   scrollContent: {
-    paddingRight: 10,
+    paddingHorizontal: 16,
     gap: 12,
   },
   commCard: {
-    width: 240,
-    borderRadius: 18,
+    width: 250,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
   },
   cardFooter: {
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   hostRow: {
     flexDirection: 'row',
@@ -322,9 +337,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   hostText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
     flex: 1,
+    marginRight: 8,
+  },
+  badgePill: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
   },
   statusText: {
     fontSize: 9,
