@@ -32,7 +32,6 @@ if (Platform.OS !== 'web') {
 }
 
 const PERSISTED_GOOGLE_USER_KEY = '@jogpal_persistent_google_auth';
-const PERSISTED_GUEST_USER_KEY = '@jogpal_persistent_guest_auth';
 const SAVED_GOOGLE_ACCOUNTS_KEY = '@jogpal_saved_google_accounts_list';
 
 export interface SavedGoogleAccount {
@@ -240,28 +239,6 @@ export const authService = {
     }
   },
 
-  // Persistent Guest Sign-In: Reuses the same guest profile
-  async signInGuest() {
-    try {
-      const stored = await AsyncStorage.getItem(PERSISTED_GUEST_USER_KEY);
-      if (stored) {
-        const { email, pass } = JSON.parse(stored);
-        try {
-          return await signInWithEmailAndPassword(auth, email, pass);
-        } catch (e) {
-          return await createUserWithEmailAndPassword(auth, email, pass);
-        }
-      }
-
-      const guestEmail = `guest_runner_${Date.now().toString(36)}@jogpal.app`;
-      const guestPass = 'JogpalGuest2026!';
-      const newCred = await createUserWithEmailAndPassword(auth, guestEmail, guestPass);
-      await AsyncStorage.setItem(PERSISTED_GUEST_USER_KEY, JSON.stringify({ email: guestEmail, pass: guestPass }));
-      return newCred;
-    } catch (err) {
-      return await signInAnonymously(auth);
-    }
-  },
 
   // Delete current authenticated account and clear Google sessions
   async deleteAccount() {

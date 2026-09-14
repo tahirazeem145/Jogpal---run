@@ -179,7 +179,7 @@ export const duoRunService = {
     onInvite: (session: DuoRunSession) => void,
     onError?: (error: Error) => void
   ) {
-    if (!userId || userId === 'guest_runner') {
+    if (!userId) {
       return () => {};
     }
 

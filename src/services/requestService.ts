@@ -127,7 +127,7 @@ export const requestService = {
     onUpdate: (requests: CrewRequest[]) => void,
     onError?: (error: Error) => void
   ) {
-    if (!userId || userId === 'guest_runner') {
+    if (!userId) {
       onUpdate([]);
       return () => {};
     }
@@ -167,7 +167,7 @@ export const requestService = {
     onUpdate: (sentToUserIds: string[]) => void,
     onError?: (error: Error) => void
   ) {
-    if (!userId || userId === 'guest_runner') {
+    if (!userId) {
       onUpdate([]);
       return () => {};
     }

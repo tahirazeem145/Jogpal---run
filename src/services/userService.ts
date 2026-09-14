@@ -72,7 +72,14 @@ export const userService = {
       (snapshot) => {
         const users: UserProfile[] = snapshot.docs
           .map((d) => ({ id: d.id, ...d.data() } as UserProfile))
-          .filter((u) => u.id !== currentUserId);
+          .filter((u) => {
+            if (!u.id || u.id === currentUserId) return false;
+            const isGuest =
+              u.id.toLowerCase().startsWith('guest') ||
+              u.email?.toLowerCase().startsWith('guest') ||
+              u.displayName?.toLowerCase().startsWith('guest');
+            return !isGuest;
+          });
         onUpdate(users);
       },
       (error) => {

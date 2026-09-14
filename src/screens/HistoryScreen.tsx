@@ -23,7 +23,7 @@ export const HistoryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { user, userProfile, runs, logNewRun } = useApp();
   const { colors } = useTheme();
-  const activeUserId = user?.uid || userProfile?.id || 'guest_runner';
+  const activeUserId = user?.uid || userProfile?.id || '';
   const [displayRuns, setDisplayRuns] = useState<RunSession[]>(runs);
   const [selectedRun, setSelectedRun] = useState<RunSession | null>(null);
 

@@ -43,11 +43,11 @@ export const HomeScreen: React.FC = () => {
   const [incomingDuoInvite, setIncomingDuoInvite] = React.useState<DuoRunSession | null>(null);
   const { startPreparation } = useSoloRun();
 
-  const activeUserId = userProfile?.id || user?.uid || 'guest_runner';
+  const activeUserId = userProfile?.id || user?.uid || '';
 
   // Real-time listener for incoming Duo Run invitations
   React.useEffect(() => {
-    if (!activeUserId || activeUserId === 'guest_runner') return;
+    if (!activeUserId) return;
 
     const unsub = duoRunService.listenForIncomingDuoInvites(activeUserId, (session) => {
       setIncomingDuoInvite(session);

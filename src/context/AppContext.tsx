@@ -58,8 +58,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const unreadRequestCount = incomingRequests.length;
 
-  // Fallback default user ID if not logged in yet
-  const activeUserId = user?.uid || 'guest_runner';
+  // Authenticated user ID
+  const activeUserId = user?.uid || '';
 
   // 1. Listen for Auth Changes
   useEffect(() => {
@@ -71,6 +71,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // 2. Subscribe to Firestore collections for active user
   useEffect(() => {
+    if (!activeUserId) {
+      setUserProfile(null);
+      setRuns([]);
+      setWeeklyKm(0);
+      setPersonalBests([]);
+      setAllRegisteredRunners([]);
+      setCrew([]);
+      setFriends([]);
+      setSentRequestIds([]);
+      setUpcomingSession(null);
+      setIncomingRequests([]);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
 
     // Subscribe to User Profile
@@ -83,7 +98,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // Initialize and save profile in Firestore so other users can see this ID
           const defaultProfile: UserProfile = {
             id: activeUserId,
-            displayName: user?.displayName || user?.email?.split('@')[0] || (user?.isAnonymous ? `Runner_${activeUserId.slice(0, 5)}` : 'Runner'),
+            displayName: user?.displayName || user?.email?.split('@')[0] || 'Runner',
             email: user?.email || '',
             level: 1,
             streakDays: 0,
@@ -98,9 +113,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             defaultProfile.photoURL = user.photoURL;
           }
           setUserProfile(defaultProfile);
-          if (activeUserId && activeUserId !== 'guest_runner') {
-            userService.saveUserProfile(activeUserId, defaultProfile).catch(() => {});
-          }
+          userService.saveUserProfile(activeUserId, defaultProfile).catch(() => {});
         }
       },
       () => {
@@ -142,7 +155,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       activeUserId,
       (registeredUsers) => {
         const filtered = registeredUsers.filter(
-          (u) => u.id !== activeUserId
+          (u) =>
+            u.id !== activeUserId &&
+            !u.id.toLowerCase().startsWith('guest') &&
+            !u.email?.toLowerCase().startsWith('guest') &&
+            !u.displayName?.toLowerCase().startsWith('guest')
         );
         setAllRegisteredRunners(filtered);
       },

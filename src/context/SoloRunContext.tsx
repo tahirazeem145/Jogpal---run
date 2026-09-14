@@ -65,7 +65,7 @@ const SoloRunContext = createContext<SoloRunContextType | undefined>(undefined);
 
 export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, userProfile, logNewRun } = useApp();
-  const activeUserId = user?.uid || userProfile?.id || 'guest_runner';
+  const activeUserId = user?.uid || userProfile?.id || '';
 
   const [runState, setRunState] = useState<RunState>('IDLE');
   const runStateRef = useRef<RunState>('IDLE');
