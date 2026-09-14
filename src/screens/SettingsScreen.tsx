@@ -273,11 +273,11 @@ export const SettingsScreen: React.FC = () => {
               <View style={styles.themeInfoContainer}>
                 <View style={styles.themeTitleRow}>
                   <Text style={[styles.themeTitle, { color: colors.textPrimary }]}>Default (Neon Lime)</Text>
-                  {theme === 'default' && (
+                  {theme === 'default' ? (
                     <View style={[styles.activeThemeBadge, { backgroundColor: '#CCFF00' }]}>
                       <Text style={styles.activeThemeBadgeText}>ACTIVE</Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
                 <Text style={[styles.themeSubtitle, { color: colors.textMuted }]}>
                   High-visibility neon lime palette
@@ -285,7 +285,7 @@ export const SettingsScreen: React.FC = () => {
               </View>
 
               <View style={[styles.radioCircle, theme === 'default' && { borderColor: '#CCFF00', backgroundColor: '#CCFF00' }]}>
-                {theme === 'default' && <Ionicons name="checkmark" size={14} color="#000000" />}
+                {theme === 'default' ? <Ionicons name="checkmark" size={14} color="#000000" /> : null}
               </View>
             </TouchableOpacity>
 
@@ -307,11 +307,11 @@ export const SettingsScreen: React.FC = () => {
               <View style={styles.themeInfoContainer}>
                 <View style={styles.themeTitleRow}>
                   <Text style={[styles.themeTitle, { color: colors.textPrimary }]}>Orange Theme (Claude)</Text>
-                  {theme === 'orange' && (
+                  {theme === 'orange' ? (
                     <View style={[styles.activeThemeBadge, { backgroundColor: '#D97757' }]}>
                       <Text style={styles.activeThemeBadgeText}>ACTIVE</Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
                 <Text style={[styles.themeSubtitle, { color: colors.textMuted }]}>
                   Warm Anthropic Claude terracotta orange
@@ -319,7 +319,7 @@ export const SettingsScreen: React.FC = () => {
               </View>
 
               <View style={[styles.radioCircle, theme === 'orange' && { borderColor: '#D97757', backgroundColor: '#D97757' }]}>
-                {theme === 'orange' && <Ionicons name="checkmark" size={14} color="#000000" />}
+                {theme === 'orange' ? <Ionicons name="checkmark" size={14} color="#000000" /> : null}
               </View>
             </TouchableOpacity>
           </View>

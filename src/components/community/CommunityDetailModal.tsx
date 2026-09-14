@@ -268,7 +268,7 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
           {/* Tab Content */}
           <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
             {/* TAB 1: HOSTED EVENTS & WEATHER CHECK */}
-            {activeTab === 'EVENTS' && (
+            {activeTab === 'EVENTS' ? (
               <View style={styles.eventsSection}>
                 {events.length === 0 ? (
                   <View style={[styles.emptyBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
@@ -380,10 +380,10 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
                   })
                 )}
               </View>
-            )}
+            ) : null}
 
             {/* TAB 2: ABOUT & MANDATORY RULES */}
-            {activeTab === 'ABOUT' && (
+            {activeTab === 'ABOUT' ? (
               <View style={styles.aboutSection}>
                 {/* Description */}
                 <View style={[styles.cardBlock, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
@@ -419,10 +419,10 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
                   ))}
                 </View>
               </View>
-            )}
+            ) : null}
 
             {/* TAB 3: MEMBERS */}
-            {activeTab === 'MEMBERS' && (
+            {activeTab === 'MEMBERS' ? (
               <View style={styles.membersSection}>
                 <View style={[styles.cardBlock, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
                   <Text style={[styles.blockTitle, { color: colors.primary }]}>
@@ -446,10 +446,10 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
                   </View>
                 </View>
               </View>
-            )}
+            ) : null}
 
             {/* TAB 4: REQUESTS (Host Only) */}
-            {activeTab === 'REQUESTS' && isHost && (
+            {activeTab === 'REQUESTS' && isHost ? (
               <View style={styles.requestsSection}>
                 {localCommunity.pendingRequestIds.length === 0 ? (
                   <View style={[styles.emptyBox, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
@@ -496,7 +496,7 @@ export const CommunityDetailModal: React.FC<CommunityDetailModalProps> = ({
                   ))
                 )}
               </View>
-            )}
+            ) : null}
           </ScrollView>
         </View>
       </View>

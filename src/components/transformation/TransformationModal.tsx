@@ -386,7 +386,7 @@ export const TransformationModal: React.FC<TransformationModalProps> = ({
             </View>
 
             <View style={styles.webCamVideoWrapper}>
-              {Platform.OS === 'web' ? (
+              {Boolean(Platform.OS === 'web') ? (
                 <video
                   ref={videoRef}
                   autoPlay

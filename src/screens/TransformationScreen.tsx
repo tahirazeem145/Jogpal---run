@@ -358,7 +358,7 @@ export const TransformationScreen: React.FC = () => {
             </View>
 
             <View style={styles.webCamVideoWrapper}>
-              {Platform.OS === 'web' ? (
+              {Boolean(Platform.OS === 'web') ? (
                 <video
                   ref={videoRef}
                   autoPlay

@@ -165,7 +165,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         </View>
 
         {/* --- STATE 1: ERROR --- */}
-        {runState === 'ERROR' && (
+        {runState === 'ERROR' ? (
           <View style={styles.centeredContainer}>
             <View style={styles.errorIconContainer}>
               <Ionicons name="alert-circle" size={48} color="#FF4D4D" />
@@ -176,10 +176,10 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </Text>
             <NeonButton title="CLOSE" onPress={handleClose} style={styles.actionBtn} />
           </View>
-        )}
+        ) : null}
 
         {/* --- STATE: WAITING FOR SQUAD PARTICIPANTS --- */}
-        {isGroupWaitingForPartners && groupSession && (
+        {isGroupWaitingForPartners && groupSession ? (
           <View style={styles.centeredContainer}>
             <View style={[styles.glowContainer, { borderColor: colors.primary, backgroundColor: colors.crewAddBg }]}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -222,10 +222,10 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               <Text style={[styles.cancelLinkText, { color: colors.textMuted }]}>CANCEL SQUAD SESSION</Text>
             </TouchableOpacity>
           </View>
-        )}
+        ) : null}
 
         {/* --- STATE: WAITING FOR DUO PARTNER --- */}
-        {!isGroupWaitingForPartners && isDuoWaitingForPartner && activePartner && (
+        {!isGroupWaitingForPartners && isDuoWaitingForPartner && activePartner ? (
           <View style={styles.centeredContainer}>
             <View style={[styles.glowContainer, { borderColor: colors.primary, backgroundColor: colors.crewAddBg }]}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -241,10 +241,10 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               <Text style={[styles.cancelLinkText, { color: colors.textMuted }]}>CANCEL INVITATION</Text>
             </TouchableOpacity>
           </View>
-        )}
+        ) : null}
 
         {/* --- STATE 2: PREPARING & GPS SEARCHING --- */}
-        {!isGroupWaitingForPartners && !isDuoWaitingForPartner && (runState === 'PREPARING' || runState === 'GPS_SEARCHING') && (
+        {!isGroupWaitingForPartners && !isDuoWaitingForPartner && (runState === 'PREPARING' || runState === 'GPS_SEARCHING') ? (
           <View style={styles.centeredContainer}>
             <View style={[styles.glowContainer, { borderColor: colors.primary, backgroundColor: colors.crewAddBg }]}>
               <ActivityIndicator size="large" color={colors.primary} />
@@ -258,10 +258,10 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               <Text style={[styles.cancelLinkText, { color: colors.textMuted }]}>CANCEL PREPARATION</Text>
             </TouchableOpacity>
           </View>
-        )}
+        ) : null}
 
         {/* --- STATE 3: GPS READY / SETUP MODE --- */}
-        {!isGroupWaitingForPartners && !isDuoWaitingForPartner && runState === 'GPS_READY' && (
+        {!isGroupWaitingForPartners && !isDuoWaitingForPartner && runState === 'GPS_READY' ? (
           <View style={styles.centeredContainer}>
             <View style={styles.readyBadge}>
               <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
@@ -309,35 +309,35 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </View>
 
             {/* Mode-Specific Information Banner */}
-            {selectedMode === 'SOLO' && (
+            {selectedMode === 'SOLO' ? (
               <View style={[styles.modeInfoPill, { borderColor: colors.cardBorder }]}>
                 <Ionicons name="flash" size={12} color={colors.primary} />
                 <Text style={[styles.modeInfoText, { color: colors.textSecondary }]}>
                   SOLO TRACKING • 2D Kalman Precision Active
                 </Text>
               </View>
-            )}
+            ) : null}
 
-            {selectedMode === 'DUO' && (
+            {selectedMode === 'DUO' ? (
               <View style={[styles.modeInfoPill, { borderColor: colors.primary }]}>
                 <Ionicons name="people" size={13} color={colors.primary} />
                 <Text style={[styles.modeInfoText, { color: colors.textPrimary }]}>
                   DUO SYNC: Pacing with <Text style={{ color: colors.primary, fontWeight: '800' }}>Alex</Text> (~8m sync)
                 </Text>
               </View>
-            )}
+            ) : null}
 
-            {selectedMode === 'GROUP' && (
+            {selectedMode === 'GROUP' ? (
               <View style={[styles.modeInfoPill, { borderColor: colors.primary }]}>
                 <Ionicons name="globe-outline" size={13} color={colors.primary} />
                 <Text style={[styles.modeInfoText, { color: colors.textPrimary }]}>
                   SQUAD CREW: <Text style={{ color: colors.primary, fontWeight: '800' }}>Alex, Sam, Jordan</Text> (Formation Sync)
                 </Text>
               </View>
-            )}
+            ) : null}
 
             {/* OFFLINE SETUP CONTROLS */}
-            {selectedMode === 'OFFLINE' && (
+            {selectedMode === 'OFFLINE' ? (
               <View style={styles.offlineSetupContainer}>
                 {/* Distance Selector */}
                 <Text style={[styles.setupLabel, { color: colors.textSecondary }]}>TARGET DISTANCE:</Text>
@@ -392,10 +392,10 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   style={styles.previewMap}
                 />
               </View>
-            )}
+            ) : null}
 
             {/* LIVE SATELLITE MAP PREVIEW FOR ONLINE MODES */}
-            {selectedMode !== 'OFFLINE' && (
+            {selectedMode !== 'OFFLINE' ? (
               <JogpalMap
                 currentLocation={currentLocation}
                 actualRoute={actualRoute}
@@ -404,7 +404,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                 style={styles.previewMap}
                 interactive={false}
               />
-            )}
+            ) : null}
 
             <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleStartRunPress} activeOpacity={0.85}>
               <Text style={styles.startRunText}>
@@ -418,17 +418,18 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               </Text>
             </TouchableOpacity>
           </View>
-        )}
+        ) : null}
 
         {/* --- UNIFIED LIVE RUN SESSION (COUNTDOWN, ACTIVE, PAUSED) --- */}
-        {(runState === 'COUNTDOWN' || runState === 'ACTIVE' || runState === 'PAUSED') && (
+        {/* --- UNIFIED LIVE RUN SESSION (COUNTDOWN, ACTIVE, PAUSED) --- */}
+        {(runState === 'COUNTDOWN' || runState === 'ACTIVE' || runState === 'PAUSED') ? (
           <View style={styles.activeContainer}>
             {/* Paused Badge */}
-            {runState === 'PAUSED' && (
+            {runState === 'PAUSED' ? (
               <View style={styles.pausedBadge}>
                 <Text style={styles.pausedBadgeText}>RUN PAUSED</Text>
               </View>
-            )}
+            ) : null}
 
             {/* Active Mode HUD Banner */}
             <View style={[styles.modeHudBanner, { borderColor: colors.primary }]}>
@@ -466,7 +467,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               </Text>
 
               {/* OFFLINE Target Progress & Completion Badge */}
-              {offlineConfig?.isOfflineMode && offlineConfig.targetDistanceKm && (
+              {offlineConfig?.isOfflineMode && offlineConfig.targetDistanceKm ? (
                 <View
                   style={[
                     styles.targetBadge,
@@ -482,11 +483,11 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                         )}%)`}
                   </Text>
                 </View>
-              )}
+              ) : null}
             </View>
 
             {/* Group Squad Live Leaderboard Bar (Firebase Group Session) */}
-            {groupSession && (
+            {groupSession ? (
               <View style={[styles.squadActiveBar, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
                 <View style={styles.squadActiveHeader}>
                   <Ionicons name="people" size={13} color={colors.primary} />
@@ -522,10 +523,10 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   ))}
                 </ScrollView>
               </View>
-            )}
+            ) : null}
 
             {/* Active Duo Partner Pill Indicator (Firebase Duo Session) */}
-            {!groupSession && activePartner && (
+            {!groupSession && activePartner ? (
               <View
                 style={[
                   styles.partnerActivePill,
@@ -543,27 +544,27 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   </Text>
                 </Text>
               </View>
-            )}
+            ) : null}
 
             {/* Partner Pacing Mini-Card for simulated DUO */}
-            {!groupSession && !activePartner && activeRunSubtype === 'DUO' && effectivePartnerRunners.length > 0 && (
+            {!groupSession && !activePartner && activeRunSubtype === 'DUO' && effectivePartnerRunners.length > 0 ? (
               <View style={[styles.partnerPacingBar, { borderColor: colors.cardBorder }]}>
                 <Ionicons name="people" size={13} color={colors.primary} />
                 <Text style={[styles.partnerPacingText, { color: colors.textSecondary }]}>
                   Partner <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{effectivePartnerRunners[0].name}</Text> • {effectivePartnerRunners[0].distanceMeters}m away • {effectivePartnerRunners[0].pace}
                 </Text>
               </View>
-            )}
+            ) : null}
 
             {/* Partner Pacing Mini-Card for simulated GROUP */}
-            {!groupSession && !activePartner && activeRunSubtype === 'GROUP' && effectivePartnerRunners.length > 0 && (
+            {!groupSession && !activePartner && activeRunSubtype === 'GROUP' && effectivePartnerRunners.length > 0 ? (
               <View style={[styles.partnerPacingBar, { borderColor: colors.cardBorder }]}>
                 <Ionicons name="globe-outline" size={13} color={colors.primary} />
                 <Text style={[styles.partnerPacingText, { color: colors.textSecondary }]}>
                   Squad Crew: <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{effectivePartnerRunners.map((p) => p.name).join(', ')}</Text> • Synced
                 </Text>
               </View>
-            )}
+            ) : null}
 
             {/* Persistent Live Map Component with Countdown Overlay */}
             <View style={styles.mapWrapper}>
@@ -586,12 +587,12 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               )}
 
               {/* Seamless Countdown Overlay on Top of Initialized Map */}
-              {runState === 'COUNTDOWN' && (
+              {runState === 'COUNTDOWN' ? (
                 <View style={styles.countdownOverlay}>
                   <Text style={[styles.countdownTitle, { color: colors.textSecondary }]}>GET READY</Text>
                   <Text style={[styles.countdownNumber, { color: colors.primary }]}>{countdownValue}</Text>
                 </View>
-              )}
+              ) : null}
             </View>
 
             {/* Telemetry Grid Card */}
@@ -630,7 +631,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             </NeonCard>
 
             {/* Dynamic Controls based on runState */}
-            {runState === 'ACTIVE' && (
+            {runState === 'ACTIVE' ? (
               <TouchableOpacity
                 style={[styles.pauseButton, { backgroundColor: colors.primary }]}
                 onPress={pauseRun}
@@ -639,9 +640,9 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                 <Ionicons name="pause" size={24} color="#000000" />
                 <Text style={styles.pauseButtonText}>PAUSE RUN</Text>
               </TouchableOpacity>
-            )}
+            ) : null}
 
-            {runState === 'PAUSED' && (
+            {runState === 'PAUSED' ? (
               <View style={styles.pausedControlsRow}>
                 <TouchableOpacity
                   style={[styles.resumeBtn, { backgroundColor: colors.primary }]}
@@ -661,18 +662,18 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   <Text style={styles.finishBtnText}>FINISH</Text>
                 </TouchableOpacity>
               </View>
-            )}
+            ) : null}
 
-            {runState === 'COUNTDOWN' && (
+            {runState === 'COUNTDOWN' ? (
               <View style={[styles.pauseButton, { backgroundColor: '#1A1A22', opacity: 0.7 }]}>
                 <Text style={[styles.pauseButtonText, { color: colors.textSecondary }]}>STARTING SESSION...</Text>
               </View>
-            )}
+            ) : null}
           </View>
-        )}
+        ) : null}
 
         {/* --- STATE 7: COMPLETING & SUMMARY --- */}
-        {(runState === 'COMPLETING' || runState === 'SAVING' || runState === 'SAVED' || runState === 'SYNC_PENDING') && lastRunSummary && (
+        {(runState === 'COMPLETING' || runState === 'SAVING' || runState === 'SAVED' || runState === 'SYNC_PENDING') && lastRunSummary ? (
           <View style={styles.activeContainer}>
             <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>RUN SUMMARY</Text>
             <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>
@@ -746,26 +747,26 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
               </View>
             </NeonCard>
 
-            {runState === 'COMPLETING' && (
+            {runState === 'COMPLETING' ? (
               <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleSaveAndDone} activeOpacity={0.85}>
                 <Text style={styles.startRunText}>SAVE RUN</Text>
               </TouchableOpacity>
-            )}
+            ) : null}
 
-            {runState === 'SAVING' && (
+            {runState === 'SAVING' ? (
               <View style={styles.centeredRow}>
                 <ActivityIndicator color={colors.primary} size="small" />
                 <Text style={[styles.savingText, { color: colors.primary }]}>SAVING LOCALLY / FIREBASE...</Text>
               </View>
-            )}
+            ) : null}
 
-            {(runState === 'SAVED' || runState === 'SYNC_PENDING') && (
+            {(runState === 'SAVED' || runState === 'SYNC_PENDING') ? (
               <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleFinishDone} activeOpacity={0.85}>
                 <Text style={styles.startRunText}>DONE</Text>
               </TouchableOpacity>
-            )}
+            ) : null}
           </View>
-        )}
+        ) : null}
       </View>
     </Modal>
   );

@@ -22,6 +22,15 @@ import { JogpalMap } from '../components/map/JogpalMap';
 import { OfflineSyntheticMap } from '../components/map/OfflineSyntheticMap';
 import { LatLng } from '../types/soloRun';
 
+const formatDateString = (dateIso: string) => {
+  try {
+    const d = new Date(dateIso);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch (e) {
+    return dateIso;
+  }
+};
+
 export const HistoryScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { user, userProfile, runs, logNewRun } = useApp();
@@ -152,11 +161,7 @@ export const HistoryScreen: React.FC = () => {
         {/* Dynamic Run List / Empty State */}
         {displayRuns.length > 0 ? (
           displayRuns.map((run, index) => {
-            const dateStr = new Date(run.createdAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            });
+            const dateStr = formatDateString(run.createdAt);
             const durationMin = Math.floor(run.durationSeconds / 60);
             const durationSec = run.durationSeconds % 60;
             const timeStr = `${durationMin.toString().padStart(2, '0')}:${durationSec.toString().padStart(2, '0')}`;

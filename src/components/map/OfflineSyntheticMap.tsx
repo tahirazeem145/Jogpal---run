@@ -107,7 +107,7 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
         <Line x1="255" y1="0" x2="255" y2="200" stroke="#16161D" strokeWidth="1" strokeDasharray="4 4" />
 
         {/* LOOP MODE VECTOR ROUTE */}
-        {routeMode === 'LOOP' && (
+        {routeMode === 'LOOP' ? (
           <>
             {/* Outer Track Guide */}
             <Rect x="50" y="32" width="240" height="136" rx="68" fill="none" stroke="#242430" strokeWidth="12" />
@@ -132,10 +132,10 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
             {/* Start / Finish Checkered Gate Line */}
             <Line x1="170" y1="36" x2="170" y2="48" stroke="#FFFFFF" strokeWidth="3" strokeDasharray="2 2" />
           </>
-        )}
+        ) : null}
 
         {/* STRAIGHT MODE VECTOR ROUTE */}
-        {routeMode === 'STRAIGHT' && (
+        {routeMode === 'STRAIGHT' ? (
           <>
             {/* Outer Track Lane */}
             <Rect x="30" y="86" width="280" height="28" rx="14" fill="#0A0A0E" stroke="#242430" strokeWidth="2" />
@@ -145,18 +145,16 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
             <Line
               x1="40"
               y1="100"
-              x2={40 + progressFraction * 260}
+              x2={`${40 + progressFraction * 260}`}
               y2="100"
               stroke="url(#neonGlowGrad)"
-              strokeWidth="5"
+              strokeWidth="6"
               strokeLinecap="round"
             />
-            {/* Start Gate */}
-            <Circle cx="40" cy="100" r="5" fill="#00FF66" stroke="#FFFFFF" strokeWidth="1.5" />
-            {/* Finish Gate */}
-            <Circle cx="300" cy="100" r="5" fill="#FF3B30" stroke="#FFFFFF" strokeWidth="1.5" />
+            {/* Finish Line Flag Marker */}
+            <Line x1="300" y1="84" x2="300" y2="116" stroke="#FFFFFF" strokeWidth="3" strokeDasharray="3 3" />
           </>
-        )}
+        ) : null}
 
         {/* Milestone Labels */}
         {milestones.map((m, idx) => (

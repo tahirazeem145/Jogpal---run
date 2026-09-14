@@ -226,10 +226,10 @@ export const GroupRunnerSelectModal: React.FC<GroupRunnerSelectModalProps> = ({
               </View>
             ) : (
               filteredFriends.map((friend) => {
-                const friendId = friend.id || friend.userId || '';
+                const friendId = String(friend.id || friend.userId || 'friend');
                 const isSelected = !!selectedFriendIds[friendId];
                 const avatar = friend.photoURL || friend.avatarUrl;
-                const initial = (friend.name?.trim().charAt(0) || friend.initial || 'R').toUpperCase();
+                const initial = String(friend.name?.trim().charAt(0) || friend.initial || 'R').toUpperCase();
 
                 return (
                   <TouchableOpacity

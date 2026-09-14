@@ -164,14 +164,14 @@ export const DuoRunnerSelectModal: React.FC<DuoRunnerSelectModalProps> = ({
                   NO FRIENDS MATCHED
                 </Text>
                 <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-                  No crew members found matching "{searchQuery}".
+                  {`No crew members found matching "${searchQuery}".`}
                 </Text>
               </View>
             ) : (
               // Render Friends Cards
               filteredFriends.map((friend) => {
                 const photo = friend.avatarUrl || friend.photoURL;
-                const initial = friend.initial || friend.name?.charAt(0).toUpperCase() || 'R';
+                const initial = String(friend.initial || (friend.name ? friend.name.charAt(0).toUpperCase() : 'R'));
 
                 return (
                   <TouchableOpacity

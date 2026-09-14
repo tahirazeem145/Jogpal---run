@@ -266,7 +266,7 @@ export const YourFriendsSection: React.FC<YourFriendsSectionProps> = ({
             const isRequested = sentRequestIds.includes(runnerId) || localSentMap[runnerId];
             const displayName = runner.displayName || runner.email?.split('@')[0] || `Runner ${runnerId.slice(0, 5)}`;
             const shortId = runnerId.length > 8 ? `#${runnerId.slice(0, 6)}` : `#${runnerId}`;
-            const initial = (displayName.trim().charAt(0) || 'R').toUpperCase();
+            const initial = String(displayName.trim().charAt(0) || 'R').toUpperCase();
 
             return (
               <View
