@@ -13,17 +13,24 @@ import { useTheme } from '../../context/ThemeContext';
 import { jogpalDarkMapStyle } from '../../theme/mapStyle';
 import { OfflineSyntheticMap } from './OfflineSyntheticMap';
 import { locationService } from '../../services/locationService';
+import { StartMarker } from './StartMarker';
+import { FinishMarker } from './FinishMarker';
+import { PartnerMarker } from './PartnerMarker';
+
+const SQUAD_COLORS = ['#A8FF00', '#00E5FF', '#FF0055', '#FFB800', '#BD00FF'];
 
 // Try require React Native Maps as standard Android / iOS native map provider
 let RNMapView: any = null;
 let RNPolyline: any = null;
 let RNMarker: any = null;
+let RNUrlTile: any = null;
 if (Platform.OS !== 'web') {
   try {
     const RNMaps = require('react-native-maps');
     RNMapView = RNMaps.default || RNMaps.MapView || RNMaps;
     RNPolyline = RNMaps.Polyline;
     RNMarker = RNMaps.Marker;
+    RNUrlTile = RNMaps.UrlTile;
   } catch (err) {}
 }
 
@@ -380,6 +387,16 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
             if (onMapLoaded) onMapLoaded();
           }}
         >
+          {/* OpenStreetMap (OSM) Dark Matter Raster Tile Layer */}
+          {RNUrlTile && (
+            <RNUrlTile
+              urlTemplate={MAP_CONFIG.darkRasterTileURL}
+              maximumZ={19}
+              flipY={false}
+              zIndex={-1}
+            />
+          )}
+
           {/* Actual GPS Route Polyline */}
           {sanitizedActualRoute.length > 1 && RNPolyline && (
             <RNPolyline
@@ -402,35 +419,13 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
           )}
 
           {/* Start Marker */}
-          {showStartFinishMarkers && sanitizedActualRoute.length > 0 && RNMarker && (
-            <RNMarker
-              coordinate={{
-                latitude: sanitizedActualRoute[0].latitude,
-                longitude: sanitizedActualRoute[0].longitude,
-              }}
-              anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={false}
-            >
-              <View style={styles.startBadge}>
-                <Text style={styles.startBadgeText}>START</Text>
-              </View>
-            </RNMarker>
+          {showStartFinishMarkers && sanitizedActualRoute.length > 0 && (
+            <StartMarker coordinate={sanitizedActualRoute[0]} />
           )}
 
           {/* Finish Marker */}
-          {showStartFinishMarkers && sanitizedActualRoute.length > 1 && RNMarker && (
-            <RNMarker
-              coordinate={{
-                latitude: sanitizedActualRoute[sanitizedActualRoute.length - 1].latitude,
-                longitude: sanitizedActualRoute[sanitizedActualRoute.length - 1].longitude,
-              }}
-              anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={false}
-            >
-              <View style={styles.finishBadge}>
-                <Text style={styles.finishBadgeText}>END</Text>
-              </View>
-            </RNMarker>
+          {showStartFinishMarkers && sanitizedActualRoute.length > 1 && (
+            <FinishMarker coordinate={sanitizedActualRoute[sanitizedActualRoute.length - 1]} />
           )}
 
           {/* Live Runner Position Marker with Accuracy Halo & Direction */}
@@ -457,24 +452,13 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
             </RNMarker>
           )}
 
-          {/* Partner Runners Markers */}
-          {partnerRunners.map((partner) => (
-            RNMarker ? (
-              <RNMarker
-                key={partner.id}
-                coordinate={{
-                  latitude: partner.latitude,
-                  longitude: partner.longitude,
-                }}
-                anchor={{ x: 0.5, y: 0.5 }}
-                title={partner.name}
-                tracksViewChanges={false}
-              >
-                <View style={[styles.partnerMarkerRing, { borderColor: colors.primary }]}>
-                  <Text style={styles.partnerInitial}>{partner.name.substring(0, 1).toUpperCase()}</Text>
-                </View>
-              </RNMarker>
-            ) : null
+          {/* Partner / Squad Runners Markers */}
+          {partnerRunners.map((partner, idx) => (
+            <PartnerMarker
+              key={partner.id}
+              runner={partner}
+              accentColor={SQUAD_COLORS[idx % SQUAD_COLORS.length]}
+            />
           ))}
         </RNMapView>
 
@@ -551,29 +535,42 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
             }
             .runner-dot { width: 10px; height: 10px; border-radius: 5px; background: ${colors.primary}; }
             .start-badge {
-              background: #00FF66; color: #000; font-size: 9px; font-weight: 900;
-              padding: 2px 5px; border-radius: 4px; border: 1px solid #FFF; white-space: nowrap;
+              background: #00FF66; color: #000; font-size: 8px; font-weight: 900;
+              padding: 2px 6px; border-radius: 4px; border: 1px solid #FFF; white-space: nowrap;
+              box-shadow: 0 0 6px rgba(0,255,102,0.6);
             }
             .finish-badge {
-              background: #FF3B30; color: #FFF; font-size: 9px; font-weight: 900;
-              padding: 2px 5px; border-radius: 4px; border: 1px solid #FFF; white-space: nowrap;
+              background: #FF3B30; color: #FFF; font-size: 8px; font-weight: 900;
+              padding: 2px 6px; border-radius: 4px; border: 1px solid #FFF; white-space: nowrap;
+              box-shadow: 0 0 6px rgba(255,59,48,0.6);
+            }
+            .partner-container {
+              display: flex; flex-direction: column; align-items: center; pointer-events: none;
             }
             .partner-halo {
-              width: 26px; height: 26px; border-radius: 13px;
-              background: rgba(14, 15, 20, 0.92); border: 2px solid ${colors.primary};
+              width: 30px; height: 30px; border-radius: 15px;
+              background: #1C1C1E; border: 2px solid #A8FF00;
               display: flex; align-items: center; justify-content: center;
-              box-shadow: 0 0 8px ${colors.glow};
-              color: #FFFFFF; font-size: 11px; font-weight: 800;
+              overflow: hidden; font-size: 11px; font-weight: 800; color: #FFFFFF;
+              box-shadow: 0 2px 6px rgba(0,0,0,0.6);
             }
+            .partner-tag {
+              background: rgba(14, 15, 20, 0.92); border: 1px solid #2A2A35;
+              border-radius: 5px; padding: 1px 5px; margin-top: 2px;
+              display: flex; flex-direction: column; align-items: center; white-space: nowrap;
+            }
+            .partner-name { font-size: 9px; font-weight: 700; color: #FFFFFF; line-height: 11px; }
+            .partner-dist { font-size: 8px; font-weight: 800; line-height: 10px; }
           </style>
         </head>
         <body>
           <div id="map"></div>
           <script>
             var isFollowing = true;
+            var SQUAD_COLORS = ['#A8FF00', '#00E5FF', '#FF0055', '#FFB800', '#BD00FF'];
             var map = L.map('map', { zoomControl: false, attributionControl: false }).setView([${lat}, ${lng}], 16);
             
-            // High contrast dark Carto raster tiles
+            // High contrast dark OpenStreetMap (OSM) Carto raster tiles
             L.tileLayer('${MAP_CONFIG.darkRasterTileURL}', {
               maxZoom: 19,
               subdomains: 'abcd',
@@ -602,14 +599,25 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
                 delete partnerMarkers[k];
               });
               if (!list || !Array.isArray(list)) return;
-              list.forEach(function(p) {
+              list.forEach(function(p, idx) {
                 if (p && typeof p.latitude === 'number' && typeof p.longitude === 'number') {
+                  var color = SQUAD_COLORS[idx % SQUAD_COLORS.length];
                   var initial = (p.name || 'P').substring(0, 1).toUpperCase();
+                  var avatarContent = p.avatarUrl
+                    ? '<img src="' + p.avatarUrl + '" style="width:100%;height:100%;object-fit:cover;" />'
+                    : initial;
+                  var distanceTag = p.distanceMeters !== undefined
+                    ? '<div class="partner-dist" style="color:' + color + '">' + (p.distanceMeters < 1000 ? Math.round(p.distanceMeters) + 'm' : (p.distanceMeters / 1000).toFixed(1) + 'km') + '</div>'
+                    : '';
+
                   var icon = L.divIcon({
                     className: '',
-                    html: '<div class="partner-halo">' + initial + '</div>',
-                    iconSize: [26, 26],
-                    iconAnchor: [13, 13]
+                    html: '<div class="partner-container">' +
+                            '<div class="partner-halo" style="border-color:' + color + ';box-shadow:0 0 8px ' + color + '60;">' + avatarContent + '</div>' +
+                            '<div class="partner-tag"><div class="partner-name">' + (p.name || 'Partner') + '</div>' + distanceTag + '</div>' +
+                          '</div>',
+                    iconSize: [42, 52],
+                    iconAnchor: [21, 21]
                   });
                   partnerMarkers[p.id] = L.marker([p.latitude, p.longitude], { icon: icon }).addTo(map);
                 }

@@ -22,8 +22,14 @@ export const MAP_CONFIG = {
   // Dynamic Camera Following Throttle (Prevents jittery continuous animations)
   cameraFollowThrottleMs: 1500,
 
-  // Fast Crisp Dark Raster Tiles for Web & Fallbacks
+  // OSRM (Open Source Routing Machine) Foot / Pedestrian Routing Engine
+  osrmApiURL:
+    process.env.EXPO_PUBLIC_OSRM_API_URL ||
+    'https://router.project-osrm.org',
+
+  // Fast Crisp Dark OpenStreetMap (OSM) Raster Tiles for Web & Native
   darkRasterTileURL: 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png',
+  osmStandardTileURL: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 
   // Route & Polyline Styling Configuration
   routeStyling: {

@@ -2,31 +2,42 @@ import React from 'react';
 import { StyleSheet, View, Text, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-let ViewAnnotation: any = null;
+let RNMarker: any = null;
 if (Platform.OS !== 'web') {
   try {
-    const ML = require('@maplibre/maplibre-react-native');
-    const MapLibre = ML.default || ML;
-    ViewAnnotation = MapLibre.PointAnnotation || MapLibre.MarkerView || MapLibre.ViewAnnotation;
+    const RNMaps = require('react-native-maps');
+    RNMarker = RNMaps.Marker;
   } catch (e) {}
 }
 
-interface StartMarkerProps {
-  coordinate: [number, number]; // [longitude, latitude]
+export interface StartMarkerProps {
+  coordinate: { latitude: number; longitude: number } | [number, number];
 }
 
+export const StartBadge: React.FC = () => (
+  <View style={styles.container}>
+    <View style={styles.beaconRing}>
+      <View style={styles.iconCore}>
+        <Ionicons name="play" size={10} color="#000" style={{ marginLeft: 1 }} />
+      </View>
+    </View>
+    <View style={styles.labelContainer}>
+      <Text style={styles.labelText}>START</Text>
+    </View>
+  </View>
+);
+
 export const StartMarker: React.FC<StartMarkerProps> = React.memo(({ coordinate }) => {
-  if (!ViewAnnotation || Platform.OS === 'web') return null;
+  const coord = Array.isArray(coordinate)
+    ? { latitude: coordinate[1], longitude: coordinate[0] }
+    : coordinate;
+
+  if (Platform.OS === 'web' || !RNMarker) return null;
 
   return (
-    <ViewAnnotation id="jogpalRouteStartMarker" coordinate={coordinate} lngLat={coordinate}>
-      <View style={styles.container}>
-        <View style={styles.badge}>
-          <Ionicons name="play" size={11} color="#000" />
-        </View>
-        <Text style={styles.label}>START</Text>
-      </View>
-    </ViewAnnotation>
+    <RNMarker coordinate={coord} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+      <StartBadge />
+    </RNMarker>
   );
 });
 
@@ -35,24 +46,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  beaconRing: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0, 255, 102, 0.25)',
+    borderWidth: 1.5,
+    borderColor: '#00FF66',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#00FF66',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  iconCore: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: '#00FF66',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
   },
-  label: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#00FF66',
-    marginTop: 2,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 4,
-    paddingVertical: 1,
+  labelContainer: {
+    backgroundColor: '#0A0A0E',
+    paddingHorizontal: 5,
+    paddingVertical: 1.5,
     borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#00FF66',
+    marginTop: 2,
+  },
+  labelText: {
+    color: '#00FF66',
+    fontSize: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
 });

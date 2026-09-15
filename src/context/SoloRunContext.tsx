@@ -8,6 +8,7 @@ import { useApp } from './AppContext';
 import { CrewMember, DuoRunSession, DuoParticipantTelemetry, GroupRunSession, GroupParticipantTelemetry } from '../types/data';
 import { duoRunService } from '../services/duoRunService';
 import { groupRunService } from '../services/groupRunService';
+import { osrmService } from '../services/osrmService';
 
 interface SoloRunContextType {
   runState: RunState;
@@ -16,6 +17,7 @@ interface SoloRunContextType {
   currentLocation: GPSPoint | null;
   actualRoute: LatLng[];
   plannedRoute: LatLng[];
+  setPlannedRoute: (route: LatLng[]) => void;
   partnerRunners: PartnerRunner[];
   countdownValue: number;
   lastRunSummary: PendingRun | null;
@@ -518,6 +520,16 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.log(`[TELEMETRY] FIRST_LOCATION_RECEIVED (Latency: ${latency}ms)`);
         setCurrentLocation(stage1Point);
 
+        // Generate authentic OSRM street circuit route around runner's initial location
+        osrmService
+          .generateCircuitRoute(stage1Point, 3, 'LOOP')
+          .then((route) => {
+            if (route && route.length > 0) {
+              setPlannedRoute(route);
+            }
+          })
+          .catch(() => {});
+
         if (activeRunSubtypeRef.current === 'DUO' || activeRunSubtypeRef.current === 'GROUP' || activePartnerRef.current) {
           const names =
             partnerNamesRef.current.length > 0
@@ -1007,6 +1019,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setActiveRunType('SOLO');
     setActiveRunSubtype('SOLO');
     setPartnerRunners([]);
+    setPlannedRoute([]);
     setOfflineConfig(null);
     resetFilter();
   };
@@ -1020,6 +1033,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentLocation,
         actualRoute,
         plannedRoute,
+        setPlannedRoute,
         partnerRunners,
         countdownValue,
         lastRunSummary,
