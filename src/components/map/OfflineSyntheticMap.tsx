@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet, View, Text, StyleProp, ViewStyle } from 'react-native';
-import Svg, { Rect, Path, Circle, Line, Text as SvgText, Defs, LinearGradient, Stop, Filter, FeDropShadow } from 'react-native-svg';
+import Svg, { Rect, Path, Circle, Line, Text as SvgText, Defs, LinearGradient, Stop } from 'react-native-svg';
 import { OfflineRouteMode } from '../../types/soloRun';
 import { useTheme } from '../../context/ThemeContext';
 
@@ -10,6 +10,21 @@ interface OfflineSyntheticMapProps {
   routeMode: OfflineRouteMode;
   style?: StyleProp<ViewStyle>;
 }
+
+// Stadium track constants for SVG ViewBox: 340 x 200
+const R = 58;
+const CX_LEFT = 118;
+const CX_RIGHT = 222;
+const Y_TOP = 42;
+const Y_BOTTOM = 158;
+const Y_CENTER = 100;
+const SEG_TOP_HALF = 52; // 170 to 222
+const SEG_ARC = R * Math.PI; // ~182.212
+const SEG_BOTTOM = 104; // 222 to 118
+const TRACK_PERIMETER = 2 * SEG_BOTTOM + 2 * SEG_ARC; // ~572.425
+
+// Base stadium SVG path starting at top center (170, 42) moving clockwise
+const LOOP_TRACK_PATH = `M 170 ${Y_TOP} L ${CX_RIGHT} ${Y_TOP} A ${R} ${R} 0 0 1 ${CX_RIGHT} ${Y_BOTTOM} L ${CX_LEFT} ${Y_BOTTOM} A ${R} ${R} 0 0 1 ${CX_LEFT} ${Y_TOP} Z`;
 
 export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
   currentDistanceKm,
@@ -29,22 +44,48 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
     return `${Math.round(progressFraction * 100)}%`;
   }, [progressFraction]);
 
+  const isCompleted = progressFraction >= 1.0;
+
   // Compute runner position along the synthetic vector track
-  // SVG ViewBox: 340 x 200
+  // Exactly matching the SVG vector line
   const runnerPosition = useMemo(() => {
     if (routeMode === 'LOOP') {
-      // Oval Track Geometry: Center (170, 100), Rx = 110, Ry = 60
-      // Start at top center: Angle -90 deg (-PI/2), moving clockwise
-      const startAngle = -Math.PI / 2;
-      const angle = startAngle + progressFraction * 2 * Math.PI;
-      const cx = 170;
-      const cy = 100;
-      const rx = 110;
-      const ry = 58;
+      const d = progressFraction * TRACK_PERIMETER;
 
-      const x = cx + rx * Math.cos(angle);
-      const y = cy + ry * Math.sin(angle);
-      return { x, y };
+      // Segment 1: Top right straight (170 -> 222)
+      if (d <= SEG_TOP_HALF) {
+        return { x: 170 + d, y: Y_TOP };
+      }
+
+      // Segment 2: Right semicircle (222, 42) -> (222, 158)
+      const d2 = d - SEG_TOP_HALF;
+      if (d2 <= SEG_ARC) {
+        const theta = -Math.PI / 2 + d2 / R;
+        return {
+          x: CX_RIGHT + R * Math.cos(theta),
+          y: Y_CENTER + R * Math.sin(theta),
+        };
+      }
+
+      // Segment 3: Bottom straight (222 -> 118)
+      const d3 = d2 - SEG_ARC;
+      if (d3 <= SEG_BOTTOM) {
+        return { x: CX_RIGHT - d3, y: Y_BOTTOM };
+      }
+
+      // Segment 4: Left semicircle (118, 158) -> (118, 42)
+      const d4 = d3 - SEG_BOTTOM;
+      if (d4 <= SEG_ARC) {
+        const theta = Math.PI / 2 + d4 / R;
+        return {
+          x: CX_LEFT + R * Math.cos(theta),
+          y: Y_CENTER + R * Math.sin(theta),
+        };
+      }
+
+      // Segment 5: Top left straight (118 -> 170)
+      const d5 = d4 - SEG_ARC;
+      return { x: Math.min(170, CX_LEFT + d5), y: Y_TOP };
     } else {
       // STRAIGHT Track Geometry: From (40, 100) to (300, 100)
       const startX = 40;
@@ -60,17 +101,17 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
     const target = targetDistanceKm || 1;
     if (routeMode === 'LOOP') {
       return [
-        { label: 'START', pos: { x: 170, y: 32 } },
-        { label: `${(target * 0.25).toFixed(1)}k`, pos: { x: 290, y: 104 } },
-        { label: `${(target * 0.5).toFixed(1)}k`, pos: { x: 170, y: 172 } },
-        { label: `${(target * 0.75).toFixed(1)}k`, pos: { x: 50, y: 104 } },
+        { label: 'START', pos: { x: 170, y: 28 } },
+        { label: `${(target * 0.25).toFixed(1)}k`, pos: { x: 298, y: 104 } },
+        { label: `${(target * 0.5).toFixed(1)}k`, pos: { x: 170, y: 178 } },
+        { label: `${(target * 0.75).toFixed(1)}k`, pos: { x: 42, y: 104 } },
       ];
     } else {
       return [
-        { label: '0k', pos: { x: 40, y: 124 } },
-        { label: `${(target * 0.33).toFixed(1)}k`, pos: { x: 126, y: 124 } },
-        { label: `${(target * 0.66).toFixed(1)}k`, pos: { x: 213, y: 124 } },
-        { label: `${target.toFixed(1)}k`, pos: { x: 300, y: 124 } },
+        { label: '0k', pos: { x: 40, y: 126 } },
+        { label: `${(target * 0.33).toFixed(1)}k`, pos: { x: 126, y: 126 } },
+        { label: `${(target * 0.66).toFixed(1)}k`, pos: { x: 213, y: 126 } },
+        { label: `${target.toFixed(1)}k`, pos: { x: 300, y: 126 } },
       ];
     }
   }, [routeMode, targetDistanceKm]);
@@ -84,8 +125,8 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
             OFFLINE {routeMode} TRACK ({targetDistanceKm} KM)
           </Text>
         </View>
-        <Text style={[styles.progressText, { color: colors.primary }]}>
-          {percentText} COMPLETED
+        <Text style={[styles.progressText, { color: isCompleted ? '#00FF66' : colors.primary }]}>
+          {isCompleted ? '★ GOAL COMPLETED' : `${percentText} COMPLETED`}
         </Text>
       </View>
 
@@ -93,7 +134,7 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
       <Svg width="100%" height="180" viewBox="0 0 340 200" style={styles.svgCanvas}>
         <Defs>
           <LinearGradient id="neonGlowGrad" x1="0" y1="0" x2="1" y2="0">
-            <Stop offset="0%" stopColor={colors.primary} stopOpacity="0.8" />
+            <Stop offset="0%" stopColor={colors.primary} stopOpacity="0.85" />
             <Stop offset="100%" stopColor={colors.primaryBright || colors.primary} stopOpacity="1" />
           </LinearGradient>
         </Defs>
@@ -109,38 +150,55 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
         {/* LOOP MODE VECTOR ROUTE */}
         {routeMode === 'LOOP' && (
           <>
-            {/* Outer Track Guide */}
-            <Rect x="50" y="32" width="240" height="136" rx="68" fill="none" stroke="#242430" strokeWidth="12" />
+            {/* Outer Track Guide Bed */}
+            <Path
+              d={LOOP_TRACK_PATH}
+              fill="none"
+              stroke="#1A1A24"
+              strokeWidth="22"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
             {/* Inner Dark Asphalt Lane */}
-            <Rect x="54" y="36" width="232" height="128" rx="64" fill="#0A0A0E" stroke="#121218" strokeWidth="2" />
+            <Path
+              d={LOOP_TRACK_PATH}
+              fill="none"
+              stroke="#0A0A0E"
+              strokeWidth="16"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
             {/* Base Dashed Target Polyline */}
-            <Rect x="60" y="42" width="220" height="116" rx="58" fill="none" stroke="#333344" strokeWidth="4" strokeDasharray="6 4" />
+            <Path
+              d={LOOP_TRACK_PATH}
+              fill="none"
+              stroke="#333344"
+              strokeWidth="3.5"
+              strokeDasharray="6 4"
+            />
             {/* Completed Progress Neon Polyline */}
-            <Rect
-              x="60"
-              y="42"
-              width="220"
-              height="116"
-              rx="58"
+            <Path
+              d={LOOP_TRACK_PATH}
               fill="none"
               stroke="url(#neonGlowGrad)"
               strokeWidth="5"
-              strokeDasharray={`${progressFraction * 620} 620`}
+              strokeDasharray={`${progressFraction * TRACK_PERIMETER} ${TRACK_PERIMETER}`}
               strokeDashoffset="0"
               strokeLinecap="round"
             />
-            {/* Start / Finish Checkered Gate Line */}
-            <Line x1="170" y1="36" x2="170" y2="48" stroke="#FFFFFF" strokeWidth="3" strokeDasharray="2 2" />
+            {/* Start / Finish Checkered Gate Line at (170, 42) */}
+            <Line x1="170" y1="34" x2="170" y2="50" stroke="#FFFFFF" strokeWidth="2.5" strokeDasharray="2 2" />
           </>
         )}
 
         {/* STRAIGHT MODE VECTOR ROUTE */}
         {routeMode === 'STRAIGHT' && (
           <>
-            {/* Outer Track Lane */}
-            <Rect x="30" y="86" width="280" height="28" rx="14" fill="#0A0A0E" stroke="#242430" strokeWidth="2" />
+            {/* Outer Track Lane Bed */}
+            <Line x1="36" y1="100" x2="304" y2="100" stroke="#1A1A24" strokeWidth="22" strokeLinecap="round" />
+            <Line x1="38" y1="100" x2="302" y2="100" stroke="#0A0A0E" strokeWidth="16" strokeLinecap="round" />
             {/* Base Dashed Target Line */}
-            <Line x1="40" y1="100" x2="300" y2="100" stroke="#333344" strokeWidth="4" strokeDasharray="8 6" />
+            <Line x1="40" y1="100" x2="300" y2="100" stroke="#333344" strokeWidth="3.5" strokeDasharray="8 6" />
             {/* Completed Progress Neon Line */}
             <Line
               x1="40"
@@ -152,9 +210,9 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
               strokeLinecap="round"
             />
             {/* Start Gate */}
-            <Circle cx="40" cy="100" r="5" fill="#00FF66" stroke="#FFFFFF" strokeWidth="1.5" />
+            <Circle cx="40" cy="100" r="6" fill="#00FF66" stroke="#FFFFFF" strokeWidth="1.5" />
             {/* Finish Gate */}
-            <Circle cx="300" cy="100" r="5" fill="#FF3B30" stroke="#FFFFFF" strokeWidth="1.5" />
+            <Circle cx="300" cy="100" r="6" fill="#FF3B30" stroke="#FFFFFF" strokeWidth="1.5" />
           </>
         )}
 
@@ -165,7 +223,7 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
             x={m.pos.x}
             y={m.pos.y}
             fill="#8E8E93"
-            fontSize="10"
+            fontSize="9"
             fontWeight="bold"
             textAnchor="middle"
           >
@@ -174,7 +232,7 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
         ))}
 
         {/* Live Glowing Neon Runner Marker */}
-        <Circle cx={runnerPosition.x} cy={runnerPosition.y} r="12" fill={colors.glow || 'rgba(168, 255, 0, 0.4)'} />
+        <Circle cx={runnerPosition.x} cy={runnerPosition.y} r="13" fill={colors.glow || 'rgba(168, 255, 0, 0.35)'} />
         <Circle cx={runnerPosition.x} cy={runnerPosition.y} r="6" fill="#050505" stroke={colors.primary} strokeWidth="2" />
         <Circle cx={runnerPosition.x} cy={runnerPosition.y} r="3" fill={colors.primary} />
       </Svg>
@@ -184,7 +242,10 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
         <View
           style={[
             styles.progressBarFill,
-            { width: `${Math.min(100, Math.round(progressFraction * 100))}%`, backgroundColor: colors.primary },
+            {
+              width: `${Math.min(100, Math.round(progressFraction * 100))}%`,
+              backgroundColor: isCompleted ? '#00FF66' : colors.primary,
+            },
           ]}
         />
       </View>
