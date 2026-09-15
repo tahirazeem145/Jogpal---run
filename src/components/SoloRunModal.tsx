@@ -67,6 +67,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
   const [selectedMode, setSelectedMode] = useState<RunSubtype>(activeRunSubtype || 'SOLO');
   const [selectedTargetKm, setSelectedTargetKm] = useState<number>(5);
   const [selectedRouteMode, setSelectedRouteMode] = useState<OfflineRouteMode>('LOOP');
+  const [isFullScreenMap, setIsFullScreenMap] = useState<boolean>(false);
 
   React.useEffect(() => {
     if (activeRunSubtype) {
@@ -100,6 +101,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
             text: 'Exit & Discard',
             style: 'destructive',
             onPress: () => {
+              setIsFullScreenMap(false);
               cancelRun();
               onClose();
             },
@@ -107,6 +109,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
         ]
       );
     } else {
+      setIsFullScreenMap(false);
       resetState();
       onClose();
     }
@@ -120,10 +123,12 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
   };
 
   const handleSaveAndDone = async () => {
+    setIsFullScreenMap(false);
     await saveRun();
   };
 
   const handleFinishDone = () => {
+    setIsFullScreenMap(false);
     resetState();
     onClose();
   };
@@ -156,17 +161,19 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
       transparent={false}
       onRequestClose={handleClose}
     >
-      <View style={[styles.rootContainer, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: colors.background }]}>
+      <View style={[styles.rootContainer, { paddingTop: isFullScreenMap ? 0 : insets.top, paddingBottom: isFullScreenMap ? 0 : insets.bottom, backgroundColor: colors.background }]}>
         {/* Header Bar */}
-        <View style={[styles.headerBar, { borderBottomColor: colors.cardBorder }]}>
-          <TouchableOpacity onPress={handleClose} style={styles.closeButton} activeOpacity={0.7}>
-            <Feather name="x" size={24} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-            {activeRunTitle || 'SOLO RUN'}
-          </Text>
-          <View style={{ width: 40 }} />
-        </View>
+        {!isFullScreenMap && (
+          <View style={[styles.headerBar, { borderBottomColor: colors.cardBorder }]}>
+            <TouchableOpacity onPress={handleClose} style={styles.closeButton} activeOpacity={0.7}>
+              <Feather name="x" size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
+              {activeRunTitle || 'SOLO RUN'}
+            </Text>
+            <View style={{ width: 40 }} />
+          </View>
+        )}
 
         {/* --- STATE 1: ERROR --- */}
         {runState === 'ERROR' && (
@@ -426,157 +433,15 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
 
         {/* --- UNIFIED LIVE RUN SESSION (COUNTDOWN, ACTIVE, PAUSED) --- */}
         {(runState === 'COUNTDOWN' || runState === 'ACTIVE' || runState === 'PAUSED') && (
-          <View style={styles.activeContainer}>
-            {/* Paused Badge */}
-            {runState === 'PAUSED' && (
-              <View style={styles.pausedBadge}>
-                <Text style={styles.pausedBadgeText}>RUN PAUSED</Text>
-              </View>
-            )}
-
-            {/* Active Mode HUD Banner */}
-            <View style={[styles.modeHudBanner, { borderColor: colors.primary }]}>
-              <Ionicons
-                name={
-                  activeRunSubtype === 'DUO'
-                    ? 'people'
-                    : activeRunSubtype === 'GROUP'
-                    ? 'globe-outline'
-                    : activeRunSubtype === 'OFFLINE'
-                    ? 'flag'
-                    : 'flash'
-                }
-                size={14}
-                color={colors.primary}
-              />
-              <Text style={[styles.modeHudText, { color: colors.primary }]}>
-                {activeRunSubtype === 'DUO'
-                  ? 'DUO SYNC • 2 RUNNERS PACING'
-                  : activeRunSubtype === 'GROUP'
-                  ? 'SQUAD FORMATION • 4 RUNNERS PACING'
-                  : activeRunSubtype === 'OFFLINE'
-                  ? `OFFLINE TARGET • ${offlineConfig?.targetDistanceKm || 5}KM (${offlineConfig?.routeMode || 'LOOP'})`
-                  : 'SOLO RUN • LIVE SATELLITE GPS'}
-              </Text>
-            </View>
-
-            {/* Top Stat: Distance */}
-            <View style={styles.distanceBlock}>
-              <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>
-                {formatDistanceDisplay(metrics.distanceKm).value}
-              </Text>
-              <Text style={[styles.distanceUnit, { color: colors.primary }]}>
-                {formatDistanceDisplay(metrics.distanceKm).unit}
-              </Text>
-
-              {/* OFFLINE Target Progress & Completion Badge */}
-              {offlineConfig?.isOfflineMode && offlineConfig.targetDistanceKm && (
-                <View
-                  style={[
-                    styles.targetBadge,
-                    metrics.distanceKm >= offlineConfig.targetDistanceKm && styles.targetBadgeAchieved,
-                  ]}
-                >
-                  <Text style={styles.targetBadgeText}>
-                    {metrics.distanceKm >= offlineConfig.targetDistanceKm
-                      ? `🎉 TARGET COMPLETED (${metrics.distanceKm.toFixed(2)} / ${offlineConfig.targetDistanceKm} KM)`
-                      : `TARGET: ${metrics.distanceKm.toFixed(2)} / ${offlineConfig.targetDistanceKm} KM (${Math.min(
-                          100,
-                          Math.round((metrics.distanceKm / (offlineConfig.targetDistanceKm || 1)) * 100)
-                        )}%)`}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            {/* Group Squad Live Leaderboard Bar (Firebase Group Session) */}
-            {groupSession && (
-              <View style={[styles.squadActiveBar, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <View style={styles.squadActiveHeader}>
-                  <Ionicons name="people" size={13} color={colors.primary} />
-                  <Text style={[styles.squadActiveTitle, { color: colors.primary }]}>
-                    {groupSession.title?.toUpperCase() || 'SQUAD RUN'} • {effectivePartnerRunners.length + 1} RUNNERS
-                  </Text>
-                </View>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.squadScroll}>
-                  {/* Local Runner */}
-                  <View style={[styles.runnerPill, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
-                    <Text style={[styles.runnerPillName, { color: colors.primary }]}>YOU</Text>
-                    <Text style={[styles.runnerPillDist, { color: colors.textPrimary }]}>
-                      {metrics.distanceKm.toFixed(2)} km
-                    </Text>
-                    <Text style={[styles.runnerPillPace, { color: colors.textSecondary }]}>
-                      {metrics.currentPace}
-                    </Text>
-                  </View>
-
-                  {/* Other Squad Runners */}
-                  {effectivePartnerRunners.map((runner) => (
-                    <View key={runner.id} style={[styles.runnerPill, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
-                      <Text style={[styles.runnerPillName, { color: colors.textPrimary }]} numberOfLines={1}>
-                        {runner.name.split(' ')[0]}
-                      </Text>
-                      <Text style={[styles.runnerPillDist, { color: colors.primary }]}>
-                        {runner.distanceMeters !== undefined ? `${(runner.distanceMeters / 1000).toFixed(2)} km` : '0.00 km'}
-                      </Text>
-                      <Text style={[styles.runnerPillPace, { color: colors.textSecondary }]}>
-                        {runner.pace || '--:--'}
-                      </Text>
-                    </View>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-
-            {/* Active Duo Partner Pill Indicator (Firebase Duo Session) */}
-            {!groupSession && activePartner && (
-              <View
-                style={[
-                  styles.partnerActivePill,
-                  {
-                    backgroundColor: colors.crewAddBg,
-                    borderColor: colors.primary,
-                  },
-                ]}
-              >
-                <Ionicons name="people" size={14} color={colors.primary} />
-                <Text style={[styles.partnerActivePillText, { color: colors.textPrimary }]}>
-                  DUO PARTNER:{' '}
-                  <Text style={{ color: colors.primary, fontWeight: '800' }}>
-                    {activePartner.name.toUpperCase()}
-                  </Text>
-                </Text>
-              </View>
-            )}
-
-            {/* Partner Pacing Mini-Card for simulated DUO */}
-            {!groupSession && !activePartner && activeRunSubtype === 'DUO' && effectivePartnerRunners.length > 0 && (
-              <View style={[styles.partnerPacingBar, { borderColor: colors.cardBorder }]}>
-                <Ionicons name="people" size={13} color={colors.primary} />
-                <Text style={[styles.partnerPacingText, { color: colors.textSecondary }]}>
-                  Partner <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{effectivePartnerRunners[0].name}</Text> • {effectivePartnerRunners[0].distanceMeters}m away • {effectivePartnerRunners[0].pace}
-                </Text>
-              </View>
-            )}
-
-            {/* Partner Pacing Mini-Card for simulated GROUP */}
-            {!groupSession && !activePartner && activeRunSubtype === 'GROUP' && effectivePartnerRunners.length > 0 && (
-              <View style={[styles.partnerPacingBar, { borderColor: colors.cardBorder }]}>
-                <Ionicons name="globe-outline" size={13} color={colors.primary} />
-                <Text style={[styles.partnerPacingText, { color: colors.textSecondary }]}>
-                  Squad Crew: <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{effectivePartnerRunners.map((p) => p.name).join(', ')}</Text> • Synced
-                </Text>
-              </View>
-            )}
-
-            {/* Persistent Live Map Component with Countdown Overlay */}
-            <View style={styles.mapWrapper}>
+          isFullScreenMap ? (
+            <View style={StyleSheet.absoluteFill}>
+              {/* Edge-to-Edge Fullscreen Map */}
               {offlineConfig?.isOfflineMode ? (
                 <OfflineSyntheticMap
                   currentDistanceKm={metrics.distanceKm}
                   targetDistanceKm={offlineConfig.targetDistanceKm}
                   routeMode={offlineConfig.routeMode}
-                  style={styles.liveMapFill}
+                  style={StyleSheet.absoluteFill}
                 />
               ) : (
                 <JogpalMap
@@ -584,7 +449,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   actualRoute={actualRoute}
                   plannedRoute={plannedRoute}
                   partnerRunners={effectivePartnerRunners}
-                  style={styles.liveMapFill}
+                  style={StyleSheet.absoluteFill}
                   interactive={runState !== 'COUNTDOWN'}
                 />
               )}
@@ -596,179 +461,646 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   <Text style={[styles.countdownNumber, { color: colors.primary }]}>{countdownValue}</Text>
                 </View>
               )}
+
+              {/* TOP FLOATING HUD OVERLAY */}
+              <View style={[styles.fullScreenTopHud, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+                {/* Top Action & Mode Row */}
+                <View style={styles.fullScreenTopRow}>
+                  {/* Collapse / Back to Standard View */}
+                  <TouchableOpacity
+                    style={[styles.fullScreenCollapseBtn, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: colors.cardBorder }]}
+                    onPress={() => setIsFullScreenMap(false)}
+                    activeOpacity={0.85}
+                  >
+                    <Feather name="minimize-2" size={14} color={colors.primary} />
+                    <Text style={[styles.fullScreenCollapseText, { color: colors.textPrimary }]}>COLLAPSE</Text>
+                  </TouchableOpacity>
+
+                  {/* Mode Badge */}
+                  <View style={[styles.fullScreenModeBadge, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: colors.primary }]}>
+                    <Ionicons
+                      name={
+                        activeRunSubtype === 'DUO'
+                          ? 'people'
+                          : activeRunSubtype === 'GROUP'
+                          ? 'globe-outline'
+                          : activeRunSubtype === 'OFFLINE'
+                          ? 'flag'
+                          : 'flash'
+                      }
+                      size={13}
+                      color={colors.primary}
+                    />
+                    <Text style={[styles.fullScreenModeText, { color: colors.primary }]}>
+                      {activeRunSubtype || selectedMode}
+                    </Text>
+                  </View>
+
+                  {/* GPS Status Indicator */}
+                  <View style={[styles.fullScreenGpsBadge, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: colors.cardBorder }]}>
+                    <View style={[styles.gpsDot, { backgroundColor: (metrics.gpsStatus === 'GOOD' || metrics.gpsStatus === 'READY') ? colors.primary : '#FFB800' }]} />
+                    <Text style={[styles.fullScreenGpsText, { color: colors.textSecondary }]}>
+                      {metrics.gpsStatus.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Paused HUD Alert Banner */}
+                {runState === 'PAUSED' && (
+                  <View style={styles.fullScreenPausedBadge}>
+                    <Ionicons name="pause" size={12} color="#FFD700" />
+                    <Text style={styles.pausedBadgeText}>RUN PAUSED</Text>
+                  </View>
+                )}
+
+                {/* Floating Hero Distance Card */}
+                <View style={[styles.fullScreenHeroDistanceCard, { backgroundColor: 'rgba(12, 12, 18, 0.92)', borderColor: colors.cardBorder }]}>
+                  <View style={styles.fullScreenDistanceRow}>
+                    <Text style={[styles.fullScreenDistanceNumber, { color: colors.textPrimary }]}>
+                      {formatDistanceDisplay(metrics.distanceKm).value}
+                    </Text>
+                    <Text style={[styles.fullScreenDistanceUnit, { color: colors.primary }]}>
+                      {formatDistanceDisplay(metrics.distanceKm).unit}
+                    </Text>
+                  </View>
+
+                  {/* OFFLINE Target Progress in Fullscreen */}
+                  {offlineConfig?.isOfflineMode && offlineConfig.targetDistanceKm && (
+                    <View
+                      style={[
+                        styles.targetBadge,
+                        metrics.distanceKm >= offlineConfig.targetDistanceKm && styles.targetBadgeAchieved,
+                        { marginTop: 4 },
+                      ]}
+                    >
+                      <Text style={styles.targetBadgeText}>
+                        {metrics.distanceKm >= offlineConfig.targetDistanceKm
+                          ? `🎉 TARGET COMPLETED (${metrics.distanceKm.toFixed(2)} / ${offlineConfig.targetDistanceKm} KM)`
+                          : `TARGET: ${metrics.distanceKm.toFixed(2)} / ${offlineConfig.targetDistanceKm} KM (${Math.min(
+                              100,
+                              Math.round((metrics.distanceKm / (offlineConfig.targetDistanceKm || 1)) * 100)
+                            )}%)`}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Squad Active Bar in Fullscreen */}
+                {groupSession && (
+                  <View style={[styles.fullScreenSquadBar, { backgroundColor: 'rgba(14, 14, 20, 0.94)', borderColor: colors.cardBorder }]}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.squadScroll}>
+                      <View style={[styles.runnerPill, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
+                        <Text style={[styles.runnerPillName, { color: colors.primary }]}>YOU</Text>
+                        <Text style={[styles.runnerPillDist, { color: colors.textPrimary }]}>{metrics.distanceKm.toFixed(2)} km</Text>
+                      </View>
+                      {effectivePartnerRunners.map((runner) => (
+                        <View key={runner.id} style={[styles.runnerPill, { backgroundColor: 'rgba(25, 25, 35, 0.9)', borderColor: colors.cardBorder }]}>
+                          <Text style={[styles.runnerPillName, { color: colors.textPrimary }]} numberOfLines={1}>{runner.name.split(' ')[0]}</Text>
+                          <Text style={[styles.runnerPillDist, { color: colors.primary }]}>
+                            {runner.distanceMeters !== undefined ? `${(runner.distanceMeters / 1000).toFixed(2)} km` : '0.00 km'}
+                          </Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
+
+                {/* Duo Active Pill in Fullscreen */}
+                {!groupSession && activePartner && (
+                  <View style={[styles.partnerActivePill, { backgroundColor: 'rgba(14, 14, 20, 0.94)', borderColor: colors.primary, marginTop: 4 }]}>
+                    <Ionicons name="people" size={13} color={colors.primary} />
+                    <Text style={[styles.partnerActivePillText, { color: colors.textPrimary }]}>
+                      DUO: <Text style={{ color: colors.primary, fontWeight: '800' }}>{activePartner.name.toUpperCase()}</Text>
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* BOTTOM FLOATING HUD OVERLAY */}
+              <View style={[styles.fullScreenBottomHud, { paddingBottom: insets.bottom + 14 }]} pointerEvents="box-none">
+                {/* Floating Translucent Telemetry Card */}
+                <View style={[styles.fullScreenTelemetryCard, { backgroundColor: 'rgba(12, 12, 18, 0.94)', borderColor: colors.cardBorder }]}>
+                  <View style={styles.telemetryRow}>
+                    <View style={styles.telemetryCol}>
+                      <Text style={[styles.telemetryValue, { color: colors.textPrimary }]}>{formatDuration(metrics.durationSeconds)}</Text>
+                      <Text style={[styles.telemetryLabel, { color: colors.textSecondary }]}>TIME</Text>
+                    </View>
+                    <View style={[styles.telemetryDivider, { backgroundColor: colors.cardBorder }]} />
+                    <View style={styles.telemetryCol}>
+                      <Text style={[styles.telemetryValue, { color: colors.textPrimary }]}>
+                        {runState === 'PAUSED' ? metrics.avgPace : metrics.currentPace}
+                      </Text>
+                      <Text style={[styles.telemetryLabel, { color: colors.textSecondary }]}>
+                        {runState === 'PAUSED' ? 'AVG PACE' : 'PACE'}
+                      </Text>
+                    </View>
+                    <View style={[styles.telemetryDivider, { backgroundColor: colors.cardBorder }]} />
+                    <View style={styles.telemetryCol}>
+                      <Text style={[styles.telemetryValue, { color: colors.textPrimary }]}>
+                        {metrics.currentSpeedKmH !== null ? `${metrics.currentSpeedKmH}` : '0.0'}
+                      </Text>
+                      <Text style={[styles.telemetryLabel, { color: colors.textSecondary }]}>KM/H</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Floating Dynamic Run Controls */}
+                {runState === 'ACTIVE' && (
+                  <TouchableOpacity
+                    style={[styles.pauseButton, { backgroundColor: colors.primary, marginTop: 10 }]}
+                    onPress={pauseRun}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="pause" size={22} color="#000000" />
+                    <Text style={styles.pauseButtonText}>PAUSE RUN</Text>
+                  </TouchableOpacity>
+                )}
+
+                {runState === 'PAUSED' && (
+                  <View style={[styles.pausedControlsRow, { marginTop: 10 }]}>
+                    <TouchableOpacity
+                      style={[styles.resumeBtn, { backgroundColor: colors.primary }]}
+                      onPress={resumeRun}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="play" size={20} color="#000000" />
+                      <Text style={styles.resumeBtnText}>RESUME</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={styles.finishBtn}
+                      onPress={finishRun}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name="stop" size={20} color="#FFFFFF" />
+                      <Text style={styles.finishBtnText}>FINISH</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {runState === 'COUNTDOWN' && (
+                  <View style={[styles.pauseButton, { backgroundColor: '#1A1A22', opacity: 0.7, marginTop: 10 }]}>
+                    <Text style={[styles.pauseButtonText, { color: colors.textSecondary }]}>STARTING SESSION...</Text>
+                  </View>
+                )}
+              </View>
             </View>
+          ) : (
+            <View style={styles.activeContainer}>
+              {/* Paused Badge */}
+              {runState === 'PAUSED' && (
+                <View style={styles.pausedBadge}>
+                  <Text style={styles.pausedBadgeText}>RUN PAUSED</Text>
+                </View>
+              )}
 
-            {/* Telemetry Grid Card */}
-            <NeonCard style={styles.telemetryCard} contentStyle={styles.telemetryContent}>
-              <View style={styles.telemetryRow}>
-                <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>{formatDuration(metrics.durationSeconds)}</Text>
-                  <Text style={styles.telemetryLabel}>TIME</Text>
-                </View>
-                <View style={styles.telemetryDivider} />
-                <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>
-                    {runState === 'PAUSED' ? metrics.avgPace : metrics.currentPace}
-                  </Text>
-                  <Text style={styles.telemetryLabel}>
-                    {runState === 'PAUSED' ? 'AVG PACE' : 'PACE'}
-                  </Text>
-                </View>
+              {/* Active Mode HUD Banner */}
+              <View style={[styles.modeHudBanner, { borderColor: colors.primary }]}>
+                <Ionicons
+                  name={
+                    activeRunSubtype === 'DUO'
+                      ? 'people'
+                      : activeRunSubtype === 'GROUP'
+                      ? 'globe-outline'
+                      : activeRunSubtype === 'OFFLINE'
+                      ? 'flag'
+                      : 'flash'
+                  }
+                  size={14}
+                  color={colors.primary}
+                />
+                <Text style={[styles.modeHudText, { color: colors.primary }]}>
+                  {activeRunSubtype === 'DUO'
+                    ? 'DUO SYNC • 2 RUNNERS PACING'
+                    : activeRunSubtype === 'GROUP'
+                    ? 'SQUAD FORMATION • 4 RUNNERS PACING'
+                    : activeRunSubtype === 'OFFLINE'
+                    ? `OFFLINE TARGET • ${offlineConfig?.targetDistanceKm || 5}KM (${offlineConfig?.routeMode || 'LOOP'})`
+                    : 'SOLO RUN • LIVE SATELLITE GPS'}
+                </Text>
               </View>
 
-              <View style={styles.horizontalDivider} />
+              {/* Top Stat: Distance */}
+              <View style={styles.distanceBlock}>
+                <Text style={[styles.distanceNumber, { color: colors.textPrimary }]}>
+                  {formatDistanceDisplay(metrics.distanceKm).value}
+                </Text>
+                <Text style={[styles.distanceUnit, { color: colors.primary }]}>
+                  {formatDistanceDisplay(metrics.distanceKm).unit}
+                </Text>
 
-              <View style={styles.telemetryRow}>
-                <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>
-                    {metrics.currentSpeedKmH !== null ? `${metrics.currentSpeedKmH}` : '0.0'}
-                  </Text>
-                  <Text style={styles.telemetryLabel}>SPEED (KM/H)</Text>
-                </View>
-                <View style={styles.telemetryDivider} />
-                <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>{metrics.gpsStatus}</Text>
-                  <Text style={styles.telemetryLabel}>GPS STATUS</Text>
-                </View>
+                {/* OFFLINE Target Progress & Completion Badge */}
+                {offlineConfig?.isOfflineMode && offlineConfig.targetDistanceKm && (
+                  <View
+                    style={[
+                      styles.targetBadge,
+                      metrics.distanceKm >= offlineConfig.targetDistanceKm && styles.targetBadgeAchieved,
+                    ]}
+                  >
+                    <Text style={styles.targetBadgeText}>
+                      {metrics.distanceKm >= offlineConfig.targetDistanceKm
+                        ? `🎉 TARGET COMPLETED (${metrics.distanceKm.toFixed(2)} / ${offlineConfig.targetDistanceKm} KM)`
+                        : `TARGET: ${metrics.distanceKm.toFixed(2)} / ${offlineConfig.targetDistanceKm} KM (${Math.min(
+                            100,
+                            Math.round((metrics.distanceKm / (offlineConfig.targetDistanceKm || 1)) * 100)
+                          )}%)`}
+                    </Text>
+                  </View>
+                )}
               </View>
-            </NeonCard>
 
-            {/* Dynamic Controls based on runState */}
-            {runState === 'ACTIVE' && (
-              <TouchableOpacity
-                style={[styles.pauseButton, { backgroundColor: colors.primary }]}
-                onPress={pauseRun}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="pause" size={24} color="#000000" />
-                <Text style={styles.pauseButtonText}>PAUSE RUN</Text>
-              </TouchableOpacity>
-            )}
+              {/* Group Squad Live Leaderboard Bar (Firebase Group Session) */}
+              {groupSession && (
+                <View style={[styles.squadActiveBar, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                  <View style={styles.squadActiveHeader}>
+                    <Ionicons name="people" size={13} color={colors.primary} />
+                    <Text style={[styles.squadActiveTitle, { color: colors.primary }]}>
+                      {groupSession.title?.toUpperCase() || 'SQUAD RUN'} • {effectivePartnerRunners.length + 1} RUNNERS
+                    </Text>
+                  </View>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.squadScroll}>
+                    {/* Local Runner */}
+                    <View style={[styles.runnerPill, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
+                      <Text style={[styles.runnerPillName, { color: colors.primary }]}>YOU</Text>
+                      <Text style={[styles.runnerPillDist, { color: colors.textPrimary }]}>
+                        {metrics.distanceKm.toFixed(2)} km
+                      </Text>
+                      <Text style={[styles.runnerPillPace, { color: colors.textSecondary }]}>
+                        {metrics.currentPace}
+                      </Text>
+                    </View>
 
-            {runState === 'PAUSED' && (
-              <View style={styles.pausedControlsRow}>
-                <TouchableOpacity
-                  style={[styles.resumeBtn, { backgroundColor: colors.primary }]}
-                  onPress={resumeRun}
-                  activeOpacity={0.85}
+                    {/* Other Squad Runners */}
+                    {effectivePartnerRunners.map((runner) => (
+                      <View key={runner.id} style={[styles.runnerPill, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+                        <Text style={[styles.runnerPillName, { color: colors.textPrimary }]} numberOfLines={1}>
+                          {runner.name.split(' ')[0]}
+                        </Text>
+                        <Text style={[styles.runnerPillDist, { color: colors.primary }]}>
+                          {runner.distanceMeters !== undefined ? `${(runner.distanceMeters / 1000).toFixed(2)} km` : '0.00 km'}
+                        </Text>
+                        <Text style={[styles.runnerPillPace, { color: colors.textSecondary }]}>
+                          {runner.pace || '--:--'}
+                        </Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+
+              {/* Active Duo Partner Pill Indicator (Firebase Duo Session) */}
+              {!groupSession && activePartner && (
+                <View
+                  style={[
+                    styles.partnerActivePill,
+                    {
+                      backgroundColor: colors.crewAddBg,
+                      borderColor: colors.primary,
+                    },
+                  ]}
                 >
-                  <Ionicons name="play" size={20} color="#000000" />
-                  <Text style={styles.resumeBtnText}>RESUME</Text>
+                  <Ionicons name="people" size={14} color={colors.primary} />
+                  <Text style={[styles.partnerActivePillText, { color: colors.textPrimary }]}>
+                    DUO PARTNER:{' '}
+                    <Text style={{ color: colors.primary, fontWeight: '800' }}>
+                      {activePartner.name.toUpperCase()}
+                    </Text>
+                  </Text>
+                </View>
+              )}
+
+              {/* Partner Pacing Mini-Card for simulated DUO */}
+              {!groupSession && !activePartner && activeRunSubtype === 'DUO' && effectivePartnerRunners.length > 0 && (
+                <View style={[styles.partnerPacingBar, { borderColor: colors.cardBorder }]}>
+                  <Ionicons name="people" size={13} color={colors.primary} />
+                  <Text style={[styles.partnerPacingText, { color: colors.textSecondary }]}>
+                    Partner <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{effectivePartnerRunners[0].name}</Text> • {effectivePartnerRunners[0].distanceMeters}m away • {effectivePartnerRunners[0].pace}
+                  </Text>
+                </View>
+              )}
+
+              {/* Partner Pacing Mini-Card for simulated GROUP */}
+              {!groupSession && !activePartner && activeRunSubtype === 'GROUP' && effectivePartnerRunners.length > 0 && (
+                <View style={[styles.partnerPacingBar, { borderColor: colors.cardBorder }]}>
+                  <Ionicons name="globe-outline" size={13} color={colors.primary} />
+                  <Text style={[styles.partnerPacingText, { color: colors.textSecondary }]}>
+                    Squad Crew: <Text style={{ color: colors.textPrimary, fontWeight: '800' }}>{effectivePartnerRunners.map((p) => p.name).join(', ')}</Text> • Synced
+                  </Text>
+                </View>
+              )}
+
+              {/* Persistent Live Map Component with Full Map Button & Countdown Overlay */}
+              <View style={styles.mapWrapper}>
+                {offlineConfig?.isOfflineMode ? (
+                  <OfflineSyntheticMap
+                    currentDistanceKm={metrics.distanceKm}
+                    targetDistanceKm={offlineConfig.targetDistanceKm}
+                    routeMode={offlineConfig.routeMode}
+                    style={styles.liveMapFill}
+                  />
+                ) : (
+                  <JogpalMap
+                    currentLocation={currentLocation}
+                    actualRoute={actualRoute}
+                    plannedRoute={plannedRoute}
+                    partnerRunners={effectivePartnerRunners}
+                    style={styles.liveMapFill}
+                    interactive={runState !== 'COUNTDOWN'}
+                  />
+                )}
+
+                {/* Full Screen Expand Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.expandMapButton,
+                    {
+                      backgroundColor: 'rgba(12, 12, 18, 0.9)',
+                      borderColor: colors.cardBorder,
+                    },
+                  ]}
+                  onPress={() => setIsFullScreenMap(true)}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Full Screen Map"
+                >
+                  <Feather name="maximize-2" size={13} color={colors.primary} />
+                  <Text style={[styles.expandMapText, { color: colors.primary }]}>FULL MAP</Text>
                 </TouchableOpacity>
 
+                {/* Seamless Countdown Overlay on Top of Initialized Map */}
+                {runState === 'COUNTDOWN' && (
+                  <View style={styles.countdownOverlay}>
+                    <Text style={[styles.countdownTitle, { color: colors.textSecondary }]}>GET READY</Text>
+                    <Text style={[styles.countdownNumber, { color: colors.primary }]}>{countdownValue}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Telemetry Grid Card */}
+              <NeonCard style={styles.telemetryCard} contentStyle={styles.telemetryContent}>
+                <View style={styles.telemetryRow}>
+                  <View style={styles.telemetryCol}>
+                    <Text style={styles.telemetryValue}>{formatDuration(metrics.durationSeconds)}</Text>
+                    <Text style={styles.telemetryLabel}>TIME</Text>
+                  </View>
+                  <View style={styles.telemetryDivider} />
+                  <View style={styles.telemetryCol}>
+                    <Text style={styles.telemetryValue}>
+                      {runState === 'PAUSED' ? metrics.avgPace : metrics.currentPace}
+                    </Text>
+                    <Text style={styles.telemetryLabel}>
+                      {runState === 'PAUSED' ? 'AVG PACE' : 'PACE'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.horizontalDivider} />
+
+                <View style={styles.telemetryRow}>
+                  <View style={styles.telemetryCol}>
+                    <Text style={styles.telemetryValue}>
+                      {metrics.currentSpeedKmH !== null ? `${metrics.currentSpeedKmH}` : '0.0'}
+                    </Text>
+                    <Text style={styles.telemetryLabel}>SPEED (KM/H)</Text>
+                  </View>
+                  <View style={styles.telemetryDivider} />
+                  <View style={styles.telemetryCol}>
+                    <Text style={styles.telemetryValue}>{metrics.gpsStatus}</Text>
+                    <Text style={styles.telemetryLabel}>GPS STATUS</Text>
+                  </View>
+                </View>
+              </NeonCard>
+
+              {/* Dynamic Controls based on runState */}
+              {runState === 'ACTIVE' && (
                 <TouchableOpacity
-                  style={styles.finishBtn}
-                  onPress={finishRun}
+                  style={[styles.pauseButton, { backgroundColor: colors.primary }]}
+                  onPress={pauseRun}
                   activeOpacity={0.85}
                 >
-                  <Ionicons name="stop" size={20} color="#FFFFFF" />
-                  <Text style={styles.finishBtnText}>FINISH</Text>
+                  <Ionicons name="pause" size={24} color="#000000" />
+                  <Text style={styles.pauseButtonText}>PAUSE RUN</Text>
                 </TouchableOpacity>
-              </View>
-            )}
+              )}
 
-            {runState === 'COUNTDOWN' && (
-              <View style={[styles.pauseButton, { backgroundColor: '#1A1A22', opacity: 0.7 }]}>
-                <Text style={[styles.pauseButtonText, { color: colors.textSecondary }]}>STARTING SESSION...</Text>
-              </View>
-            )}
-          </View>
+              {runState === 'PAUSED' && (
+                <View style={styles.pausedControlsRow}>
+                  <TouchableOpacity
+                    style={[styles.resumeBtn, { backgroundColor: colors.primary }]}
+                    onPress={resumeRun}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="play" size={20} color="#000000" />
+                    <Text style={styles.resumeBtnText}>RESUME</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={styles.finishBtn}
+                    onPress={finishRun}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name="stop" size={20} color="#FFFFFF" />
+                    <Text style={styles.finishBtnText}>FINISH</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {runState === 'COUNTDOWN' && (
+                <View style={[styles.pauseButton, { backgroundColor: '#1A1A22', opacity: 0.7 }]}>
+                  <Text style={[styles.pauseButtonText, { color: colors.textSecondary }]}>STARTING SESSION...</Text>
+                </View>
+              )}
+            </View>
+          )
         )}
 
         {/* --- STATE 7: COMPLETING & SUMMARY --- */}
         {(runState === 'COMPLETING' || runState === 'SAVING' || runState === 'SAVED' || runState === 'SYNC_PENDING') && lastRunSummary && (
-          <View style={styles.activeContainer}>
-            <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>RUN SUMMARY</Text>
-            <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>
-              {lastRunSummary.subtype === 'DUO'
-                ? 'DUO RUN SESSION COMPLETED WITH PARTNER'
-                : lastRunSummary.subtype === 'GROUP'
-                ? 'SQUAD RUN SESSION COMPLETED WITH CREW'
-                : lastRunSummary.subtype === 'OFFLINE'
-                ? 'OFFLINE TARGET COMPLETED'
-                : 'SOLO RUN SESSION COMPLETED'}
-            </Text>
+          isFullScreenMap ? (
+            <View style={StyleSheet.absoluteFill}>
+              {/* Fullscreen Summary Map */}
+              {offlineConfig?.isOfflineMode || (!lastRunSummary.actualRoute?.length && !actualRoute.length) ? (
+                <OfflineSyntheticMap
+                  currentDistanceKm={lastRunSummary.distanceKm}
+                  targetDistanceKm={offlineConfig?.targetDistanceKm || lastRunSummary.distanceKm || 1}
+                  routeMode={offlineConfig?.routeMode || 'LOOP'}
+                  style={StyleSheet.absoluteFill}
+                />
+              ) : (
+                <JogpalMap
+                  actualRoute={lastRunSummary.actualRoute || actualRoute}
+                  plannedRoute={lastRunSummary.plannedRoute || plannedRoute}
+                  partnerRunners={partnerRunners}
+                  style={StyleSheet.absoluteFill}
+                  interactive={true}
+                  showStartFinishMarkers={true}
+                  fitRouteOnLoad={true}
+                />
+              )}
 
-            {/* Completed Route Map View */}
-            {offlineConfig?.isOfflineMode || (!lastRunSummary.actualRoute?.length && !actualRoute.length) ? (
-              <OfflineSyntheticMap
-                currentDistanceKm={lastRunSummary.distanceKm}
-                targetDistanceKm={offlineConfig?.targetDistanceKm || lastRunSummary.distanceKm || 1}
-                routeMode={offlineConfig?.routeMode || 'LOOP'}
-                style={styles.summaryMap}
-              />
-            ) : (
-              <JogpalMap
-                actualRoute={lastRunSummary.actualRoute || actualRoute}
-                plannedRoute={lastRunSummary.plannedRoute || plannedRoute}
-                partnerRunners={partnerRunners}
-                style={styles.summaryMap}
-                interactive={true}
-                showStartFinishMarkers={true}
-                fitRouteOnLoad={true}
-              />
-            )}
-
-            <NeonCard style={styles.summaryCard} contentStyle={styles.summaryContent}>
-              <View style={styles.summaryTopRow}>
-                <View>
-                  <Text style={styles.summaryTitle}>
-                    {lastRunSummary.title || (offlineConfig?.isOfflineMode ? `OFFLINE ${offlineConfig.targetDistanceKm}KM RUN` : 'SOLO RUN')}
-                  </Text>
-                  <Text style={[styles.summarySubtype, { color: colors.primary }]}>
-                    {lastRunSummary.subtype === 'DUO'
-                      ? 'DUO SYNC RUN'
-                      : lastRunSummary.subtype === 'GROUP'
-                      ? 'SQUAD CREW RUN'
-                      : lastRunSummary.subtype === 'OFFLINE'
-                      ? 'OFFLINE TARGET RUN'
-                      : 'SOLO RUN'}
-                  </Text>
-                </View>
-                <View style={styles.statusBadge}>
-                  <Text style={[styles.statusBadgeText, { color: colors.primary }]}>
-                    {runState === 'SAVED' ? 'SYNCED TO FIREBASE' : runState === 'SYNC_PENDING' ? 'SAVED LOCALLY' : 'COMPLETE'}
-                  </Text>
+              {/* TOP HUD */}
+              <View style={[styles.fullScreenTopHud, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+                <View style={styles.fullScreenTopRow}>
+                  <TouchableOpacity
+                    style={[styles.fullScreenCollapseBtn, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: colors.cardBorder }]}
+                    onPress={() => setIsFullScreenMap(false)}
+                    activeOpacity={0.85}
+                  >
+                    <Feather name="minimize-2" size={14} color={colors.primary} />
+                    <Text style={[styles.fullScreenCollapseText, { color: colors.textPrimary }]}>COLLAPSE</Text>
+                  </TouchableOpacity>
+                  <View style={[styles.fullScreenModeBadge, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: colors.primary }]}>
+                    <Text style={[styles.fullScreenModeText, { color: colors.primary }]}>ROUTE REVIEW</Text>
+                  </View>
                 </View>
               </View>
 
-              <View style={styles.telemetryRow}>
-                <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>{formatDistanceDisplay(lastRunSummary.distanceKm).value}</Text>
-                  <Text style={styles.telemetryLabel}>{formatDistanceDisplay(lastRunSummary.distanceKm).unit}</Text>
+              {/* BOTTOM HUD */}
+              <View style={[styles.fullScreenBottomHud, { paddingBottom: insets.bottom + 14 }]} pointerEvents="box-none">
+                <View style={[styles.fullScreenTelemetryCard, { backgroundColor: 'rgba(12, 12, 18, 0.94)', borderColor: colors.cardBorder }]}>
+                  <View style={styles.telemetryRow}>
+                    <View style={styles.telemetryCol}>
+                      <Text style={[styles.telemetryValue, { color: colors.textPrimary }]}>{formatDistanceDisplay(lastRunSummary.distanceKm).value}</Text>
+                      <Text style={[styles.telemetryLabel, { color: colors.textSecondary }]}>{formatDistanceDisplay(lastRunSummary.distanceKm).unit}</Text>
+                    </View>
+                    <View style={[styles.telemetryDivider, { backgroundColor: colors.cardBorder }]} />
+                    <View style={styles.telemetryCol}>
+                      <Text style={[styles.telemetryValue, { color: colors.textPrimary }]}>{formatDuration(lastRunSummary.durationSeconds)}</Text>
+                      <Text style={[styles.telemetryLabel, { color: colors.textSecondary }]}>TIME</Text>
+                    </View>
+                    <View style={[styles.telemetryDivider, { backgroundColor: colors.cardBorder }]} />
+                    <View style={styles.telemetryCol}>
+                      <Text style={[styles.telemetryValue, { color: colors.textPrimary }]}>{lastRunSummary.pace}</Text>
+                      <Text style={[styles.telemetryLabel, { color: colors.textSecondary }]}>PACE</Text>
+                    </View>
+                  </View>
                 </View>
-                <View style={styles.telemetryDivider} />
-                <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>{formatDuration(lastRunSummary.durationSeconds)}</Text>
-                  <Text style={styles.telemetryLabel}>TIME</Text>
-                </View>
-                <View style={styles.telemetryDivider} />
-                <View style={styles.telemetryCol}>
-                  <Text style={styles.telemetryValue}>{lastRunSummary.pace}</Text>
-                  <Text style={styles.telemetryLabel}>PACE</Text>
-                </View>
+
+                {runState === 'COMPLETING' && (
+                  <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary, marginTop: 10 }]} onPress={handleSaveAndDone} activeOpacity={0.85}>
+                    <Text style={styles.startRunText}>SAVE RUN</Text>
+                  </TouchableOpacity>
+                )}
+
+                {(runState === 'SAVED' || runState === 'SYNC_PENDING') && (
+                  <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary, marginTop: 10 }]} onPress={handleFinishDone} activeOpacity={0.85}>
+                    <Text style={styles.startRunText}>DONE</Text>
+                  </TouchableOpacity>
+                )}
               </View>
-            </NeonCard>
+            </View>
+          ) : (
+            <View style={styles.activeContainer}>
+              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>RUN SUMMARY</Text>
+              <Text style={[styles.stateSubtext, { color: colors.textSecondary }]}>
+                {lastRunSummary.subtype === 'DUO'
+                  ? 'DUO RUN SESSION COMPLETED WITH PARTNER'
+                  : lastRunSummary.subtype === 'GROUP'
+                  ? 'SQUAD RUN SESSION COMPLETED WITH CREW'
+                  : lastRunSummary.subtype === 'OFFLINE'
+                  ? 'OFFLINE TARGET COMPLETED'
+                  : 'SOLO RUN SESSION COMPLETED'}
+              </Text>
 
-            {runState === 'COMPLETING' && (
-              <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleSaveAndDone} activeOpacity={0.85}>
-                <Text style={styles.startRunText}>SAVE RUN</Text>
-              </TouchableOpacity>
-            )}
+              {/* Completed Route Map View with Full Map Button */}
+              <View style={styles.summaryMapWrapper}>
+                {offlineConfig?.isOfflineMode || (!lastRunSummary.actualRoute?.length && !actualRoute.length) ? (
+                  <OfflineSyntheticMap
+                    currentDistanceKm={lastRunSummary.distanceKm}
+                    targetDistanceKm={offlineConfig?.targetDistanceKm || lastRunSummary.distanceKm || 1}
+                    routeMode={offlineConfig?.routeMode || 'LOOP'}
+                    style={styles.liveMapFill}
+                  />
+                ) : (
+                  <JogpalMap
+                    actualRoute={lastRunSummary.actualRoute || actualRoute}
+                    plannedRoute={lastRunSummary.plannedRoute || plannedRoute}
+                    partnerRunners={partnerRunners}
+                    style={styles.liveMapFill}
+                    interactive={true}
+                    showStartFinishMarkers={true}
+                    fitRouteOnLoad={true}
+                  />
+                )}
 
-            {runState === 'SAVING' && (
-              <View style={styles.centeredRow}>
-                <ActivityIndicator color={colors.primary} size="small" />
-                <Text style={[styles.savingText, { color: colors.primary }]}>SAVING LOCALLY / FIREBASE...</Text>
+                {/* Full Screen Expand Button */}
+                <TouchableOpacity
+                  style={[
+                    styles.expandMapButton,
+                    {
+                      backgroundColor: 'rgba(12, 12, 18, 0.9)',
+                      borderColor: colors.cardBorder,
+                    },
+                  ]}
+                  onPress={() => setIsFullScreenMap(true)}
+                  activeOpacity={0.85}
+                  accessibilityLabel="Full Screen Map"
+                >
+                  <Feather name="maximize-2" size={13} color={colors.primary} />
+                  <Text style={[styles.expandMapText, { color: colors.primary }]}>FULL MAP</Text>
+                </TouchableOpacity>
               </View>
-            )}
 
-            {(runState === 'SAVED' || runState === 'SYNC_PENDING') && (
-              <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleFinishDone} activeOpacity={0.85}>
-                <Text style={styles.startRunText}>DONE</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+              <NeonCard style={styles.summaryCard} contentStyle={styles.summaryContent}>
+                <View style={styles.summaryTopRow}>
+                  <View>
+                    <Text style={styles.summaryTitle}>
+                      {lastRunSummary.title || (offlineConfig?.isOfflineMode ? `OFFLINE ${offlineConfig.targetDistanceKm}KM RUN` : 'SOLO RUN')}
+                    </Text>
+                    <Text style={[styles.summarySubtype, { color: colors.primary }]}>
+                      {lastRunSummary.subtype === 'DUO'
+                        ? 'DUO SYNC RUN'
+                        : lastRunSummary.subtype === 'GROUP'
+                        ? 'SQUAD CREW RUN'
+                        : lastRunSummary.subtype === 'OFFLINE'
+                        ? 'OFFLINE TARGET RUN'
+                        : 'SOLO RUN'}
+                    </Text>
+                  </View>
+                  <View style={styles.statusBadge}>
+                    <Text style={[styles.statusBadgeText, { color: colors.primary }]}>
+                      {runState === 'SAVED' ? 'SYNCED TO FIREBASE' : runState === 'SYNC_PENDING' ? 'SAVED LOCALLY' : 'COMPLETE'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.telemetryRow}>
+                  <View style={styles.telemetryCol}>
+                    <Text style={styles.telemetryValue}>{formatDistanceDisplay(lastRunSummary.distanceKm).value}</Text>
+                    <Text style={styles.telemetryLabel}>{formatDistanceDisplay(lastRunSummary.distanceKm).unit}</Text>
+                  </View>
+                  <View style={styles.telemetryDivider} />
+                  <View style={styles.telemetryCol}>
+                    <Text style={styles.telemetryValue}>{formatDuration(lastRunSummary.durationSeconds)}</Text>
+                    <Text style={styles.telemetryLabel}>TIME</Text>
+                  </View>
+                  <View style={styles.telemetryDivider} />
+                  <View style={styles.telemetryCol}>
+                    <Text style={styles.telemetryValue}>{lastRunSummary.pace}</Text>
+                    <Text style={styles.telemetryLabel}>PACE</Text>
+                  </View>
+                </View>
+              </NeonCard>
+
+              {runState === 'COMPLETING' && (
+                <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleSaveAndDone} activeOpacity={0.85}>
+                  <Text style={styles.startRunText}>SAVE RUN</Text>
+                </TouchableOpacity>
+              )}
+
+              {runState === 'SAVING' && (
+                <View style={styles.centeredRow}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={[styles.savingText, { color: colors.primary }]}>SAVING & SYNCING TO CLOUD...</Text>
+                </View>
+              )}
+
+              {(runState === 'SAVED' || runState === 'SYNC_PENDING') && (
+                <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleFinishDone} activeOpacity={0.85}>
+                  <Text style={styles.startRunText}>DONE</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )
         )}
       </View>
     </Modal>
@@ -911,6 +1243,32 @@ const styles = StyleSheet.create({
     marginVertical: 10,
     borderRadius: 22,
     overflow: 'hidden',
+  },
+  summaryMapWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: 160,
+    marginVertical: 10,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  expandMapButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    zIndex: 25,
+  },
+  expandMapText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
   },
   liveMapFill: {
     width: '100%',
@@ -1329,5 +1687,133 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '600',
     marginTop: 1,
+  },
+  fullScreenTopHud: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    zIndex: 50,
+  },
+  fullScreenTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  fullScreenCollapseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  fullScreenCollapseText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  fullScreenModeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  fullScreenModeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  fullScreenGpsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  gpsDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  fullScreenGpsText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  fullScreenPausedBadge: {
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(51, 41, 0, 0.94)',
+    borderColor: '#FFD700',
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  fullScreenHeroDistanceCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    alignItems: 'center',
+    alignSelf: 'center',
+    minWidth: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  fullScreenDistanceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  fullScreenDistanceNumber: {
+    fontSize: 40,
+    fontWeight: '900',
+    letterSpacing: -1,
+  },
+  fullScreenDistanceUnit: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
+  fullScreenSquadBar: {
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 8,
+    marginTop: 6,
+  },
+  fullScreenBottomHud: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    zIndex: 50,
+  },
+  fullScreenTelemetryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
   },
 });
