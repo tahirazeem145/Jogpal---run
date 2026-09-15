@@ -30,6 +30,7 @@ export const HistoryScreen: React.FC = () => {
   const activeUserId = user?.uid || userProfile?.id || '';
   const [displayRuns, setDisplayRuns] = useState<RunSession[]>(runs);
   const [selectedRun, setSelectedRun] = useState<RunSession | null>(null);
+  const [isFullScreenMap, setIsFullScreenMap] = useState<boolean>(false);
   const [soloRunModalVisible, setSoloRunModalVisible] = useState(false);
   const [quickLogModalVisible, setQuickLogModalVisible] = useState(false);
 
@@ -299,26 +300,19 @@ export const HistoryScreen: React.FC = () => {
         visible={!!selectedRun}
         animationType="slide"
         transparent={false}
-        onRequestClose={() => setSelectedRun(null)}
+        onRequestClose={() => {
+          setIsFullScreenMap(false);
+          setSelectedRun(null);
+        }}
       >
         {selectedRun && (
-          <View style={[styles.modalRoot, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: colors.background }]}>
-            <View style={[styles.modalHeader, { borderBottomColor: colors.cardBorder }]}>
-              <TouchableOpacity onPress={() => setSelectedRun(null)} style={styles.closeBtn}>
-                <Feather name="x" size={24} color={colors.textPrimary} />
-              </TouchableOpacity>
-              <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-                {selectedRun.title || 'RUN DETAILS'}
-              </Text>
-              <View style={{ width: 40 }} />
-            </View>
-
-            <ScrollView contentContainerStyle={styles.modalScroll}>
-              {/* Route Map */}
+          isFullScreenMap ? (
+            <View style={[styles.modalRoot, { backgroundColor: colors.background }]}>
+              {/* Fullscreen Map Layer */}
               {selectedRouteCoords.length > 0 ? (
                 <JogpalMap
                   actualRoute={selectedRouteCoords}
-                  style={styles.detailsMap}
+                  style={StyleSheet.absoluteFill}
                   interactive={true}
                   showStartFinishMarkers={true}
                   fitRouteOnLoad={true}
@@ -328,13 +322,32 @@ export const HistoryScreen: React.FC = () => {
                   currentDistanceKm={selectedRun.distanceKm}
                   targetDistanceKm={selectedRun.distanceKm || 1}
                   routeMode="LOOP"
-                  style={styles.detailsMap}
+                  style={StyleSheet.absoluteFill}
                 />
               )}
 
-              {/* Stats Grid */}
-              <View style={[styles.detailsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-                <View style={styles.detailsCardContent}>
+              {/* TOP HUD */}
+              <View style={[styles.fullScreenTopHud, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+                <View style={styles.fullScreenTopRow}>
+                  <TouchableOpacity
+                    style={[styles.fullScreenCollapseBtn, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: colors.cardBorder }]}
+                    onPress={() => setIsFullScreenMap(false)}
+                    activeOpacity={0.85}
+                  >
+                    <Feather name="minimize-2" size={14} color={colors.primary} />
+                    <Text style={[styles.fullScreenCollapseText, { color: colors.textPrimary }]}>COLLAPSE</Text>
+                  </TouchableOpacity>
+                  <View style={[styles.fullScreenModeBadge, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: colors.primary }]}>
+                    <Text style={[styles.fullScreenModeText, { color: colors.primary }]}>
+                      {selectedRun.title || selectedRun.type || 'ROUTE REVIEW'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+
+              {/* BOTTOM HUD */}
+              <View style={[styles.fullScreenBottomHud, { paddingBottom: insets.bottom + 14 }]} pointerEvents="box-none">
+                <View style={[styles.fullScreenTelemetryCard, { backgroundColor: 'rgba(12, 12, 18, 0.94)', borderColor: colors.cardBorder }]}>
                   <View style={styles.detailsRow}>
                     <View style={styles.detailsCol}>
                       <Text style={[styles.detailsValue, { color: colors.primary }]}>
@@ -350,7 +363,7 @@ export const HistoryScreen: React.FC = () => {
                     </View>
                   </View>
 
-                  <View style={[styles.detailsDivider, { backgroundColor: colors.cardBorder }]} />
+                  <View style={[styles.detailsDivider, { backgroundColor: colors.cardBorder, marginVertical: 10 }]} />
 
                   <View style={styles.detailsRow}>
                     <View style={styles.detailsCol}>
@@ -365,15 +378,106 @@ export const HistoryScreen: React.FC = () => {
                     </View>
                   </View>
                 </View>
+
+                <NeonButton
+                  title="CLOSE DETAILS"
+                  onPress={() => {
+                    setIsFullScreenMap(false);
+                    setSelectedRun(null);
+                  }}
+                  style={{ marginTop: 10 }}
+                />
+              </View>
+            </View>
+          ) : (
+            <View style={[styles.modalRoot, { paddingTop: insets.top, paddingBottom: insets.bottom, backgroundColor: colors.background }]}>
+              <View style={[styles.modalHeader, { borderBottomColor: colors.cardBorder }]}>
+                <TouchableOpacity onPress={() => { setIsFullScreenMap(false); setSelectedRun(null); }} style={styles.closeBtn}>
+                  <Feather name="x" size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
+                <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
+                  {selectedRun.title || 'RUN DETAILS'}
+                </Text>
+                <View style={{ width: 40 }} />
               </View>
 
-              <NeonButton
-                title="CLOSE DETAILS"
-                onPress={() => setSelectedRun(null)}
-                style={styles.closeDetailsBtn}
-              />
-            </ScrollView>
-          </View>
+              <ScrollView contentContainerStyle={styles.modalScroll}>
+                {/* Route Map with Full Map Expand Button */}
+                <View style={styles.detailsMapWrapper}>
+                  {selectedRouteCoords.length > 0 ? (
+                    <JogpalMap
+                      actualRoute={selectedRouteCoords}
+                      style={styles.detailsMapFill}
+                      interactive={true}
+                      showStartFinishMarkers={true}
+                      fitRouteOnLoad={true}
+                    />
+                  ) : (
+                    <OfflineSyntheticMap
+                      currentDistanceKm={selectedRun.distanceKm}
+                      targetDistanceKm={selectedRun.distanceKm || 1}
+                      routeMode="LOOP"
+                      style={styles.detailsMapFill}
+                    />
+                  )}
+
+                  <TouchableOpacity
+                    style={[styles.expandMapButton, { backgroundColor: 'rgba(12, 12, 18, 0.9)', borderColor: colors.cardBorder }]}
+                    onPress={() => setIsFullScreenMap(true)}
+                    activeOpacity={0.85}
+                    accessibilityLabel="Full Screen Map"
+                  >
+                    <Feather name="maximize-2" size={13} color={colors.primary} />
+                    <Text style={[styles.expandMapText, { color: colors.primary }]}>FULL MAP</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* Stats Grid */}
+                <View style={[styles.detailsCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+                  <View style={styles.detailsCardContent}>
+                    <View style={styles.detailsRow}>
+                      <View style={styles.detailsCol}>
+                        <Text style={[styles.detailsValue, { color: colors.primary }]}>
+                          {selectedRun.distanceKm.toFixed(2)}
+                        </Text>
+                        <Text style={[styles.detailsLabel, { color: colors.textMuted }]}>DISTANCE (KM)</Text>
+                      </View>
+                      <View style={styles.detailsCol}>
+                        <Text style={[styles.detailsValue, { color: colors.textPrimary }]}>
+                          {formatDuration(selectedRun.durationSeconds)}
+                        </Text>
+                        <Text style={[styles.detailsLabel, { color: colors.textMuted }]}>DURATION</Text>
+                      </View>
+                    </View>
+
+                    <View style={[styles.detailsDivider, { backgroundColor: colors.cardBorder }]} />
+
+                    <View style={styles.detailsRow}>
+                      <View style={styles.detailsCol}>
+                        <Text style={[styles.detailsValue, { color: colors.textPrimary }]}>{selectedRun.pace || '--:--'}</Text>
+                        <Text style={[styles.detailsLabel, { color: colors.textMuted }]}>AVG PACE</Text>
+                      </View>
+                      <View style={styles.detailsCol}>
+                        <Text style={[styles.detailsValue, { color: colors.textPrimary }]}>
+                          {selectedRun.calories || Math.round(selectedRun.distanceKm * 62)} kcal
+                        </Text>
+                        <Text style={[styles.detailsLabel, { color: colors.textMuted }]}>CALORIES</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+
+                <NeonButton
+                  title="CLOSE DETAILS"
+                  onPress={() => {
+                    setIsFullScreenMap(false);
+                    setSelectedRun(null);
+                  }}
+                  style={styles.closeDetailsBtn}
+                />
+              </ScrollView>
+            </View>
+          )
         )}
       </Modal>
 
@@ -673,6 +777,98 @@ const styles = StyleSheet.create({
   detailsMap: {
     height: 300,
     marginBottom: 16,
+  },
+  detailsMapWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: 300,
+    borderRadius: 22,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  detailsMapFill: {
+    width: '100%',
+    height: '100%',
+    marginVertical: 0,
+  },
+  expandMapButton: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    zIndex: 25,
+  },
+  expandMapText: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  fullScreenTopHud: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    zIndex: 50,
+  },
+  fullScreenTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  fullScreenCollapseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 16,
+    borderWidth: 1,
+  },
+  fullScreenCollapseText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  fullScreenModeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  fullScreenModeText: {
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  fullScreenBottomHud: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 16,
+    zIndex: 50,
+  },
+  fullScreenTelemetryCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.45,
+    shadowRadius: 8,
+    elevation: 6,
   },
   detailsCard: {
     borderRadius: 20,

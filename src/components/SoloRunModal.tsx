@@ -273,162 +273,341 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
 
         {/* --- STATE 3: GPS READY / SETUP MODE --- */}
         {!isGroupWaitingForPartners && !isDuoWaitingForPartner && runState === 'GPS_READY' && (
-          <View style={styles.centeredContainer}>
-            <View style={styles.readyBadge}>
-              <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
-            </View>
-            <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>TRACKING READY</Text>
-
-            {/* Unified 4-Mode Selector Chips */}
-            <View style={styles.modeChipsRow}>
-              {(
-                [
-                  { key: 'SOLO', label: 'SOLO', icon: 'flash' },
-                  { key: 'DUO', label: 'DUO', icon: 'people' },
-                  { key: 'GROUP', label: 'SQUAD', icon: 'globe-outline' },
-                  { key: 'OFFLINE', label: 'OFFLINE', icon: 'flag' },
-                ] as const
-              ).map((tab) => {
-                const isActive = selectedMode === tab.key;
-                return (
-                  <TouchableOpacity
-                    key={tab.key}
-                    style={[
-                      styles.modeChip,
-                      { borderColor: colors.cardBorder },
-                      isActive && { backgroundColor: colors.primary, borderColor: colors.primary },
-                    ]}
-                    onPress={() => handleSelectMode(tab.key)}
-                    activeOpacity={0.8}
-                  >
-                    <Ionicons
-                      name={tab.icon as any}
-                      size={13}
-                      color={isActive ? '#000000' : colors.textSecondary}
-                    />
-                    <Text
-                      style={[
-                        styles.modeChipText,
-                        { color: isActive ? '#000000' : colors.textSecondary },
-                      ]}
-                    >
-                      {tab.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {/* Mode-Specific Information Banner */}
-            {selectedMode === 'SOLO' && (
-              <View style={[styles.modeInfoPill, { borderColor: colors.cardBorder }]}>
-                <Ionicons name="flash" size={12} color={colors.primary} />
-                <Text style={[styles.modeInfoText, { color: colors.textSecondary }]}>
-                  SOLO TRACKING • 2D Kalman Precision Active
-                </Text>
-              </View>
-            )}
-
-            {selectedMode === 'DUO' && (
-              <View style={[styles.modeInfoPill, { borderColor: colors.primary }]}>
-                <Ionicons name="people" size={13} color={colors.primary} />
-                <Text style={[styles.modeInfoText, { color: colors.textPrimary }]}>
-                  DUO SYNC: Pacing with <Text style={{ color: colors.primary, fontWeight: '800' }}>Alex</Text> (~8m sync)
-                </Text>
-              </View>
-            )}
-
-            {selectedMode === 'GROUP' && (
-              <View style={[styles.modeInfoPill, { borderColor: colors.primary }]}>
-                <Ionicons name="globe-outline" size={13} color={colors.primary} />
-                <Text style={[styles.modeInfoText, { color: colors.textPrimary }]}>
-                  SQUAD CREW: <Text style={{ color: colors.primary, fontWeight: '800' }}>Alex, Sam, Jordan</Text> (Formation Sync)
-                </Text>
-              </View>
-            )}
-
-            {/* OFFLINE SETUP CONTROLS */}
-            {selectedMode === 'OFFLINE' && (
-              <View style={styles.offlineSetupContainer}>
-                {/* Distance Selector */}
-                <Text style={[styles.setupLabel, { color: colors.textSecondary }]}>TARGET DISTANCE:</Text>
-                <View style={styles.chipRow}>
-                  {[1, 2, 3, 5, 10].map((km) => (
-                    <TouchableOpacity
-                      key={km}
-                      style={[
-                        styles.chipBtn,
-                        { borderColor: colors.cardBorder },
-                        selectedTargetKm === km && { backgroundColor: colors.primary, borderColor: colors.primary },
-                      ]}
-                      onPress={() => setSelectedTargetKm(km)}
-                    >
-                      <Text style={[styles.chipText, { color: selectedTargetKm === km ? '#000' : colors.textPrimary }]}>
-                        {km} KM
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Route Mode Selector (LOOP vs STRAIGHT) */}
-                <Text style={[styles.setupLabel, { color: colors.textSecondary }]}>ROUTE MODE:</Text>
-                <View style={styles.chipRow}>
-                  {(['LOOP', 'STRAIGHT'] as OfflineRouteMode[]).map((mode) => (
-                    <TouchableOpacity
-                      key={mode}
-                      style={[
-                        styles.routeModeBtn,
-                        { borderColor: colors.cardBorder },
-                        selectedRouteMode === mode && { backgroundColor: colors.primary, borderColor: colors.primary },
-                      ]}
-                      onPress={() => setSelectedRouteMode(mode)}
-                    >
-                      <Ionicons
-                        name={mode === 'LOOP' ? 'refresh-circle' : 'arrow-forward-circle'}
-                        size={16}
-                        color={selectedRouteMode === mode ? '#000' : colors.textPrimary}
-                      />
-                      <Text style={[styles.chipText, { color: selectedRouteMode === mode ? '#000' : colors.textPrimary }]}>
-                        {mode === 'LOOP' ? 'LOOP (CIRCUIT)' : 'STRAIGHT (RUNWAY)'}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* Offline Synthetic Map Preview */}
+          isFullScreenMap ? (
+            <View style={StyleSheet.absoluteFill}>
+              {/* Fullscreen Preview Map */}
+              {selectedMode === 'OFFLINE' ? (
                 <OfflineSyntheticMap
                   currentDistanceKm={0}
                   targetDistanceKm={selectedTargetKm}
                   routeMode={selectedRouteMode}
-                  style={styles.previewMap}
+                  style={StyleSheet.absoluteFill}
                 />
+              ) : (
+                <JogpalMap
+                  currentLocation={currentLocation}
+                  actualRoute={actualRoute}
+                  plannedRoute={plannedRoute}
+                  partnerRunners={effectivePartnerRunners}
+                  style={StyleSheet.absoluteFill}
+                  interactive={true}
+                />
+              )}
+
+              {/* TOP HUD */}
+              <View style={[styles.fullScreenTopHud, { paddingTop: insets.top + 8 }]} pointerEvents="box-none">
+                <View style={styles.fullScreenTopRow}>
+                  <TouchableOpacity
+                    style={[styles.fullScreenCollapseBtn, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: colors.cardBorder }]}
+                    onPress={() => setIsFullScreenMap(false)}
+                    activeOpacity={0.85}
+                  >
+                    <Feather name="minimize-2" size={14} color={colors.primary} />
+                    <Text style={[styles.fullScreenCollapseText, { color: colors.textPrimary }]}>COLLAPSE</Text>
+                  </TouchableOpacity>
+
+                  <View style={[styles.fullScreenGpsBadge, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: colors.cardBorder }]}>
+                    <View style={[styles.gpsDot, { backgroundColor: colors.primary }]} />
+                    <Text style={[styles.fullScreenGpsText, { color: colors.textSecondary }]}>READY</Text>
+                  </View>
+                </View>
+
+                {/* Floating Mode Chips Row */}
+                <View style={[styles.modeChipsRow, { backgroundColor: 'rgba(14, 14, 20, 0.92)', padding: 6, borderRadius: 16, borderWidth: 1, borderColor: colors.cardBorder }]}>
+                  {(
+                    [
+                      { key: 'SOLO', label: 'SOLO', icon: 'flash' },
+                      { key: 'DUO', label: 'DUO', icon: 'people' },
+                      { key: 'GROUP', label: 'SQUAD', icon: 'globe-outline' },
+                      { key: 'OFFLINE', label: 'OFFLINE', icon: 'flag' },
+                    ] as const
+                  ).map((tab) => {
+                    const isActive = selectedMode === tab.key;
+                    return (
+                      <TouchableOpacity
+                        key={tab.key}
+                        style={[
+                          styles.modeChip,
+                          { borderColor: colors.cardBorder },
+                          isActive && { backgroundColor: colors.primary, borderColor: colors.primary },
+                        ]}
+                        onPress={() => handleSelectMode(tab.key)}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons
+                          name={tab.icon as any}
+                          size={13}
+                          color={isActive ? '#000000' : colors.textSecondary}
+                        />
+                        <Text
+                          style={[
+                            styles.modeChipText,
+                            { color: isActive ? '#000000' : colors.textSecondary },
+                          ]}
+                        >
+                          {tab.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
-            )}
 
-            {/* LIVE SATELLITE MAP PREVIEW FOR ONLINE MODES */}
-            {selectedMode !== 'OFFLINE' && (
-              <JogpalMap
-                currentLocation={currentLocation}
-                actualRoute={actualRoute}
-                plannedRoute={plannedRoute}
-                partnerRunners={effectivePartnerRunners}
-                style={styles.previewMap}
-                interactive={false}
-              />
-            )}
+              {/* BOTTOM HUD */}
+              <View style={[styles.fullScreenBottomHud, { paddingBottom: insets.bottom + 14 }]} pointerEvents="box-none">
+                {/* Offline target chips in full screen */}
+                {selectedMode === 'OFFLINE' && (
+                  <View style={[styles.offlineSetupContainer, { backgroundColor: 'rgba(14, 14, 20, 0.92)', padding: 10, borderRadius: 16, borderWidth: 1, borderColor: colors.cardBorder, marginBottom: 8 }]}>
+                    <Text style={[styles.setupLabel, { color: colors.textSecondary }]}>TARGET DISTANCE:</Text>
+                    <View style={styles.chipRow}>
+                      {[1, 2, 3, 5, 10].map((km) => (
+                        <TouchableOpacity
+                          key={km}
+                          style={[
+                            styles.chipBtn,
+                            { borderColor: colors.cardBorder },
+                            selectedTargetKm === km && { backgroundColor: colors.primary, borderColor: colors.primary },
+                          ]}
+                          onPress={() => setSelectedTargetKm(km)}
+                        >
+                          <Text style={[styles.chipText, { color: selectedTargetKm === km ? '#000' : colors.textPrimary }]}>
+                            {km} KM
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
 
-            <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleStartRunPress} activeOpacity={0.85}>
-              <Text style={styles.startRunText}>
-                {selectedMode === 'OFFLINE'
-                  ? `START ${selectedTargetKm}KM ${selectedRouteMode} RUN`
-                  : selectedMode === 'DUO'
-                  ? 'START DUO RUN'
-                  : selectedMode === 'GROUP'
-                  ? 'START SQUAD RUN'
-                  : 'START SOLO RUN'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+                    <Text style={[styles.setupLabel, { color: colors.textSecondary }]}>ROUTE MODE:</Text>
+                    <View style={styles.chipRow}>
+                      {(['LOOP', 'STRAIGHT'] as OfflineRouteMode[]).map((mode) => (
+                        <TouchableOpacity
+                          key={mode}
+                          style={[
+                            styles.routeModeBtn,
+                            { borderColor: colors.cardBorder },
+                            selectedRouteMode === mode && { backgroundColor: colors.primary, borderColor: colors.primary },
+                          ]}
+                          onPress={() => setSelectedRouteMode(mode)}
+                        >
+                          <Ionicons
+                            name={mode === 'LOOP' ? 'refresh-circle' : 'arrow-forward-circle'}
+                            size={16}
+                            color={selectedRouteMode === mode ? '#000' : colors.textPrimary}
+                          />
+                          <Text style={[styles.chipText, { color: selectedRouteMode === mode ? '#000' : colors.textPrimary }]}>
+                            {mode === 'LOOP' ? 'LOOP' : 'STRAIGHT'}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleStartRunPress} activeOpacity={0.85}>
+                  <Text style={styles.startRunText}>
+                    {selectedMode === 'OFFLINE'
+                      ? `START ${selectedTargetKm}KM ${selectedRouteMode} RUN`
+                      : selectedMode === 'DUO'
+                      ? 'START DUO RUN'
+                      : selectedMode === 'GROUP'
+                      ? 'START SQUAD RUN'
+                      : 'START SOLO RUN'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.centeredContainer}>
+              <View style={styles.readyBadge}>
+                <Ionicons name="checkmark-circle" size={48} color={colors.primary} />
+              </View>
+              <Text style={[styles.stateTitle, { color: colors.textPrimary }]}>TRACKING READY</Text>
+
+              {/* Unified 4-Mode Selector Chips */}
+              <View style={styles.modeChipsRow}>
+                {(
+                  [
+                    { key: 'SOLO', label: 'SOLO', icon: 'flash' },
+                    { key: 'DUO', label: 'DUO', icon: 'people' },
+                    { key: 'GROUP', label: 'SQUAD', icon: 'globe-outline' },
+                    { key: 'OFFLINE', label: 'OFFLINE', icon: 'flag' },
+                  ] as const
+                ).map((tab) => {
+                  const isActive = selectedMode === tab.key;
+                  return (
+                    <TouchableOpacity
+                      key={tab.key}
+                      style={[
+                        styles.modeChip,
+                        { borderColor: colors.cardBorder },
+                        isActive && { backgroundColor: colors.primary, borderColor: colors.primary },
+                      ]}
+                      onPress={() => handleSelectMode(tab.key)}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons
+                        name={tab.icon as any}
+                        size={13}
+                        color={isActive ? '#000000' : colors.textSecondary}
+                      />
+                      <Text
+                        style={[
+                          styles.modeChipText,
+                          { color: isActive ? '#000000' : colors.textSecondary },
+                        ]}
+                      >
+                        {tab.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+
+              {/* Mode-Specific Information Banner */}
+              {selectedMode === 'SOLO' && (
+                <View style={[styles.modeInfoPill, { borderColor: colors.cardBorder }]}>
+                  <Ionicons name="flash" size={12} color={colors.primary} />
+                  <Text style={[styles.modeInfoText, { color: colors.textSecondary }]}>
+                    SOLO TRACKING • 2D Kalman Precision Active
+                  </Text>
+                </View>
+              )}
+
+              {selectedMode === 'DUO' && (
+                <View style={[styles.modeInfoPill, { borderColor: colors.primary }]}>
+                  <Ionicons name="people" size={13} color={colors.primary} />
+                  <Text style={[styles.modeInfoText, { color: colors.textPrimary }]}>
+                    DUO SYNC: Pacing with <Text style={{ color: colors.primary, fontWeight: '800' }}>Alex</Text> (~8m sync)
+                  </Text>
+                </View>
+              )}
+
+              {selectedMode === 'GROUP' && (
+                <View style={[styles.modeInfoPill, { borderColor: colors.primary }]}>
+                  <Ionicons name="globe-outline" size={13} color={colors.primary} />
+                  <Text style={[styles.modeInfoText, { color: colors.textPrimary }]}>
+                    SQUAD CREW: <Text style={{ color: colors.primary, fontWeight: '800' }}>Alex, Sam, Jordan</Text> (Formation Sync)
+                  </Text>
+                </View>
+              )}
+
+              {/* OFFLINE SETUP CONTROLS */}
+              {selectedMode === 'OFFLINE' && (
+                <View style={styles.offlineSetupContainer}>
+                  {/* Distance Selector */}
+                  <Text style={[styles.setupLabel, { color: colors.textSecondary }]}>TARGET DISTANCE:</Text>
+                  <View style={styles.chipRow}>
+                    {[1, 2, 3, 5, 10].map((km) => (
+                      <TouchableOpacity
+                        key={km}
+                        style={[
+                          styles.chipBtn,
+                          { borderColor: colors.cardBorder },
+                          selectedTargetKm === km && { backgroundColor: colors.primary, borderColor: colors.primary },
+                        ]}
+                        onPress={() => setSelectedTargetKm(km)}
+                      >
+                        <Text style={[styles.chipText, { color: selectedTargetKm === km ? '#000' : colors.textPrimary }]}>
+                          {km} KM
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Route Mode Selector (LOOP vs STRAIGHT) */}
+                  <Text style={[styles.setupLabel, { color: colors.textSecondary }]}>ROUTE MODE:</Text>
+                  <View style={styles.chipRow}>
+                    {(['LOOP', 'STRAIGHT'] as OfflineRouteMode[]).map((mode) => (
+                      <TouchableOpacity
+                        key={mode}
+                        style={[
+                          styles.routeModeBtn,
+                          { borderColor: colors.cardBorder },
+                          selectedRouteMode === mode && { backgroundColor: colors.primary, borderColor: colors.primary },
+                        ]}
+                        onPress={() => setSelectedRouteMode(mode)}
+                      >
+                        <Ionicons
+                          name={mode === 'LOOP' ? 'refresh-circle' : 'arrow-forward-circle'}
+                          size={16}
+                          color={selectedRouteMode === mode ? '#000' : colors.textPrimary}
+                        />
+                        <Text style={[styles.chipText, { color: selectedRouteMode === mode ? '#000' : colors.textPrimary }]}>
+                          {mode === 'LOOP' ? 'LOOP (CIRCUIT)' : 'STRAIGHT (RUNWAY)'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+
+                  {/* Offline Synthetic Map Preview */}
+                  <View style={styles.previewMapWrapper}>
+                    <OfflineSyntheticMap
+                      currentDistanceKm={0}
+                      targetDistanceKm={selectedTargetKm}
+                      routeMode={selectedRouteMode}
+                      style={styles.liveMapFill}
+                    />
+                    <TouchableOpacity
+                      style={[
+                        styles.expandMapButton,
+                        {
+                          backgroundColor: 'rgba(12, 12, 18, 0.9)',
+                          borderColor: colors.cardBorder,
+                        },
+                      ]}
+                      onPress={() => setIsFullScreenMap(true)}
+                      activeOpacity={0.85}
+                      accessibilityLabel="Full Screen Map"
+                    >
+                      <Feather name="maximize-2" size={13} color={colors.primary} />
+                      <Text style={[styles.expandMapText, { color: colors.primary }]}>FULL MAP</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+
+              {/* LIVE SATELLITE MAP PREVIEW FOR ONLINE MODES */}
+              {selectedMode !== 'OFFLINE' && (
+                <View style={styles.previewMapWrapper}>
+                  <JogpalMap
+                    currentLocation={currentLocation}
+                    actualRoute={actualRoute}
+                    plannedRoute={plannedRoute}
+                    partnerRunners={effectivePartnerRunners}
+                    style={styles.liveMapFill}
+                    interactive={false}
+                  />
+                  <TouchableOpacity
+                    style={[
+                      styles.expandMapButton,
+                      {
+                        backgroundColor: 'rgba(12, 12, 18, 0.9)',
+                        borderColor: colors.cardBorder,
+                      },
+                    ]}
+                    onPress={() => setIsFullScreenMap(true)}
+                    activeOpacity={0.85}
+                    accessibilityLabel="Full Screen Map"
+                  >
+                    <Feather name="maximize-2" size={13} color={colors.primary} />
+                    <Text style={[styles.expandMapText, { color: colors.primary }]}>FULL MAP</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <TouchableOpacity style={[styles.startRunButton, { backgroundColor: colors.primary }]} onPress={handleStartRunPress} activeOpacity={0.85}>
+                <Text style={styles.startRunText}>
+                  {selectedMode === 'OFFLINE'
+                    ? `START ${selectedTargetKm}KM ${selectedRouteMode} RUN`
+                    : selectedMode === 'DUO'
+                    ? 'START DUO RUN'
+                    : selectedMode === 'GROUP'
+                    ? 'START SQUAD RUN'
+                    : 'START SOLO RUN'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )
         )}
 
         {/* --- UNIFIED LIVE RUN SESSION (COUNTDOWN, ACTIVE, PAUSED) --- */}
@@ -1230,6 +1409,14 @@ const styles = StyleSheet.create({
     height: 180,
     width: '100%',
     marginVertical: 8,
+  },
+  previewMapWrapper: {
+    position: 'relative',
+    width: '100%',
+    height: 180,
+    marginVertical: 8,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   liveMap: {
     height: 260,
