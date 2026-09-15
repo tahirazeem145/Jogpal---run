@@ -96,16 +96,17 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   }, [plannedRoute]);
 
   // 1. Dynamic Region Calculation: Guarantees map never defaults to San Francisco
-  // when an actual route exists (e.g. Run Summary or History) or when currentLocation is known.
+  // when an actual route, planned OSRM route, or currentLocation is available.
   const computedInitialRegion = useMemo(() => {
-    if (sanitizedActualRoute.length > 0) {
-      let minLat = sanitizedActualRoute[0].latitude;
-      let maxLat = sanitizedActualRoute[0].latitude;
-      let minLng = sanitizedActualRoute[0].longitude;
-      let maxLng = sanitizedActualRoute[0].longitude;
+    const routeToFrame = sanitizedActualRoute.length > 0 ? sanitizedActualRoute : sanitizedPlannedRoute;
+    if (routeToFrame.length > 0) {
+      let minLat = routeToFrame[0].latitude;
+      let maxLat = routeToFrame[0].latitude;
+      let minLng = routeToFrame[0].longitude;
+      let maxLng = routeToFrame[0].longitude;
 
-      for (let i = 1; i < sanitizedActualRoute.length; i++) {
-        const pt = sanitizedActualRoute[i];
+      for (let i = 1; i < routeToFrame.length; i++) {
+        const pt = routeToFrame[i];
         if (pt.latitude < minLat) minLat = pt.latitude;
         if (pt.latitude > maxLat) maxLat = pt.latitude;
         if (pt.longitude < minLng) minLng = pt.longitude;
@@ -129,8 +130,8 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
       return {
         latitude: currentLocation.latitude,
         longitude: currentLocation.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
+        latitudeDelta: 0.006,
+        longitudeDelta: 0.006,
       };
     }
 
@@ -139,32 +140,42 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
       return {
         latitude: cached.latitude,
         longitude: cached.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
+        latitudeDelta: 0.006,
+        longitudeDelta: 0.006,
       };
     }
 
     return {
       latitude: MAP_CONFIG.defaultCenterCoordinate[1],
       longitude: MAP_CONFIG.defaultCenterCoordinate[0],
-      latitudeDelta: 0.005,
-      longitudeDelta: 0.005,
+      latitudeDelta: 0.006,
+      longitudeDelta: 0.006,
     };
-  }, [sanitizedActualRoute, currentLocation]);
+  }, [sanitizedActualRoute, sanitizedPlannedRoute, currentLocation]);
 
-  // 2. Throttled, Stable Native Camera Follow
+  // 2. Throttled, Stable Native Camera Follow & Initial Frame
+  const hasCenteredInitiallyRef = useRef(false);
+
   useEffect(() => {
-    if (
-      Platform.OS !== 'web' &&
-      RNMapView &&
-      mapRef.current &&
-      isMapReady &&
-      currentLocation &&
-      cameraMode === 'FOLLOWING' &&
-      !fitRouteOnLoad
-    ) {
+    if (Platform.OS === 'web' || !RNMapView || !mapRef.current || !isMapReady) return;
+
+    // If planned OSRM route is supplied and actual route is not yet recording, fit to the planned circuit
+    if (!hasCenteredInitiallyRef.current && sanitizedPlannedRoute.length > 1 && sanitizedActualRoute.length === 0) {
+      hasCenteredInitiallyRef.current = true;
+      try {
+        mapRef.current.fitToCoordinates(sanitizedPlannedRoute, {
+          edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
+          animated: true,
+        });
+      } catch (e) {}
+      return;
+    }
+
+    // Follow current location
+    if (currentLocation && cameraMode === 'FOLLOWING' && !fitRouteOnLoad) {
       const now = Date.now();
-      if (now - lastCameraUpdateRef.current >= MAP_CONFIG.cameraFollowThrottleMs) {
+      if (!hasCenteredInitiallyRef.current || now - lastCameraUpdateRef.current >= MAP_CONFIG.cameraFollowThrottleMs) {
+        hasCenteredInitiallyRef.current = true;
         lastCameraUpdateRef.current = now;
         mapRef.current.animateToRegion(
           {
@@ -177,7 +188,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
         );
       }
     }
-  }, [currentLocation?.latitude, currentLocation?.longitude, cameraMode, fitRouteOnLoad, isMapReady]);
+  }, [currentLocation?.latitude, currentLocation?.longitude, sanitizedPlannedRoute, cameraMode, fitRouteOnLoad, isMapReady]);
 
   // 3. Fit Route Coordinates for Native Map (Idempotent & Safe)
   const fitNativeRouteBounds = useCallback(() => {
@@ -408,13 +419,13 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
             />
           )}
 
-          {/* Planned Route Polyline */}
+          {/* Planned OSRM Route Polyline */}
           {sanitizedPlannedRoute.length > 1 && RNPolyline && (
             <RNPolyline
               coordinates={sanitizedPlannedRoute}
-              strokeColor="#555566"
-              strokeWidth={3}
-              lineDashPattern={[5, 5]}
+              strokeColor="#00E5FF"
+              strokeWidth={4}
+              lineDashPattern={[8, 6]}
             />
           )}
 

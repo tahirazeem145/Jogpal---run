@@ -122,6 +122,8 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const duoSessionSubRef = useRef<(() => void) | null>(null);
   const groupSessionSubRef = useRef<(() => void) | null>(null);
   const lastTelemetryBroadcastRef = useRef<number>(0);
+  const plannedRouteGeneratedRef = useRef<boolean>(false);
+
 
   // Helper to generate dynamic partner positions relative to the runner
   const generatePartnerRunners = (
@@ -490,6 +492,7 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
     totalPointCountRef.current = 0;
     acceptedPointCountRef.current = 0;
     trackingReadyRef.current = false;
+    plannedRouteGeneratedRef.current = false;
     resetFilter();
 
     // Check permissions & location services
@@ -634,6 +637,19 @@ export const SoloRunProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (partners.length > 0) {
           setPartnerRunner(partners[0]);
         }
+      }
+
+      // If planned OSRM circuit was not generated during stage 1, generate it now
+      if (!plannedRouteGeneratedRef.current) {
+        plannedRouteGeneratedRef.current = true;
+        osrmService
+          .generateCircuitRoute(point, 3, 'LOOP')
+          .then((route) => {
+            if (route && route.length > 0) {
+              setPlannedRoute(route);
+            }
+          })
+          .catch(() => {});
       }
     }
 

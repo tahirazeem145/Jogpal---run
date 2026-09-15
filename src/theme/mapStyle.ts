@@ -1,7 +1,7 @@
 export const jogpalDarkMapStyle = [
   {
     elementType: 'geometry',
-    stylers: [{ color: '#050505' }],
+    stylers: [{ color: '#181A20' }],
   },
   {
     elementType: 'labels.icon',
@@ -9,21 +9,21 @@ export const jogpalDarkMapStyle = [
   },
   {
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#555555' }],
+    stylers: [{ color: '#9CA3AF' }],
   },
   {
     elementType: 'labels.text.stroke',
-    stylers: [{ color: '#050505' }],
+    stylers: [{ color: '#111216' }],
   },
   {
     featureType: 'administrative',
     elementType: 'geometry',
-    stylers: [{ color: '#161616' }],
+    stylers: [{ color: '#374151' }],
   },
   {
     featureType: 'administrative.country',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#777777' }],
+    stylers: [{ color: '#9CA3AF' }],
   },
   {
     featureType: 'administrative.land_parcel',
@@ -32,7 +32,7 @@ export const jogpalDarkMapStyle = [
   {
     featureType: 'administrative.locality',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#888888' }],
+    stylers: [{ color: '#D1D5DB' }],
   },
   {
     featureType: 'poi',
@@ -41,27 +41,47 @@ export const jogpalDarkMapStyle = [
   {
     featureType: 'road',
     elementType: 'geometry',
-    stylers: [{ color: '#141414' }],
+    stylers: [{ color: '#2C303E' }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#1F232D' }],
   },
   {
     featureType: 'road',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#444444' }],
+    stylers: [{ color: '#9CA3AF' }],
+  },
+  {
+    featureType: 'road.local',
+    elementType: 'geometry',
+    stylers: [{ color: '#323746' }],
   },
   {
     featureType: 'road.arterial',
     elementType: 'geometry',
-    stylers: [{ color: '#1C1C1C' }],
+    stylers: [{ color: '#3E4558' }],
+  },
+  {
+    featureType: 'road.arterial',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#252936' }],
   },
   {
     featureType: 'road.highway',
     elementType: 'geometry',
-    stylers: [{ color: '#242424' }],
+    stylers: [{ color: '#4F5872' }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: '#32384A' }],
   },
   {
     featureType: 'road.highway',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#666666' }],
+    stylers: [{ color: '#E5E7EB' }],
   },
   {
     featureType: 'transit',
@@ -70,11 +90,12 @@ export const jogpalDarkMapStyle = [
   {
     featureType: 'water',
     elementType: 'geometry',
-    stylers: [{ color: '#09090D' }],
+    stylers: [{ color: '#0F172A' }],
   },
   {
     featureType: 'water',
     elementType: 'labels.text.fill',
-    stylers: [{ color: '#333333' }],
+    stylers: [{ color: '#64748B' }],
   },
 ];
+
