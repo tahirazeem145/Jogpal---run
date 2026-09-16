@@ -59,8 +59,16 @@ export const TransformationScreen: React.FC = () => {
     setLoading(false);
   };
 
+  const now = new Date();
+  const currentDayOfMonth = now.getDate();
+  const currentMonthName = now.toLocaleDateString('en-US', { month: 'long' });
+  const currentMonthShort = now.toLocaleDateString('en-US', { month: 'short' });
+  const currentYear = now.getFullYear();
+  const totalDaysInMonth = new Date(currentYear, now.getMonth() + 1, 0).getDate();
+  const daysArray = Array.from({ length: totalDaysInMonth }, (_, i) => i + 1);
+
+  const isTodayCaptured = Boolean(photosMap[currentDayOfMonth]);
   const capturedCount = Object.keys(photosMap).length;
-  const daysArray = Array.from({ length: 30 }, (_, i) => i + 1);
 
   const day1Photo = photosMap[1];
   const sortedDayNumbers = Object.keys(photosMap)
@@ -71,10 +79,26 @@ export const TransformationScreen: React.FC = () => {
 
   const handleSlotPress = (dayNum: number) => {
     if (photosMap[dayNum]) {
+      // Photo exists: user can view, edit notes, or delete
       openDayDetail(dayNum);
-    } else {
+    } else if (dayNum === currentDayOfMonth) {
+      // Today: unlocked and ready to upload/capture
       setUploadPickerDay(dayNum);
       setCustomUrlInput('');
+    } else if (dayNum > currentDayOfMonth) {
+      // Future day: locked until date arrives
+      const unlockDate = `${currentMonthShort} ${dayNum}`;
+      Alert.alert(
+        'Date Locked 🔒',
+        `Day ${dayNum} will unlock on ${unlockDate}. Daily transformation photos can only be uploaded on that specific calendar date.`
+      );
+    } else {
+      // Past day without photo: locked (missed)
+      const pastDate = `${currentMonthShort} ${dayNum}`;
+      Alert.alert(
+        'Upload Window Closed 🔒',
+        `Day ${dayNum} (${pastDate}) has passed. You can only capture photos on the current active date.`
+      );
     }
   };
 
@@ -222,10 +246,28 @@ export const TransformationScreen: React.FC = () => {
     setPhotosMap(updated);
   };
 
-  const handleDeletePhoto = async (dayNum: number) => {
-    const updated = await transformationService.deletePhoto(userId, dayNum);
-    setPhotosMap(updated);
-    setSelectedDay(null);
+  const handleDeletePhoto = (dayNum: number) => {
+    Alert.alert(
+      'Delete Photo',
+      `Are you sure you want to delete your Day ${dayNum} (${currentMonthShort} ${dayNum}) transformation photo?\n\nIf deleted, you can capture a fresh photo for today.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Photo',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const updated = await transformationService.deletePhoto(userId, dayNum);
+              setPhotosMap(updated);
+              setSelectedDay(null);
+              Alert.alert('Photo Deleted', `Day ${dayNum} photo has been deleted.`);
+            } catch (err) {
+              Alert.alert('Error', 'Unable to delete photo. Please try again.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleSaveNotes = async (dayNum: number) => {
@@ -269,12 +311,49 @@ export const TransformationScreen: React.FC = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
+        {/* Today's Active Date & Daily Limit Banner */}
+        <View style={[styles.dateInfoCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={styles.dateInfoTopRow}>
+            <View style={[styles.calendarIconCircle, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
+              <Ionicons name="calendar-outline" size={18} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.currentDateText, { color: colors.textPrimary }]}>
+                {currentMonthName.toUpperCase()} {currentDayOfMonth}, {currentYear}
+              </Text>
+              <Text style={[styles.currentDateSub, { color: colors.textSecondary }]}>
+                TODAY: DAY {currentDayOfMonth} OF {totalDaysInMonth}
+              </Text>
+            </View>
+            <View
+              style={[
+                styles.dailyLimitBadge,
+                {
+                  backgroundColor: isTodayCaptured ? 'rgba(0, 255, 102, 0.12)' : 'rgba(168, 255, 0, 0.12)',
+                  borderColor: isTodayCaptured ? '#00FF66' : colors.primary,
+                },
+              ]}
+            >
+              <Text style={[styles.dailyLimitText, { color: isTodayCaptured ? '#00FF66' : colors.primary }]}>
+                {isTodayCaptured ? '1 / 1 UPLOADED ✅' : '0 / 1 UPLOADED (READY)'}
+              </Text>
+            </View>
+          </View>
+
+          <View style={[styles.ruleNoticeRow, { backgroundColor: colors.surface, borderColor: colors.cardBorder }]}>
+            <Ionicons name="information-circle-outline" size={14} color={colors.primary} />
+            <Text style={[styles.ruleNoticeText, { color: colors.textSecondary }]}>
+              Daily Limit: 1 photo per day. You can only upload for today ({currentMonthShort} {currentDayOfMonth}). Past & upcoming dates are locked.
+            </Text>
+          </View>
+        </View>
+
         {/* Progress Tracker Bar */}
         <View style={[styles.progressBox, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <View style={styles.progressHeader}>
             <Text style={[styles.progressLabel, { color: colors.primary }]}>30-DAY PROGRESS STREAK</Text>
             <Text style={[styles.progressCount, { color: colors.textPrimary }]}>
-              {capturedCount} / 30 Days Captured
+              {capturedCount} / {totalDaysInMonth} Days Captured
             </Text>
           </View>
           <View style={[styles.progressBarTrack, { backgroundColor: colors.cardSubtle }]}>
@@ -283,7 +362,7 @@ export const TransformationScreen: React.FC = () => {
                 styles.progressBarFill,
                 {
                   backgroundColor: colors.primary,
-                  width: `${Math.max((capturedCount / 30) * 100, 3)}%`,
+                  width: `${Math.max((capturedCount / totalDaysInMonth) * 100, 3)}%`,
                 },
               ]}
             />
@@ -291,7 +370,9 @@ export const TransformationScreen: React.FC = () => {
         </View>
 
         {/* 30-DAY CALENDAR GRID SPACE */}
-        <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>30-DAY PHOTO CALENDAR GRID</Text>
+        <Text style={[styles.gridTitle, { color: colors.textPrimary }]}>
+          {currentMonthName.toUpperCase()} PHOTO CALENDAR
+        </Text>
 
         {loading ? (
           <ActivityIndicator size="large" color={colors.primary} style={{ marginVertical: 30 }} />
@@ -300,45 +381,107 @@ export const TransformationScreen: React.FC = () => {
             {daysArray.map((dayNum) => {
               const photoObj = photosMap[dayNum];
               const isUploadingThis = uploadingDay === dayNum;
+              const isToday = dayNum === currentDayOfMonth;
+              const isPast = dayNum < currentDayOfMonth;
+              const isFuture = dayNum > currentDayOfMonth;
+
+              let slotStatus: 'CAPTURED' | 'TODAY_ACTIVE' | 'LOCKED_FUTURE' | 'LOCKED_PAST' = 'LOCKED_FUTURE';
+              if (photoObj) {
+                slotStatus = 'CAPTURED';
+              } else if (isToday) {
+                slotStatus = 'TODAY_ACTIVE';
+              } else if (isFuture) {
+                slotStatus = 'LOCKED_FUTURE';
+              } else {
+                slotStatus = 'LOCKED_PAST';
+              }
 
               return (
                 <TouchableOpacity
                   key={dayNum}
                   style={[
                     styles.gridSlot,
-                    {
-                      backgroundColor: photoObj ? colors.card : colors.surface,
-                      borderColor: photoObj ? colors.primary : colors.cardBorder,
+                    slotStatus === 'CAPTURED' && {
+                      backgroundColor: colors.card,
+                      borderColor: colors.primary,
+                      borderWidth: 1.5,
+                    },
+                    slotStatus === 'TODAY_ACTIVE' && {
+                      backgroundColor: 'rgba(168, 255, 0, 0.08)',
+                      borderColor: colors.primary,
+                      borderWidth: 2,
+                      shadowColor: colors.primary,
+                      shadowOpacity: 0.35,
+                      shadowRadius: 6,
+                      elevation: 4,
+                    },
+                    slotStatus === 'LOCKED_FUTURE' && {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.cardBorder,
+                      opacity: 0.7,
+                    },
+                    slotStatus === 'LOCKED_PAST' && {
+                      backgroundColor: 'rgba(20, 20, 26, 0.6)',
+                      borderColor: 'rgba(255, 255, 255, 0.06)',
+                      opacity: 0.5,
                     },
                   ]}
                   onPress={() => handleSlotPress(dayNum)}
                   activeOpacity={0.8}
                 >
                   {/* Day Header Badge */}
-                  <View style={[styles.dayHeaderBadge, { backgroundColor: photoObj ? colors.primary : colors.cardSubtle }]}>
+                  <View
+                    style={[
+                      styles.dayHeaderBadge,
+                      slotStatus === 'CAPTURED' && { backgroundColor: colors.primary },
+                      slotStatus === 'TODAY_ACTIVE' && { backgroundColor: colors.primary },
+                      slotStatus === 'LOCKED_FUTURE' && { backgroundColor: colors.cardSubtle },
+                      slotStatus === 'LOCKED_PAST' && { backgroundColor: 'rgba(255, 255, 255, 0.08)' },
+                    ]}
+                  >
                     <Text
                       style={[
                         styles.dayHeaderNumber,
-                        { color: photoObj ? '#000000' : colors.textSecondary },
+                        (slotStatus === 'CAPTURED' || slotStatus === 'TODAY_ACTIVE') && { color: '#000000' },
+                        (slotStatus === 'LOCKED_FUTURE' || slotStatus === 'LOCKED_PAST') && { color: colors.textSecondary },
                       ]}
                     >
-                      DAY {dayNum}
+                      {isToday ? `DAY ${dayNum} • TODAY` : `DAY ${dayNum}`}
                     </Text>
                   </View>
 
-                  {/* Photo or Plus Icon */}
+                  {/* Content */}
                   {isUploadingThis ? (
                     <View style={styles.slotCenter}>
                       <ActivityIndicator size="small" color={colors.primary} />
                     </View>
                   ) : photoObj ? (
                     <Image source={{ uri: photoObj.imageUri }} style={styles.slotImage} resizeMode="cover" />
-                  ) : (
+                  ) : isToday ? (
                     <View style={styles.slotCenter}>
                       <View style={[styles.plusIconCircle, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
                         <Feather name="plus" size={18} color={colors.primary} />
                       </View>
-                      <Text style={[styles.addPhotoText, { color: colors.textMuted }]}>ADD PHOTO</Text>
+                      <Text style={[styles.addPhotoText, { color: colors.primary, fontWeight: '900' }]}>UPLOAD TODAY</Text>
+                      <Text style={[styles.slotDateSub, { color: colors.textSecondary }]}>1 Photo / Day</Text>
+                    </View>
+                  ) : isFuture ? (
+                    <View style={styles.slotCenter}>
+                      <View style={[styles.lockIconCircle, { backgroundColor: colors.cardSubtle, borderColor: colors.cardBorder }]}>
+                        <Feather name="lock" size={16} color={colors.textMuted} />
+                      </View>
+                      <Text style={[styles.lockedText, { color: colors.textMuted }]}>LOCKED</Text>
+                      <Text style={[styles.slotDateSub, { color: colors.textMuted }]}>
+                        {dayNum === currentDayOfMonth + 1 ? 'Tomorrow' : `${currentMonthShort} ${dayNum}`}
+                      </Text>
+                    </View>
+                  ) : (
+                    <View style={styles.slotCenter}>
+                      <View style={[styles.lockIconCircle, { backgroundColor: 'rgba(255, 77, 77, 0.1)', borderColor: 'rgba(255, 77, 77, 0.25)' }]}>
+                        <Feather name="clock" size={16} color="#FF7777" />
+                      </View>
+                      <Text style={[styles.lockedText, { color: '#FF7777' }]}>MISSED</Text>
+                      <Text style={[styles.slotDateSub, { color: colors.textMuted }]}>{currentMonthShort} {dayNum}</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -600,6 +743,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
+  dateInfoCard: {
+    borderRadius: 20,
+    padding: 16,
+    borderWidth: 1,
+    marginBottom: 16,
+    gap: 12,
+  },
+  dateInfoTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  calendarIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  currentDateText: {
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  currentDateSub: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 2,
+  },
+  dailyLimitBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  dailyLimitText: {
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  ruleNoticeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 8,
+  },
+  ruleNoticeText: {
+    flex: 1,
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 14,
+  },
   progressBox: {
     borderRadius: 20,
     padding: 16,
@@ -747,6 +947,23 @@ const styles = StyleSheet.create({
     fontSize: 8,
     fontWeight: '800',
     letterSpacing: 0.5,
+  },
+  lockIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lockedText: {
+    fontSize: 8,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  slotDateSub: {
+    fontSize: 8,
+    fontWeight: '600',
   },
   detailOverlay: {
     flex: 1,

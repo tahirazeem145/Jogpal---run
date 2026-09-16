@@ -74,8 +74,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       await userService.saveUserProfile(authUser.uid, newProfile);
     } else {
       const updates: Partial<UserProfile> = {};
-      if ((customPhoto || authUser.photoURL) && !existingProfile.photoURL) {
-        updates.photoURL = customPhoto || authUser.photoURL;
+      if (customPhoto) {
+        updates.photoURL = customPhoto;
       }
       if (customName && (!existingProfile.displayName || existingProfile.displayName === 'Runner')) {
         updates.displayName = customName;

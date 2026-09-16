@@ -21,13 +21,14 @@ export const transformationService = {
       console.warn('Error reading transformation cache:', e);
     }
 
-    // 2. Try Firestore fallback/sync
+    // 2. Try Firestore fetch & sync
     try {
       const userDocRef = doc(db, 'users', userId, 'data', 'transformation');
       const snap = await getDoc(userDocRef);
       if (snap.exists() && snap.data()?.photos) {
-        const remoteMap: TransformationMap = snap.data().photos;
-        map = { ...remoteMap, ...map }; // Merge remote with local
+        const remoteMap: TransformationMap = snap.data().photos || {};
+        map = remoteMap;
+        await AsyncStorage.setItem(localKey, JSON.stringify(remoteMap));
       }
     } catch (e) {
       console.warn('Firestore transformation fetch error (using local):', e);
@@ -52,10 +53,10 @@ export const transformationService = {
       console.warn('AsyncStorage save error:', e);
     }
 
-    // Sync to Firestore
+    // Sync to Firestore (replace photos map object)
     try {
       const userDocRef = doc(db, 'users', userId, 'data', 'transformation');
-      await setDoc(userDocRef, { photos: updatedMap }, { merge: true });
+      await setDoc(userDocRef, { photos: updatedMap, updatedAt: Date.now() });
     } catch (e) {
       console.warn('Firestore save error:', e);
     }
@@ -66,8 +67,15 @@ export const transformationService = {
   // Delete a photo for a specific day
   async deletePhoto(userId: string, dayNumber: number): Promise<TransformationMap> {
     const currentMap = await this.getPhotos(userId);
-    const updatedMap = { ...currentMap };
-    delete updatedMap[dayNumber];
+    const updatedMap: TransformationMap = {};
+    
+    // Copy all photos except the deleted day
+    Object.keys(currentMap).forEach((key) => {
+      const numKey = Number(key);
+      if (numKey !== dayNumber && currentMap[numKey]) {
+        updatedMap[numKey] = currentMap[numKey];
+      }
+    });
 
     const localKey = `${STORAGE_KEY_PREFIX}${userId}`;
     try {
@@ -78,7 +86,8 @@ export const transformationService = {
 
     try {
       const userDocRef = doc(db, 'users', userId, 'data', 'transformation');
-      await setDoc(userDocRef, { photos: updatedMap }, { merge: true });
+      // Overwrite document in Firestore without merge: true so deleted photo key is completely removed
+      await setDoc(userDocRef, { photos: updatedMap, updatedAt: Date.now() });
     } catch (e) {
       console.warn('Firestore delete error:', e);
     }

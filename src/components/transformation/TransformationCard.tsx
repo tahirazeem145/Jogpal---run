@@ -36,6 +36,12 @@ export const TransformationCard: React.FC<TransformationCardProps> = ({
   };
 
   const capturedCount = Object.keys(photosMap).length;
+  const now = new Date();
+  const currentDayOfMonth = now.getDate();
+  const currentMonthShort = now.toLocaleDateString('en-US', { month: 'short' });
+  const currentYear = now.getFullYear();
+  const totalDaysInMonth = new Date(currentYear, now.getMonth() + 1, 0).getDate();
+  const isTodayCaptured = Boolean(photosMap[currentDayOfMonth]);
   const sortedDays = Object.keys(photosMap).map(Number).sort((a, b) => b - a);
   const latestPhoto = sortedDays.length > 0 ? photosMap[sortedDays[0]] : null;
 
@@ -53,16 +59,18 @@ export const TransformationCard: React.FC<TransformationCardProps> = ({
           <View style={styles.textCol}>
             <View style={styles.titleRow}>
               <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>
-                30-DAY TRANSFORMATION
+                {currentMonthShort.toUpperCase()} TRANSFORMATION
               </Text>
-              <View style={[styles.countBadge, { backgroundColor: colors.accentSubtle, borderColor: colors.primary }]}>
-                <Text style={[styles.countText, { color: colors.primary }]}>{capturedCount}/30</Text>
+              <View style={[styles.countBadge, { backgroundColor: isTodayCaptured ? 'rgba(0, 255, 102, 0.12)' : colors.accentSubtle, borderColor: isTodayCaptured ? '#00FF66' : colors.primary }]}>
+                <Text style={[styles.countText, { color: isTodayCaptured ? '#00FF66' : colors.primary }]}>
+                  {capturedCount}/{totalDaysInMonth}
+                </Text>
               </View>
             </View>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={2}>
-              {capturedCount === 0
-                ? 'Tap to start your 30-day transformation calendar!'
-                : `Day ${sortedDays[0]} photo captured. Tap to view calendar!`}
+              {isTodayCaptured
+                ? `Today's photo captured (Day ${currentDayOfMonth} ✅). Tap to view calendar!`
+                : `Day ${currentDayOfMonth} active today (1 photo limit). Tap to capture!`}
             </Text>
           </View>
         </View>
