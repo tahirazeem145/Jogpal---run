@@ -366,6 +366,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
           showsUserLocation={false}
           showsCompass={false}
           showsMyLocationButton={false}
+          mapType="none"
           customMapStyle={jogpalDarkMapStyle}
           scrollEnabled={interactive}
           zoomEnabled={interactive}
