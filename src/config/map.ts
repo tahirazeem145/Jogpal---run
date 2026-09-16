@@ -5,11 +5,11 @@
  */
 
 export const MAP_CONFIG = {
-  // Full Street-Level Vector Map Style (Carto Dark Matter GL / OpenFreeMap Dark)
-  // Provides high-contrast dark asphalt streets, roads, buildings, parks, and labels
+  // Full Street-Level Vector Map Style (OpenFreeMap Dark / Carto Dark Matter GL)
+  // 100% free, open-source vector map with zero API keys required
   styleURL:
     process.env.EXPO_PUBLIC_MAP_STYLE_URL ||
-    'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    'https://tiles.openfreemap.org/styles/dark',
 
   apiKey: process.env.EXPO_PUBLIC_MAP_API_KEY || '',
 

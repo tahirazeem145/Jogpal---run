@@ -10,28 +10,32 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { JogpalMapProps, JogpalCoordinate, CameraMode } from '../../types/map';
 import { MAP_CONFIG } from '../../config/map';
 import { useTheme } from '../../context/ThemeContext';
-import { jogpalDarkMapStyle } from '../../theme/mapStyle';
 import { OfflineSyntheticMap } from './OfflineSyntheticMap';
 import { locationService } from '../../services/locationService';
-import { StartMarker } from './StartMarker';
-import { FinishMarker } from './FinishMarker';
-import { PartnerMarker } from './PartnerMarker';
+import { StartBadge } from './StartMarker';
+import { FinishBadge } from './FinishMarker';
+import { PartnerBadge } from './PartnerMarker';
 
 const SQUAD_COLORS = ['#A8FF00', '#00E5FF', '#FF0055', '#FFB800', '#BD00FF'];
 
-// Try require React Native Maps as standard Android / iOS native map provider
-let RNMapView: any = null;
-let RNPolyline: any = null;
-let RNMarker: any = null;
-let RNUrlTile: any = null;
+// Pure open-source MapLibre Native for mobile devices (Zero Google Maps dependencies)
+let MLMap: any = null;
+let MLCamera: any = null;
+let MLLayer: any = null;
+let MLGeoJSONSource: any = null;
+let MLMarker: any = null;
+
 if (Platform.OS !== 'web') {
   try {
-    const RNMaps = require('react-native-maps');
-    RNMapView = RNMaps.default || RNMaps.MapView || RNMaps;
-    RNPolyline = RNMaps.Polyline;
-    RNMarker = RNMaps.Marker;
-    RNUrlTile = RNMaps.UrlTile;
-  } catch (err) {}
+    const ML = require('@maplibre/maplibre-react-native');
+    MLMap = ML.Map;
+    MLCamera = ML.Camera;
+    MLLayer = ML.Layer;
+    MLGeoJSONSource = ML.GeoJSONSource;
+    MLMarker = ML.Marker;
+  } catch (err) {
+    console.warn('[JogpalMap] MapLibre Native failed to load:', err);
+  }
 }
 
 export const JogpalMap: React.FC<JogpalMapProps> = ({
@@ -50,17 +54,15 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   const { colors } = useTheme();
   const [cameraMode, setCameraMode] = useState<CameraMode>('FOLLOWING');
   const [isMapReady, setIsMapReady] = useState(false);
+  const [hasNativeMapError, setHasNativeMapError] = useState(false);
+  const [currentZoom, setCurrentZoom] = useState(MAP_CONFIG.defaultZoom);
 
-  const mapRef = useRef<any>(null);
+  const cameraRef = useRef<any>(null);
   const iframeRef = useRef<any>(null);
   const isLeafletReadyRef = useRef<boolean>(false);
   const lastCameraUpdateRef = useRef<number>(0);
-  const regionDeltaRef = useRef<{ latitudeDelta: number; longitudeDelta: number }>({
-    latitudeDelta: 0.005,
-    longitudeDelta: 0.005,
-  });
 
-  // Sanitize coordinates to prevent crashes from any NaN or corrupted coordinates
+  // Sanitize coordinates to prevent crashes from NaN or malformed coordinates
   const sanitizedActualRoute = useMemo(() => {
     if (!actualRoute || !Array.isArray(actualRoute)) return [];
     return actualRoute.filter(
@@ -95,142 +97,101 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     );
   }, [plannedRoute]);
 
-  // 1. Dynamic Region Calculation: Guarantees map never defaults to San Francisco
-  // when an actual route, planned OSRM route, or currentLocation is available.
-  const computedInitialRegion = useMemo(() => {
-    const routeToFrame = sanitizedActualRoute.length > 0 ? sanitizedActualRoute : sanitizedPlannedRoute;
-    if (routeToFrame.length > 0) {
-      let minLat = routeToFrame[0].latitude;
-      let maxLat = routeToFrame[0].latitude;
-      let minLng = routeToFrame[0].longitude;
-      let maxLng = routeToFrame[0].longitude;
-
-      for (let i = 1; i < routeToFrame.length; i++) {
-        const pt = routeToFrame[i];
-        if (pt.latitude < minLat) minLat = pt.latitude;
-        if (pt.latitude > maxLat) maxLat = pt.latitude;
-        if (pt.longitude < minLng) minLng = pt.longitude;
-        if (pt.longitude > maxLng) maxLng = pt.longitude;
-      }
-
-      const centerLat = (minLat + maxLat) / 2;
-      const centerLng = (minLng + maxLng) / 2;
-      const deltaLat = Math.max(0.005, (maxLat - minLat) * 1.4);
-      const deltaLng = Math.max(0.005, (maxLng - minLng) * 1.4);
-
-      return {
-        latitude: centerLat,
-        longitude: centerLng,
-        latitudeDelta: deltaLat,
-        longitudeDelta: deltaLng,
-      };
-    }
-
+  // Initial center [longitude, latitude] for MapLibre
+  const initialCenterLngLat = useMemo((): [number, number] => {
     if (currentLocation) {
-      return {
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-        latitudeDelta: 0.006,
-        longitudeDelta: 0.006,
-      };
+      return [currentLocation.longitude, currentLocation.latitude];
     }
-
+    if (sanitizedPlannedRoute.length > 0) {
+      return [sanitizedPlannedRoute[0].longitude, sanitizedPlannedRoute[0].latitude];
+    }
+    if (sanitizedActualRoute.length > 0) {
+      return [sanitizedActualRoute[0].longitude, sanitizedActualRoute[0].latitude];
+    }
     const cached = locationService.getCachedLocation();
     if (cached) {
-      return {
-        latitude: cached.latitude,
-        longitude: cached.longitude,
-        latitudeDelta: 0.006,
-        longitudeDelta: 0.006,
-      };
+      return [cached.longitude, cached.latitude];
     }
+    return MAP_CONFIG.defaultCenterCoordinate;
+  }, [currentLocation, sanitizedPlannedRoute, sanitizedActualRoute]);
 
+  // GeoJSON LineStrings for hardware-accelerated polyline rendering
+  const actualRouteGeoJSON = useMemo(() => {
+    if (sanitizedActualRoute.length < 2) return null;
     return {
-      latitude: MAP_CONFIG.defaultCenterCoordinate[1],
-      longitude: MAP_CONFIG.defaultCenterCoordinate[0],
-      latitudeDelta: 0.006,
-      longitudeDelta: 0.006,
+      type: 'Feature' as const,
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: sanitizedActualRoute.map((pt) => [pt.longitude, pt.latitude]),
+      },
+      properties: {},
     };
-  }, [sanitizedActualRoute, sanitizedPlannedRoute, currentLocation]);
-
-  // 2. Throttled, Stable Native Camera Follow & Initial Frame
-  const hasCenteredInitiallyRef = useRef(false);
-
-  useEffect(() => {
-    if (Platform.OS === 'web' || !RNMapView || !mapRef.current || !isMapReady) return;
-
-    // If planned OSRM route is supplied and actual route is not yet recording, fit to the planned circuit
-    if (!hasCenteredInitiallyRef.current && sanitizedPlannedRoute.length > 1 && sanitizedActualRoute.length === 0) {
-      hasCenteredInitiallyRef.current = true;
-      try {
-        mapRef.current.fitToCoordinates(sanitizedPlannedRoute, {
-          edgePadding: { top: 40, right: 40, bottom: 40, left: 40 },
-          animated: true,
-        });
-      } catch (e) {}
-      return;
-    }
-
-    // Follow current location
-    if (currentLocation && cameraMode === 'FOLLOWING' && !fitRouteOnLoad) {
-      const now = Date.now();
-      if (!hasCenteredInitiallyRef.current || now - lastCameraUpdateRef.current >= MAP_CONFIG.cameraFollowThrottleMs) {
-        hasCenteredInitiallyRef.current = true;
-        lastCameraUpdateRef.current = now;
-        mapRef.current.animateToRegion(
-          {
-            latitude: currentLocation.latitude,
-            longitude: currentLocation.longitude,
-            latitudeDelta: regionDeltaRef.current.latitudeDelta,
-            longitudeDelta: regionDeltaRef.current.longitudeDelta,
-          },
-          700
-        );
-      }
-    }
-  }, [currentLocation?.latitude, currentLocation?.longitude, sanitizedPlannedRoute, cameraMode, fitRouteOnLoad, isMapReady]);
-
-  // 3. Fit Route Coordinates for Native Map (Idempotent & Safe)
-  const fitNativeRouteBounds = useCallback(() => {
-    if (Platform.OS !== 'web' && RNMapView && mapRef.current && sanitizedActualRoute.length > 0) {
-      if (sanitizedActualRoute.length === 1) {
-        mapRef.current.animateToRegion(
-          {
-            latitude: sanitizedActualRoute[0].latitude,
-            longitude: sanitizedActualRoute[0].longitude,
-            latitudeDelta: 0.005,
-            longitudeDelta: 0.005,
-          },
-          400
-        );
-      } else {
-        const executeFit = () => {
-          if (mapRef.current) {
-            try {
-              mapRef.current.fitToCoordinates(sanitizedActualRoute, {
-                edgePadding: { top: 60, right: 60, bottom: 60, left: 60 },
-                animated: true,
-              });
-            } catch (e) {}
-          }
-        };
-
-        if (Platform.OS === 'android') {
-          setTimeout(executeFit, 100);
-        } else {
-          executeFit();
-        }
-      }
-    }
   }, [sanitizedActualRoute]);
 
+  const plannedRouteGeoJSON = useMemo(() => {
+    if (sanitizedPlannedRoute.length < 2) return null;
+    return {
+      type: 'Feature' as const,
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: sanitizedPlannedRoute.map((pt) => [pt.longitude, pt.latitude]),
+      },
+      properties: {},
+    };
+  }, [sanitizedPlannedRoute]);
+
+  // Throttled native camera tracking
   useEffect(() => {
-    if (fitRouteOnLoad && isMapReady && sanitizedActualRoute.length > 0) {
+    if (Platform.OS === 'web' || !MLMap || !cameraRef.current || !isMapReady) return;
+
+    if (currentLocation && cameraMode === 'FOLLOWING' && !fitRouteOnLoad) {
+      const now = Date.now();
+      if (now - lastCameraUpdateRef.current >= MAP_CONFIG.cameraFollowThrottleMs) {
+        lastCameraUpdateRef.current = now;
+        try {
+          cameraRef.current.easeTo({
+            center: [currentLocation.longitude, currentLocation.latitude],
+            duration: 700,
+          });
+        } catch (e) {}
+      }
+    }
+  }, [currentLocation?.latitude, currentLocation?.longitude, cameraMode, fitRouteOnLoad, isMapReady]);
+
+  // Fit bounds to route
+  const fitNativeRouteBounds = useCallback(() => {
+    if (Platform.OS === 'web' || !cameraRef.current) return;
+    const pts = sanitizedActualRoute.length > 1 ? sanitizedActualRoute : sanitizedPlannedRoute;
+    if (pts.length < 2) return;
+
+    let minLat = pts[0].latitude;
+    let maxLat = pts[0].latitude;
+    let minLng = pts[0].longitude;
+    let maxLng = pts[0].longitude;
+
+    for (let i = 1; i < pts.length; i++) {
+      if (pts[i].latitude < minLat) minLat = pts[i].latitude;
+      if (pts[i].latitude > maxLat) maxLat = pts[i].latitude;
+      if (pts[i].longitude < minLng) minLng = pts[i].longitude;
+      if (pts[i].longitude > maxLng) maxLng = pts[i].longitude;
+    }
+
+    try {
+      // MapLibre bounds: [west, south, east, north]
+      cameraRef.current.fitBounds([minLng, minLat, maxLng, maxLat], {
+        duration: 1000,
+        padding: { top: 60, right: 60, bottom: 60, left: 60 },
+      });
+    } catch (e) {}
+  }, [sanitizedActualRoute, sanitizedPlannedRoute]);
+
+  useEffect(() => {
+    if (fitRouteOnLoad && isMapReady && (sanitizedActualRoute.length > 1 || sanitizedPlannedRoute.length > 1)) {
       fitNativeRouteBounds();
     }
-  }, [fitRouteOnLoad, isMapReady, sanitizedActualRoute.length, fitNativeRouteBounds]);
+  }, [fitRouteOnLoad, isMapReady, fitNativeRouteBounds, sanitizedActualRoute.length, sanitizedPlannedRoute.length]);
 
-  // 4. Web Leaflet Communication & Handshake
+  // Web Leaflet communication
   const postToLeaflet = useCallback((message: any) => {
     if (iframeRef.current && iframeRef.current.contentWindow) {
       try {
@@ -239,7 +200,6 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     }
   }, []);
 
-  // Listen for Leaflet events from inside iframe
   useEffect(() => {
     if (Platform.OS !== 'web') return;
 
@@ -249,234 +209,192 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
         isLeafletReadyRef.current = true;
         setIsMapReady(true);
         if (onMapLoaded) onMapLoaded();
-
-        // Send initial state to Leaflet
         postToLeaflet({
           type: 'INIT_STATE',
-          lat: currentLocation?.latitude || computedInitialRegion.latitude,
-          lng: currentLocation?.longitude || computedInitialRegion.longitude,
           actualCoords: sanitizedActualRoute.map((p) => [p.latitude, p.longitude]),
-          plannedCoords: sanitizedPlannedRoute.map((p) => [p.latitude, p.longitude]),
           partners: partnerRunners,
           fitRouteOnLoad,
         });
       } else if (event.data.type === 'USER_INTERACTION') {
-        if (cameraMode !== 'USER_CONTROLLED') {
-          setCameraMode('USER_CONTROLLED');
-        }
+        setCameraMode('USER_CONTROLLED');
       }
     };
 
     window.addEventListener('message', handleWebMessage);
-    return () => {
-      window.removeEventListener('message', handleWebMessage);
-    };
-  }, [cameraMode, currentLocation, computedInitialRegion, sanitizedActualRoute, sanitizedPlannedRoute, partnerRunners, fitRouteOnLoad, onMapLoaded, postToLeaflet]);
+    return () => window.removeEventListener('message', handleWebMessage);
+  }, [partnerRunners, sanitizedActualRoute, fitRouteOnLoad, postToLeaflet, onMapLoaded]);
 
-  // Send real-time updates to Web Leaflet container
-  useEffect(() => {
-    if (Platform.OS === 'web' && isLeafletReadyRef.current) {
-      postToLeaflet({
-        type: 'UPDATE_LOCATION',
-        lat: currentLocation?.latitude,
-        lng: currentLocation?.longitude,
-        actualCoords: sanitizedActualRoute.map((p) => [p.latitude, p.longitude]),
-        cameraMode,
-        partners: partnerRunners,
-      });
-    }
-  }, [currentLocation?.latitude, currentLocation?.longitude, sanitizedActualRoute, cameraMode, partnerRunners, postToLeaflet]);
-
-  // 5. Interactive Control Handlers
+  // Recenter button
   const handleCompassPress = useCallback(() => {
     setCameraMode('FOLLOWING');
-    if (Platform.OS !== 'web' && mapRef.current && currentLocation) {
-      mapRef.current.animateToRegion(
-        {
-          latitude: currentLocation.latitude,
-          longitude: currentLocation.longitude,
-          latitudeDelta: regionDeltaRef.current.latitudeDelta,
-          longitudeDelta: regionDeltaRef.current.longitudeDelta,
-        },
-        500
-      );
-    } else if (Platform.OS === 'web') {
-      const targetLat = currentLocation?.latitude || computedInitialRegion.latitude;
-      const targetLng = currentLocation?.longitude || computedInitialRegion.longitude;
-      postToLeaflet({ type: 'RECENTER', lat: targetLat, lng: targetLng });
+    if (Platform.OS !== 'web' && cameraRef.current && currentLocation) {
+      try {
+        cameraRef.current.easeTo({
+          center: [currentLocation.longitude, currentLocation.latitude],
+          duration: 500,
+        });
+      } catch (e) {}
+    } else if (Platform.OS === 'web' && currentLocation) {
+      postToLeaflet({
+        type: 'RECENTER',
+        lat: currentLocation.latitude,
+        lng: currentLocation.longitude,
+      });
     }
-  }, [currentLocation, computedInitialRegion, postToLeaflet]);
+  }, [currentLocation, postToLeaflet]);
 
+  // Zoom controls
   const handleZoomIn = useCallback(() => {
-    if (Platform.OS !== 'web' && mapRef.current) {
-      const nextLatDelta = Math.max(0.001, regionDeltaRef.current.latitudeDelta / 1.5);
-      const nextLngDelta = Math.max(0.001, regionDeltaRef.current.longitudeDelta / 1.5);
-      regionDeltaRef.current = { latitudeDelta: nextLatDelta, longitudeDelta: nextLngDelta };
-
-      const centerLat = currentLocation?.latitude || computedInitialRegion.latitude;
-      const centerLng = currentLocation?.longitude || computedInitialRegion.longitude;
-
-      mapRef.current.animateToRegion(
-        {
-          latitude: centerLat,
-          longitude: centerLng,
-          latitudeDelta: nextLatDelta,
-          longitudeDelta: nextLngDelta,
-        },
-        300
-      );
+    if (Platform.OS !== 'web' && cameraRef.current) {
+      const nextZoom = Math.min(MAP_CONFIG.maxZoom, currentZoom + 1);
+      setCurrentZoom(nextZoom);
+      try {
+        cameraRef.current.zoomTo(nextZoom, { duration: 300 });
+      } catch (e) {}
     } else if (Platform.OS === 'web') {
       postToLeaflet({ type: 'ZOOM_IN' });
     }
-  }, [currentLocation, computedInitialRegion, postToLeaflet]);
+  }, [currentZoom, postToLeaflet]);
 
   const handleZoomOut = useCallback(() => {
-    if (Platform.OS !== 'web' && mapRef.current) {
-      const nextLatDelta = Math.min(0.2, regionDeltaRef.current.latitudeDelta * 1.5);
-      const nextLngDelta = Math.min(0.2, regionDeltaRef.current.longitudeDelta * 1.5);
-      regionDeltaRef.current = { latitudeDelta: nextLatDelta, longitudeDelta: nextLngDelta };
-
-      const centerLat = currentLocation?.latitude || computedInitialRegion.latitude;
-      const centerLng = currentLocation?.longitude || computedInitialRegion.longitude;
-
-      mapRef.current.animateToRegion(
-        {
-          latitude: centerLat,
-          longitude: centerLng,
-          latitudeDelta: nextLatDelta,
-          longitudeDelta: nextLngDelta,
-        },
-        300
-      );
+    if (Platform.OS !== 'web' && cameraRef.current) {
+      const nextZoom = Math.max(MAP_CONFIG.minZoom, currentZoom - 1);
+      setCurrentZoom(nextZoom);
+      try {
+        cameraRef.current.zoomTo(nextZoom, { duration: 300 });
+      } catch (e) {}
     } else if (Platform.OS === 'web') {
       postToLeaflet({ type: 'ZOOM_OUT' });
     }
-  }, [currentLocation, computedInitialRegion, postToLeaflet]);
+  }, [currentZoom, postToLeaflet]);
 
   // =========================================================================
-  // 1. PRIMARY NATIVE RENDERER: React Native Maps for iOS & Android
+  // 1. PRIMARY NATIVE RENDERER: 100% Open-Source MapLibre Native (No Google)
   // =========================================================================
-  if (Platform.OS !== 'web' && RNMapView) {
+  if (Platform.OS !== 'web' && MLMap && !hasNativeMapError) {
     return (
       <View style={[styles.container, { borderColor: colors.primary, shadowColor: colors.primary }, style]}>
-        <RNMapView
-          ref={mapRef}
+        <MLMap
           style={styles.map}
-          initialRegion={computedInitialRegion}
-          showsUserLocation={false}
-          showsCompass={false}
-          showsMyLocationButton={false}
-          mapType="none"
-          customMapStyle={jogpalDarkMapStyle}
-          scrollEnabled={interactive}
-          zoomEnabled={interactive}
-          rotateEnabled={interactive}
-          pitchEnabled={false}
-          onRegionChangeComplete={(region: any) => {
-            if (region?.latitudeDelta && region?.longitudeDelta) {
-              regionDeltaRef.current = {
-                latitudeDelta: region.latitudeDelta,
-                longitudeDelta: region.longitudeDelta,
-              };
-            }
-          }}
-          onRegionChange={(region: any, details: any) => {
-            // Recognize user pinch, drag, or double-tap gestures to pause follow mode
-            if (details?.isGesture && cameraMode !== 'USER_CONTROLLED') {
-              setCameraMode('USER_CONTROLLED');
-            }
-          }}
-          onPanDrag={() => {
+          mapStyle={MAP_CONFIG.styleURL}
+          logo={false}
+          attribution={false}
+          compass={false}
+          scaleBar={false}
+          onRegionDidChange={() => {
             if (cameraMode !== 'USER_CONTROLLED') {
               setCameraMode('USER_CONTROLLED');
             }
           }}
-          onMapReady={() => {
+          onDidFinishLoadingMap={() => {
             setIsMapReady(true);
-            if (fitRouteOnLoad && sanitizedActualRoute.length > 0) {
+            if (fitRouteOnLoad) {
               fitNativeRouteBounds();
             }
             if (onMapLoaded) onMapLoaded();
           }}
+          onDidFailLoadingMap={(e: any) => {
+            console.warn('[JogpalMap] Native map style load error:', e);
+            setHasNativeMapError(true);
+            if (onMapError) onMapError(e);
+          }}
         >
-          {/* OpenStreetMap (OSM) Dark Matter Raster Tile Layer */}
-          {RNUrlTile && (
-            <RNUrlTile
-              urlTemplate={MAP_CONFIG.darkRasterTileURL}
-              maximumZ={19}
-              flipY={false}
-              tileSize={256}
-              shouldReplaceMapContent={true}
-              zIndex={-1}
-            />
+          <MLCamera
+            ref={cameraRef}
+            initialViewState={{
+              center: initialCenterLngLat,
+              zoom: MAP_CONFIG.defaultZoom,
+            }}
+          />
+
+          {/* Actual GPS Run Polyline (High-contrast Neon Primary) */}
+          {actualRouteGeoJSON && MLGeoJSONSource && MLLayer && (
+            <MLGeoJSONSource id="jogpalActualRouteSource" data={actualRouteGeoJSON}>
+              <MLLayer
+                id="jogpalActualRouteLayer"
+                type="line"
+                paint={{
+                  'line-color': colors.primary,
+                  'line-width': 5,
+                  'line-cap': 'round',
+                  'line-join': 'round',
+                }}
+              />
+            </MLGeoJSONSource>
           )}
 
-          {/* Actual GPS Route Polyline */}
-          {sanitizedActualRoute.length > 1 && RNPolyline && (
-            <RNPolyline
-              coordinates={sanitizedActualRoute}
-              strokeColor={colors.primary}
-              strokeWidth={5}
-              lineCap="round"
-              lineJoin="round"
-            />
-          )}
-
-          {/* Planned OSRM Route Polyline */}
-          {sanitizedPlannedRoute.length > 1 && RNPolyline && (
-            <RNPolyline
-              coordinates={sanitizedPlannedRoute}
-              strokeColor="#00E5FF"
-              strokeWidth={4}
-              lineDashPattern={[8, 6]}
-            />
+          {/* Planned OSRM Pedestrian Circuit Polyline (Neon Cyan) */}
+          {plannedRouteGeoJSON && MLGeoJSONSource && MLLayer && (
+            <MLGeoJSONSource id="jogpalPlannedRouteSource" data={plannedRouteGeoJSON}>
+              <MLLayer
+                id="jogpalPlannedRouteLayer"
+                type="line"
+                paint={{
+                  'line-color': '#00E5FF',
+                  'line-width': 4,
+                  'line-dasharray': [2, 2],
+                }}
+              />
+            </MLGeoJSONSource>
           )}
 
           {/* Start Marker */}
-          {showStartFinishMarkers && sanitizedActualRoute.length > 0 && (
-            <StartMarker coordinate={sanitizedActualRoute[0]} />
+          {showStartFinishMarkers && sanitizedActualRoute.length > 0 && MLMarker && (
+            <MLMarker
+              id="jogpalStartMarker"
+              coordinate={[sanitizedActualRoute[0].longitude, sanitizedActualRoute[0].latitude]}
+              anchor="center"
+            >
+              <StartBadge />
+            </MLMarker>
           )}
 
           {/* Finish Marker */}
-          {showStartFinishMarkers && sanitizedActualRoute.length > 1 && (
-            <FinishMarker coordinate={sanitizedActualRoute[sanitizedActualRoute.length - 1]} />
+          {showStartFinishMarkers && sanitizedActualRoute.length > 1 && MLMarker && (
+            <MLMarker
+              id="jogpalFinishMarker"
+              coordinate={[sanitizedActualRoute[sanitizedActualRoute.length - 1].longitude, sanitizedActualRoute[sanitizedActualRoute.length - 1].latitude]}
+              anchor="center"
+            >
+              <FinishBadge />
+            </MLMarker>
           )}
 
-          {/* Live Runner Position Marker with Accuracy Halo & Direction */}
-          {currentLocation && RNMarker && (
-            <RNMarker
-              coordinate={{
-                latitude: currentLocation.latitude,
-                longitude: currentLocation.longitude,
-              }}
-              anchor={{ x: 0.5, y: 0.5 }}
+          {/* Live Runner Marker */}
+          {currentLocation && MLMarker && (
+            <MLMarker
+              id="jogpalCurrentRunnerMarker"
+              coordinate={[currentLocation.longitude, currentLocation.latitude]}
+              anchor="center"
             >
               <View style={styles.markerAnchor}>
-                {/* Accuracy Halo */}
                 <View style={[styles.accuracyHalo, { borderColor: colors.primary, backgroundColor: colors.glow }]} />
-                {/* Direction Cone if heading available */}
                 {currentLocation.heading !== null && currentLocation.heading >= 0 && (
                   <View style={[styles.headingCone, { transform: [{ rotate: `${currentLocation.heading}deg` }] }]}>
                     <View style={[styles.headingArrow, { borderBottomColor: colors.primary }]} />
                   </View>
                 )}
-                {/* Center Runner Dot */}
                 <View style={[styles.runnerCore, { backgroundColor: colors.primary }]} />
               </View>
-            </RNMarker>
+            </MLMarker>
           )}
 
-          {/* Partner / Squad Runners Markers */}
+          {/* Partner / Squad Runners */}
           {partnerRunners.map((partner, idx) => (
-            <PartnerMarker
-              key={partner.id}
-              runner={partner}
-              accentColor={SQUAD_COLORS[idx % SQUAD_COLORS.length]}
-            />
+            MLMarker && (
+              <MLMarker
+                key={partner.id}
+                id={`partner-${partner.id}`}
+                coordinate={[partner.longitude, partner.latitude]}
+                anchor="center"
+              >
+                <PartnerBadge runner={partner} accentColor={SQUAD_COLORS[idx % SQUAD_COLORS.length]} />
+              </MLMarker>
+            )
           ))}
-        </RNMapView>
+        </MLMap>
 
-        {/* Recenter / Compass Control Button */}
+        {/* Recenter / Compass Button */}
         {interactive && showRecenterButton && (
           <TouchableOpacity
             style={[
@@ -526,8 +444,8 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   // 2. UNIVERSAL RENDERER FOR WEB: Interactive Leaflet Dark Street Map
   // =========================================================================
   if (Platform.OS === 'web') {
-    const lat = computedInitialRegion.latitude;
-    const lng = computedInitialRegion.longitude;
+    const lat = initialCenterLngLat[1];
+    const lng = initialCenterLngLat[0];
     const actualCoords = sanitizedActualRoute.map((p) => [p.latitude, p.longitude]);
     const plannedCoords = sanitizedPlannedRoute.map((p) => [p.latitude, p.longitude]);
 
@@ -641,9 +559,9 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
 
             ${plannedCoords.length > 1 ? `
               L.polyline(${JSON.stringify(plannedCoords)}, {
-                color: '#555566',
-                weight: 3,
-                dashArray: '5, 5'
+                color: '#00E5FF',
+                weight: 4,
+                dashArray: '6, 6'
               }).addTo(map);
             ` : ''}
 
@@ -773,7 +691,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   }
 
   // =========================================================================
-  // 3. FALLBACK SYNTHETIC MAP FOR UNKNOWN PLATFORMS
+  // 3. FALLBACK SYNTHETIC MAP: Guaranteed Offline Stadium Track
   // =========================================================================
   return (
     <OfflineSyntheticMap
@@ -838,46 +756,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 8,
     borderLeftColor: 'transparent',
     borderRightColor: 'transparent',
-  },
-  startBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    backgroundColor: '#00FF66',
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-  startBadgeText: {
-    color: '#000000',
-    fontSize: 9,
-    fontWeight: '900',
-  },
-  finishBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    backgroundColor: '#FF3B30',
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#FFFFFF',
-  },
-  finishBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
-  },
-  partnerMarkerRing: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    borderWidth: 2,
-    backgroundColor: '#1E1E24',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  partnerInitial: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
   },
   compassBtn: {
     position: 'absolute',

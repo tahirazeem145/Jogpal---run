@@ -2,14 +2,6 @@ import React from 'react';
 import { StyleSheet, View, Text, Image, Platform } from 'react-native';
 import { PartnerRunner } from '../../types/map';
 
-let RNMarker: any = null;
-if (Platform.OS !== 'web') {
-  try {
-    const RNMaps = require('react-native-maps');
-    RNMarker = RNMaps.Marker;
-  } catch (e) {}
-}
-
 export interface PartnerMarkerProps {
   runner: PartnerRunner;
   accentColor?: string;
@@ -55,22 +47,7 @@ export const PartnerMarker: React.FC<PartnerMarkerProps> = React.memo(({
   runner,
   accentColor = '#A8FF00',
 }) => {
-  if (Platform.OS === 'web' || !RNMarker) return null;
-
-  return (
-    <RNMarker
-      key={runner.id}
-      coordinate={{
-        latitude: runner.latitude,
-        longitude: runner.longitude,
-      }}
-      anchor={{ x: 0.5, y: 0.5 }}
-      title={runner.name}
-      tracksViewChanges={false}
-    >
-      <PartnerBadge runner={runner} accentColor={accentColor} />
-    </RNMarker>
-  );
+  return <PartnerBadge runner={runner} accentColor={accentColor} />;
 });
 
 const styles = StyleSheet.create({

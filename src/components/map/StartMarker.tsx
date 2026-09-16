@@ -2,14 +2,6 @@ import React from 'react';
 import { StyleSheet, View, Text, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-let RNMarker: any = null;
-if (Platform.OS !== 'web') {
-  try {
-    const RNMaps = require('react-native-maps');
-    RNMarker = RNMaps.Marker;
-  } catch (e) {}
-}
-
 export interface StartMarkerProps {
   coordinate: { latitude: number; longitude: number } | [number, number];
 }
@@ -27,18 +19,8 @@ export const StartBadge: React.FC = () => (
   </View>
 );
 
-export const StartMarker: React.FC<StartMarkerProps> = React.memo(({ coordinate }) => {
-  const coord = Array.isArray(coordinate)
-    ? { latitude: coordinate[1], longitude: coordinate[0] }
-    : coordinate;
-
-  if (Platform.OS === 'web' || !RNMarker) return null;
-
-  return (
-    <RNMarker coordinate={coord} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-      <StartBadge />
-    </RNMarker>
-  );
+export const StartMarker: React.FC<StartMarkerProps> = React.memo(() => {
+  return <StartBadge />;
 });
 
 const styles = StyleSheet.create({
