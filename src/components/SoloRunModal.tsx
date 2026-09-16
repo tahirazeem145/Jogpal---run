@@ -282,6 +282,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   targetDistanceKm={selectedTargetKm}
                   routeMode={selectedRouteMode}
                   style={StyleSheet.absoluteFill}
+                  isFullScreen={true}
                 />
               ) : (
                 <JogpalMap
@@ -291,6 +292,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   partnerRunners={effectivePartnerRunners}
                   style={StyleSheet.absoluteFill}
                   interactive={true}
+                  isFullScreen={true}
                 />
               )}
 
@@ -621,6 +623,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   targetDistanceKm={offlineConfig.targetDistanceKm}
                   routeMode={offlineConfig.routeMode}
                   style={StyleSheet.absoluteFill}
+                  isFullScreen={true}
                 />
               ) : (
                 <JogpalMap
@@ -630,6 +633,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   partnerRunners={effectivePartnerRunners}
                   style={StyleSheet.absoluteFill}
                   interactive={runState !== 'COUNTDOWN'}
+                  isFullScreen={true}
                 />
               )}
 
@@ -1103,6 +1107,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   targetDistanceKm={offlineConfig?.targetDistanceKm || lastRunSummary.distanceKm || 1}
                   routeMode={offlineConfig?.routeMode || 'LOOP'}
                   style={StyleSheet.absoluteFill}
+                  isFullScreen={true}
                 />
               ) : (
                 <JogpalMap
@@ -1113,6 +1118,7 @@ export const SoloRunModal: React.FC<SoloRunModalProps> = ({ visible, onClose }) 
                   interactive={true}
                   showStartFinishMarkers={true}
                   fitRouteOnLoad={true}
+                  isFullScreen={true}
                 />
               )}
 

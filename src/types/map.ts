@@ -25,6 +25,7 @@ export interface JogpalMapProps {
   partnerRunners?: PartnerRunner[];
   style?: StyleProp<ViewStyle>;
   interactive?: boolean;
+  isFullScreen?: boolean;
   showRecenterButton?: boolean;
   showStartFinishMarkers?: boolean;
   fitRouteOnLoad?: boolean;

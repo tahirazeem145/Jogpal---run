@@ -316,6 +316,7 @@ export const HistoryScreen: React.FC = () => {
                   interactive={true}
                   showStartFinishMarkers={true}
                   fitRouteOnLoad={true}
+                  isFullScreen={true}
                 />
               ) : (
                 <OfflineSyntheticMap
@@ -323,6 +324,7 @@ export const HistoryScreen: React.FC = () => {
                   targetDistanceKm={selectedRun.distanceKm || 1}
                   routeMode="LOOP"
                   style={StyleSheet.absoluteFill}
+                  isFullScreen={true}
                 />
               )}
 

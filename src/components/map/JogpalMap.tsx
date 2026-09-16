@@ -41,6 +41,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   partnerRunners = [],
   style,
   interactive = true,
+  isFullScreen = false,
   showRecenterButton = true,
   showStartFinishMarkers = false,
   fitRouteOnLoad = false,
@@ -50,6 +51,12 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   const { colors } = useTheme();
   const [cameraMode, setCameraMode] = useState<CameraMode>('FOLLOWING');
   const [isMapReady, setIsMapReady] = useState(false);
+
+  const isFullScreenMode: boolean = Boolean(
+    isFullScreen ||
+      style === StyleSheet.absoluteFill ||
+      (style && typeof style === 'object' && (style as any).position === 'absolute' && (style as any).top === 0)
+  );
 
   const mapRef = useRef<any>(null);
   const iframeRef = useRef<any>(null);
@@ -358,7 +365,14 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
   // =========================================================================
   if (Platform.OS !== 'web' && RNMapView) {
     return (
-      <View style={[styles.container, { borderColor: colors.primary, shadowColor: colors.primary }, style]}>
+      <View
+        style={[
+          isFullScreenMode
+            ? styles.fullScreenContainer
+            : [styles.container, { borderColor: colors.primary, shadowColor: colors.primary }],
+          style,
+        ]}
+      >
         <RNMapView
           ref={mapRef}
           style={styles.map}
@@ -473,8 +487,50 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
           ))}
         </RNMapView>
 
-        {/* Recenter / Compass Control Button */}
-        {interactive && showRecenterButton && (
+        {/* FULLSCREEN Floating Right-Side Controls */}
+        {interactive && isFullScreenMode && (
+          <View style={styles.fullScreenControlGroup} pointerEvents="box-none">
+            {showRecenterButton && (
+              <TouchableOpacity
+                style={[
+                  styles.sideControlBtn,
+                  {
+                    backgroundColor: 'rgba(14, 14, 20, 0.92)',
+                    borderColor: cameraMode === 'FOLLOWING' ? colors.primary : '#33333E',
+                  },
+                ]}
+                onPress={handleCompassPress}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="navigation"
+                  size={20}
+                  color={cameraMode === 'FOLLOWING' ? colors.primary : '#FFFFFF'}
+                  style={styles.compassIcon}
+                />
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.sideControlBtn, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: '#33333E' }]}
+              onPress={handleZoomIn}
+              activeOpacity={0.8}
+            >
+              <Feather name="plus" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sideControlBtn, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: '#33333E' }]}
+              onPress={handleZoomOut}
+              activeOpacity={0.8}
+            >
+              <Feather name="minus" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* STANDARD CARD Controls */}
+        {interactive && !isFullScreenMode && showRecenterButton && (
           <TouchableOpacity
             style={[
               styles.compassBtn,
@@ -495,8 +551,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
           </TouchableOpacity>
         )}
 
-        {/* Zoom In / Zoom Out Controls */}
-        {interactive && (
+        {interactive && !isFullScreenMode && (
           <View style={styles.zoomControlGroup}>
             <TouchableOpacity
               style={[styles.zoomBtn, { backgroundColor: 'rgba(20, 20, 24, 0.92)', borderColor: '#33333E' }]}
@@ -715,16 +770,65 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
     `;
 
     return (
-      <View style={[styles.container, { borderColor: colors.primary, shadowColor: colors.primary }, style]}>
+      <View
+        style={[
+          isFullScreenMode
+            ? styles.fullScreenContainer
+            : [styles.container, { borderColor: colors.primary, shadowColor: colors.primary }],
+          style,
+        ]}
+      >
         <iframe
           ref={iframeRef}
           srcDoc={leafletHTML}
-          style={{ width: '100%', height: '100%', border: 'none', borderRadius: 20 }}
+          style={{ width: '100%', height: '100%', border: 'none', borderRadius: isFullScreenMode ? 0 : 20 }}
           title="JOGPAL Web Map"
         />
 
-        {/* Recenter / Compass Control Button */}
-        {interactive && showRecenterButton && (
+        {/* FULLSCREEN Floating Right-Side Controls */}
+        {interactive && isFullScreenMode && (
+          <View style={styles.fullScreenControlGroup} pointerEvents="box-none">
+            {showRecenterButton && (
+              <TouchableOpacity
+                style={[
+                  styles.sideControlBtn,
+                  {
+                    backgroundColor: 'rgba(14, 14, 20, 0.92)',
+                    borderColor: cameraMode === 'FOLLOWING' ? colors.primary : '#33333E',
+                  },
+                ]}
+                onPress={handleCompassPress}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="navigation"
+                  size={20}
+                  color={cameraMode === 'FOLLOWING' ? colors.primary : '#FFFFFF'}
+                  style={styles.compassIcon}
+                />
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.sideControlBtn, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: '#33333E' }]}
+              onPress={handleZoomIn}
+              activeOpacity={0.8}
+            >
+              <Feather name="plus" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sideControlBtn, { backgroundColor: 'rgba(14, 14, 20, 0.92)', borderColor: '#33333E' }]}
+              onPress={handleZoomOut}
+              activeOpacity={0.8}
+            >
+              <Feather name="minus" size={18} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* STANDARD CARD Controls */}
+        {interactive && !isFullScreenMode && showRecenterButton && (
           <TouchableOpacity
             style={[
               styles.compassBtn,
@@ -745,8 +849,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
           </TouchableOpacity>
         )}
 
-        {/* Zoom In / Zoom Out Controls */}
-        {interactive && (
+        {interactive && !isFullScreenMode && (
           <View style={styles.zoomControlGroup}>
             <TouchableOpacity
               style={[styles.zoomBtn, { backgroundColor: 'rgba(20, 20, 24, 0.92)', borderColor: '#33333E' }]}
@@ -778,6 +881,7 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
       targetDistanceKm={5}
       routeMode="LOOP"
       style={style}
+      isFullScreen={isFullScreenMode}
     />
   );
 };
@@ -795,6 +899,19 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 10,
     elevation: 6,
+  },
+  fullScreenContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    borderRadius: 0,
+    borderWidth: 0,
+    backgroundColor: '#0E0F14',
+    overflow: 'hidden',
   },
   map: {
     ...StyleSheet.absoluteFill,
@@ -915,5 +1032,26 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
+  },
+  fullScreenControlGroup: {
+    position: 'absolute',
+    right: 14,
+    top: '42%',
+    gap: 10,
+    zIndex: 25,
+    alignItems: 'center',
+  },
+  sideControlBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.5,
+    shadowRadius: 5,
+    elevation: 6,
   },
 });

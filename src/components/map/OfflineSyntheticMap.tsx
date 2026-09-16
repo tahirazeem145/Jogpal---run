@@ -9,6 +9,7 @@ interface OfflineSyntheticMapProps {
   targetDistanceKm: number;
   routeMode: OfflineRouteMode;
   style?: StyleProp<ViewStyle>;
+  isFullScreen?: boolean;
 }
 
 // Stadium track constants for SVG ViewBox: 340 x 200
@@ -31,8 +32,14 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
   targetDistanceKm,
   routeMode,
   style,
+  isFullScreen = false,
 }) => {
   const { colors } = useTheme();
+
+  const isFullScreenMode =
+    isFullScreen ||
+    style === StyleSheet.absoluteFill ||
+    (style && typeof style === 'object' && (style as any).position === 'absolute' && (style as any).top === 0);
 
   // Progress fraction (0.0 to 1.0+)
   const progressFraction = useMemo(() => {
@@ -117,21 +124,35 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
   }, [routeMode, targetDistanceKm]);
 
   return (
-    <View style={[styles.container, { borderColor: colors.primary, shadowColor: colors.primary }, style]}>
-      {/* Top Header Tag */}
-      <View style={styles.topTagRow}>
-        <View style={[styles.modeBadge, { backgroundColor: colors.crewAddBg, borderColor: colors.primary }]}>
-          <Text style={[styles.modeBadgeText, { color: colors.primary }]}>
-            OFFLINE {routeMode} TRACK ({targetDistanceKm} KM)
+    <View
+      style={[
+        isFullScreenMode
+          ? styles.fullScreenContainer
+          : [styles.container, { borderColor: colors.primary, shadowColor: colors.primary }],
+        style,
+      ]}
+    >
+      {/* Top Header Tag (standard card only) */}
+      {!isFullScreenMode && (
+        <View style={styles.topTagRow}>
+          <View style={[styles.modeBadge, { backgroundColor: colors.crewAddBg, borderColor: colors.primary }]}>
+            <Text style={[styles.modeBadgeText, { color: colors.primary }]}>
+              OFFLINE {routeMode} TRACK ({targetDistanceKm} KM)
+            </Text>
+          </View>
+          <Text style={[styles.progressText, { color: isCompleted ? '#00FF66' : colors.primary }]}>
+            {isCompleted ? '★ GOAL COMPLETED' : `${percentText} COMPLETED`}
           </Text>
         </View>
-        <Text style={[styles.progressText, { color: isCompleted ? '#00FF66' : colors.primary }]}>
-          {isCompleted ? '★ GOAL COMPLETED' : `${percentText} COMPLETED`}
-        </Text>
-      </View>
+      )}
 
       {/* Synthetic Vector Track SVG Canvas */}
-      <Svg width="100%" height="180" viewBox="0 0 340 200" style={styles.svgCanvas}>
+      <Svg
+        width="100%"
+        height={isFullScreenMode ? 260 : 180}
+        viewBox="0 0 340 200"
+        style={isFullScreenMode ? styles.svgCanvasFullScreen : styles.svgCanvas}
+      >
         <Defs>
           <LinearGradient id="neonGlowGrad" x1="0" y1="0" x2="1" y2="0">
             <Stop offset="0%" stopColor={colors.primary} stopOpacity="0.85" />
@@ -237,18 +258,20 @@ export const OfflineSyntheticMap: React.FC<OfflineSyntheticMapProps> = ({
         <Circle cx={runnerPosition.x} cy={runnerPosition.y} r="3" fill={colors.primary} />
       </Svg>
 
-      {/* Progress Bar Footer */}
-      <View style={styles.progressBarBg}>
-        <View
-          style={[
-            styles.progressBarFill,
-            {
-              width: `${Math.min(100, Math.round(progressFraction * 100))}%`,
-              backgroundColor: isCompleted ? '#00FF66' : colors.primary,
-            },
-          ]}
-        />
-      </View>
+      {/* Progress Bar Footer (standard card only) */}
+      {!isFullScreenMode && (
+        <View style={styles.progressBarBg}>
+          <View
+            style={[
+              styles.progressBarFill,
+              {
+                width: `${Math.min(100, Math.round(progressFraction * 100))}%`,
+                backgroundColor: isCompleted ? '#00FF66' : colors.primary,
+              },
+            ]}
+          />
+        </View>
+      )}
     </View>
   );
 };
@@ -260,6 +283,22 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     backgroundColor: '#050505',
     padding: 12,
+    overflow: 'hidden',
+  },
+  fullScreenContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    width: '100%',
+    height: '100%',
+    borderRadius: 0,
+    borderWidth: 0,
+    backgroundColor: '#050505',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
     overflow: 'hidden',
   },
   topTagRow: {
@@ -286,6 +325,9 @@ const styles = StyleSheet.create({
   },
   svgCanvas: {
     marginVertical: 4,
+  },
+  svgCanvasFullScreen: {
+    alignSelf: 'center',
   },
   progressBarBg: {
     height: 4,
