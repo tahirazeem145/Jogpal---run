@@ -405,6 +405,8 @@ export const JogpalMap: React.FC<JogpalMapProps> = ({
               urlTemplate={MAP_CONFIG.darkRasterTileURL}
               maximumZ={19}
               flipY={false}
+              tileSize={256}
+              shouldReplaceMapContent={true}
               zIndex={-1}
             />
           )}

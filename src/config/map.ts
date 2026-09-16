@@ -28,7 +28,7 @@ export const MAP_CONFIG = {
     'https://router.project-osrm.org',
 
   // Fast Crisp Dark OpenStreetMap (OSM) Raster Tiles for Web & Native
-  darkRasterTileURL: 'https://basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png',
+  darkRasterTileURL: 'https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png',
   osmStandardTileURL: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
 
   // Route & Polyline Styling Configuration
